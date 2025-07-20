@@ -1,9 +1,8 @@
 'use client';
 
 import React from 'react';
+import { Card } from '@/components/ui/Card';
 import { BarChart3, Users, ShoppingCart, TrendingUp } from 'lucide-react';
-import { useAppSelector } from '@/shared/hooks/redux';
-import { STRINGS } from '@/constants/strings';
 
 const StatCard: React.FC<{
   title: string;
@@ -11,35 +10,31 @@ const StatCard: React.FC<{
   icon: React.ComponentType<any>;
   trend?: string;
 }> = ({ title, value, icon: Icon, trend }) => (
-  <div className="bg-white rounded-lg shadow p-6">
-    <div className="flex items-center justify-between">
-      <div>
-        <p className="text-sm font-medium text-gray-600">{title}</p>
-        <p className="text-2xl font-bold text-gray-900">{value}</p>
-        {trend && (
-          <p className="text-sm text-green-600 mt-1">{trend}</p>
-        )}
+  <Card className="dashboard-stat-card p-6">
+    <div className="dashboard-stat-content flex items-center justify-between">
+      <div className="dashboard-stat-info">
+        <p className="dashboard-stat-title text-sm font-medium text-secondary-600">{title}</p>
+        <p className="dashboard-stat-value text-2xl font-bold text-secondary-900">{value}</p>
+        {trend && <p className="dashboard-stat-trend text-sm text-success-600 mt-1">{trend}</p>}
       </div>
-      <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">
-        <Icon className="w-6 h-6 text-primary-600" />
+      <div className="dashboard-stat-icon-wrapper w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">
+        <Icon className="dashboard-stat-icon w-6 h-6 text-primary-600" />
       </div>
     </div>
-  </div>
+  </Card>
 );
 
 export default function DashboardPage() {
-  const { user } = useAppSelector((state) => state.auth);
-
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">{STRINGS.DASHBOARD.TITLE}</h1>
-        <p className="text-gray-600 mt-1">
-          {STRINGS.COMMON.WELCOME}, {user?.username}! {STRINGS.DASHBOARD.WELCOME_MESSAGE}
+    <div className="dashboard-page-container space-y-6">
+      <div className="dashboard-page-header">
+        <h1 className="dashboard-page-title text-2xl font-bold text-secondary-900">Dashboard</h1>
+        <p className="dashboard-page-subtitle text-secondary-600 mt-1">
+          Welcome back! Here's what's happening with your business today.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="dashboard-stats-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="Total Sales"
           value="$45,231"
@@ -66,41 +61,61 @@ export default function DashboardPage() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Orders</h3>
-          <div className="space-y-3">
+      <div className="dashboard-details-grid grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="dashboard-recent-orders p-6">
+          <h3 className="dashboard-recent-orders-title text-lg font-semibold text-secondary-900 mb-4">
+            Recent Orders
+          </h3>
+          <div className="dashboard-recent-orders-list space-y-3">
             {[1, 2, 3, 4, 5].map((item) => (
-              <div key={item} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
-                <div>
-                  <p className="font-medium text-gray-900">Order #{1000 + item}</p>
-                  <p className="text-sm text-gray-500">Customer {item}</p>
+              <div
+                key={item}
+                className="dashboard-order-item flex items-center justify-between py-2 border-b border-secondary-100 last:border-b-0"
+              >
+                <div className="dashboard-order-info">
+                  <p className="dashboard-order-number font-medium text-secondary-900">
+                    Order #{1000 + item}
+                  </p>
+                  <p className="dashboard-order-customer text-sm text-secondary-500">Customer {item}</p>
                 </div>
-                <div className="text-right">
-                  <p className="font-medium text-gray-900">${(Math.random() * 500 + 50).toFixed(2)}</p>
-                  <p className="text-xs text-green-600">Completed</p>
+                <div className="dashboard-order-details text-right">
+                  <p className="dashboard-order-amount font-medium text-secondary-900">
+                    ${(Math.random() * 500 + 50).toFixed(2)}
+                  </p>
+                  <p className="dashboard-order-status text-xs text-success-600">Completed</p>
                 </div>
               </div>
             ))}
           </div>
-        </div>
+        </Card>
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Products</h3>
-          <div className="space-y-3">
-            {['Laptop Pro', 'Wireless Headphones', 'Smart Watch', 'Tablet', 'Phone Case'].map((product, index) => (
-              <div key={product} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
-                <div>
-                  <p className="font-medium text-gray-900">{product}</p>
-                  <p className="text-sm text-gray-500">{Math.floor(Math.random() * 100 + 20)} sold</p>
+        <Card className="dashboard-top-products p-6">
+          <h3 className="dashboard-top-products-title text-lg font-semibold text-secondary-900 mb-4">
+            Top Products
+          </h3>
+          <div className="dashboard-top-products-list space-y-3">
+            {['Laptop Pro', 'Wireless Headphones', 'Smart Watch', 'Tablet', 'Phone Case'].map(
+              (product, index) => (
+                <div
+                  key={product}
+                  className="dashboard-product-item flex items-center justify-between py-2 border-b border-secondary-100 last:border-b-0"
+                >
+                  <div className="dashboard-product-info">
+                    <p className="dashboard-product-name font-medium text-secondary-900">{product}</p>
+                    <p className="dashboard-product-sales text-sm text-secondary-500">
+                      {Math.floor(Math.random() * 100 + 20)} sold
+                    </p>
+                  </div>
+                  <div className="dashboard-product-details text-right">
+                    <p className="dashboard-product-revenue font-medium text-secondary-900">
+                      ${(Math.random() * 1000 + 100).toFixed(2)}
+                    </p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-medium text-gray-900">${(Math.random() * 1000 + 100).toFixed(2)}</p>
-                </div>
-              </div>
-            ))}
+              )
+            )}
           </div>
-        </div>
+        </Card>
       </div>
     </div>
   );

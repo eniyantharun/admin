@@ -1,40 +1,25 @@
 'use client';
 
 import React from 'react';
-import { AuthGuard } from '../../shared/components/AuthGuard';
-import { Sidebar } from '../../features/dashboard/components/Sidebar';
-import { Header } from '../../features/dashboard/components/Header';
-import { useAppSelector, useAppDispatch } from '../../shared/hooks/redux';
-import { setSidebarOpen } from '../../features/dashboard/store/dashboard.slice';
+import { AuthGuard } from '@/components/layout/AuthGuard';
+import { Header } from '@/components/layout/Header';
+import { Sidebar } from '@/components/layout/Sidebar';
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { sidebarOpen } = useAppSelector((state) => state.dashboard);
-  const dispatch = useAppDispatch();
-
-  const handleOverlayClick = () => {
-    dispatch(setSidebarOpen(false));
-  };
-
   return (
     <AuthGuard>
-      <div className="flex h-screen bg-gray-50">
+      <div className="dashboard-layout-container flex h-screen bg-secondary-50">
         <Sidebar />
-        
-        {sidebarOpen && (
-          <div 
-            className="sidebar-overlay lg:hidden"
-            onClick={handleOverlayClick}
-          />
-        )}
-        
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="dashboard-layout-main flex-1 flex flex-col overflow-hidden">
           <Header />
-          <main className="flex-1 overflow-y-auto p-4 lg:p-6">
-            {children}
+          <main className="dashboard-layout-content flex-1 overflow-y-auto p-6">
+            <div className="dashboard-layout-page-wrapper">
+              {children}
+            </div>
           </main>
         </div>
       </div>

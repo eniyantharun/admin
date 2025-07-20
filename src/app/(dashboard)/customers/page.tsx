@@ -1,8 +1,28 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Plus, Edit2, Phone, Mail, Building, Calendar, X, Loader2 } from 'lucide-react';
-import { CustomerService, Customer, CustomerFormData } from '@/infrastructure/api/customer.service';
+import { Search, Plus, Edit2, Phone, Mail, Building, Calendar, X, User } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { useApi } from '@/hooks/useApi';
+
+interface Customer {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  companyName: string;
+  joinedDate: string;
+}
+
+interface CustomerFormData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  companyName: string;
+}
 
 interface Comment {
   id: string;
@@ -20,6 +40,21 @@ interface Address {
   country: string;
 }
 
+interface ApiCustomer {
+  form: {
+    companyName: string | null;
+    firstName: string;
+    lastName: string;
+    phoneNumber: string;
+    email: string;
+  };
+  website: string;
+  id: string;
+  idNum: number;
+  name: string;
+  createdAt: string;
+}
+
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -29,8 +64,6 @@ export default function CustomersPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(20);
-  const [loading, setLoading] = useState(false);
-  const [submitLoading, setSubmitLoading] = useState(false);
   const [formData, setFormData] = useState<CustomerFormData>({
     firstName: '',
     lastName: '',
@@ -60,25 +93,41 @@ export default function CustomersPage() {
     country: ''
   });
 
+  const { get, post, put, loading } = useApi();
+  const submitApi = useApi();
+
+  // Transform API customer to our Customer interface
+  const transformApiCustomer = (apiCustomer: ApiCustomer): Customer => {
+    return {
+      id: apiCustomer.idNum.toString(),
+      firstName: apiCustomer.form.firstName || '',
+      lastName: apiCustomer.form.lastName || '',
+      email: apiCustomer.form.email || '',
+      phone: apiCustomer.form.phoneNumber || '',
+      companyName: apiCustomer.form.companyName || '',
+      joinedDate: new Date(apiCustomer.createdAt).toLocaleString()
+    };
+  };
+
   // Fetch customers from API
   const fetchCustomers = useCallback(async () => {
-    setLoading(true);
     try {
-      const { customers: fetchedCustomers, totalCount: count } = await CustomerService.getCustomers({
+      const queryParams = new URLSearchParams({
+        website: 'PromotionalProductInc',
         search: searchTerm,
-        count: rowsPerPage,
-        index: (currentPage - 1) * rowsPerPage
+        count: rowsPerPage.toString(),
+        index: ((currentPage - 1) * rowsPerPage).toString()
       });
+
+      const response = await get(`/Admin/CustomerEditor/GetCustomersList?${queryParams}`);
+      const transformedCustomers = response.customers.map(transformApiCustomer);
       
-      setCustomers(fetchedCustomers);
-      setTotalCount(count);
+      setCustomers(transformedCustomers);
+      setTotalCount(response.count);
     } catch (error) {
       console.error('Error fetching customers:', error);
-      // You can add a toast notification here
-    } finally {
-      setLoading(false);
     }
-  }, [searchTerm, currentPage, rowsPerPage]);
+  }, [searchTerm, currentPage, rowsPerPage, get]);
 
   // Load customers on component mount and when dependencies change
   useEffect(() => {
@@ -153,7 +202,6 @@ export default function CustomersPage() {
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       errors.email = 'Email is invalid';
     }
-    // Company name is optional based on the API response
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -165,14 +213,30 @@ export default function CustomersPage() {
     
     if (!validateForm()) return;
 
-    setSubmitLoading(true);
     try {
       if (isEditing && selectedCustomer) {
         // Update existing customer
-        await CustomerService.updateCustomer(selectedCustomer.id, formData);
+        await submitApi.put(`/Admin/CustomerEditor/UpdateCustomer/${selectedCustomer.id}`, {
+          form: {
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            email: formData.email,
+            phoneNumber: formData.phone,
+            companyName: formData.companyName || null
+          }
+        });
       } else {
         // Create new customer
-        await CustomerService.createCustomer(formData);
+        await submitApi.post('/Admin/CustomerEditor/CreateCustomer', {
+          website: 'PromotionalProductInc',
+          form: {
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            email: formData.email,
+            phoneNumber: formData.phone,
+            companyName: formData.companyName || null
+          }
+        });
       }
 
       // Refresh the customer list
@@ -180,9 +244,6 @@ export default function CustomersPage() {
       closeModal();
     } catch (error) {
       console.error('Error saving customer:', error);
-      // You can add a toast notification here
-    } finally {
-      setSubmitLoading(false);
     }
   };
 
@@ -289,7 +350,10 @@ export default function CustomersPage() {
   const sendResetPasswordEmail = async () => {
     if (selectedCustomer) {
       try {
-        await CustomerService.sendResetPasswordEmail(selectedCustomer.email);
+        await post('/Admin/CustomerEditor/SendResetPasswordEmail', {
+          email: selectedCustomer.email,
+          website: 'PromotionalProductInc'
+        });
         alert(`Reset password email sent to ${selectedCustomer.email}`);
         addAutoComment(`Sent reset password email to ${selectedCustomer.email}`);
       } catch (error) {
@@ -302,7 +366,10 @@ export default function CustomersPage() {
   const sendNewAccountEmail = async () => {
     if (selectedCustomer) {
       try {
-        await CustomerService.sendNewAccountEmail(selectedCustomer.email);
+        await post('/Admin/CustomerEditor/SendNewAccountEmail', {
+          email: selectedCustomer.email,
+          website: 'PromotionalProductInc'
+        });
         alert(`New account email sent to ${selectedCustomer.email}`);
         addAutoComment(`Sent new account email to ${selectedCustomer.email}`);
       } catch (error) {
@@ -333,20 +400,20 @@ export default function CustomersPage() {
 
   // Reusable Components
   const CustomerAvatar = ({ customer }: { customer: Customer }) => (
-    <div className="customer-avatar h-8 w-8 rounded-full bg-gradient-to-r from-blue-400 to-indigo-500 flex items-center justify-center text-white font-semibold text-xs">
+    <div className="customers-avatar h-8 w-8 rounded-full bg-gradient-to-r from-blue-400 to-indigo-500 flex items-center justify-center text-white font-semibold text-xs">
       {customer.firstName?.charAt(0) || ''}{customer.lastName?.charAt(0) || ''}
     </div>
   );
 
   const ContactInfo = ({ customer }: { customer: Customer }) => (
     <>
-      <div className="customer-email text-sm text-gray-900 flex items-center gap-1">
-        <Mail className="w-3 h-3 text-gray-400" />
-        <span className="truncate max-w-xs">{customer.email}</span>
+      <div className="customers-contact-email text-sm text-gray-900 flex items-center gap-1">
+        <Mail className="customers-email-icon w-3 h-3 text-gray-400" />
+        <span className="customers-email-text truncate max-w-xs">{customer.email}</span>
       </div>
-      <div className="customer-phone text-xs text-gray-500 flex items-center gap-1 mt-1">
-        <Phone className="w-3 h-3 text-gray-400" />
-        {customer.phone || 'No phone'}
+      <div className="customers-contact-phone text-xs text-gray-500 flex items-center gap-1 mt-1">
+        <Phone className="customers-phone-icon w-3 h-3 text-gray-400" />
+        <span className="customers-phone-text">{customer.phone || 'No phone'}</span>
       </div>
     </>
   );
@@ -370,8 +437,8 @@ export default function CustomersPage() {
     type?: string;
     placeholder?: string;
   }) => (
-    <div className="form-input-group">
-      <label className="form-label block text-sm font-medium text-gray-700 mb-1">
+    <div className="customers-form-input-group">
+      <label className="customers-form-label block text-sm font-medium text-gray-700 mb-1">
         {label} {required && '*'}
       </label>
       <input
@@ -379,21 +446,21 @@ export default function CustomersPage() {
         name={name}
         value={value}
         onChange={onChange}
-        className={`form-input w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 ${
+        className={`customers-form-input w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 ${
           error ? 'border-red-500' : 'border-gray-300'
         }`}
         placeholder={placeholder}
       />
       {error && (
-        <p className="form-error text-red-500 text-xs mt-1">{error}</p>
+        <p className="customers-form-error text-red-500 text-xs mt-1">{error}</p>
       )}
     </div>
   );
 
   const EmptyState = () => (
     <div className="customers-empty-state text-center py-8">
-      <div className="text-gray-400 mb-3">
-        <Building className="w-10 h-10 mx-auto" />
+      <div className="customers-empty-icon-wrapper text-gray-400 mb-3">
+        <Building className="customers-empty-icon w-10 h-10 mx-auto" />
       </div>
       <h3 className="customers-empty-title text-lg font-medium text-gray-900 mb-2">No customers found</h3>
       <p className="customers-empty-description text-gray-500 text-sm">
@@ -404,24 +471,24 @@ export default function CustomersPage() {
 
   const LoadingState = () => (
     <div className="customers-loading-state text-center py-8">
-      <Loader2 className="w-8 h-8 mx-auto animate-spin text-blue-600 mb-3" />
-      <p className="text-gray-500 text-sm">Loading customers...</p>
+      <div className="customers-loading-spinner w-8 h-8 mx-auto animate-spin text-blue-600 mb-3 border-2 border-blue-600 border-t-transparent rounded-full"></div>
+      <p className="customers-loading-text text-gray-500 text-sm">Loading customers...</p>
     </div>
   );
 
   return (
     <div className="customers-page space-y-4">
       {/* Customers Table */}
-      <div className="customers-table-container bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
+      <Card className="customers-table-container overflow-hidden">
         <div className="customers-table-header px-4 py-3 border-b border-gray-200 bg-gray-50">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="customers-header-content flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <h3 className="customers-table-title text-lg font-semibold text-gray-900">
               Customer List ({totalCount.toLocaleString()})
             </h3>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+            <div className="customers-header-actions flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
               {/* Search Input */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <div className="customers-search-wrapper relative">
+                <Search className="customers-search-icon absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
                   type="text"
                   placeholder="Search customers..."
@@ -430,13 +497,13 @@ export default function CustomersPage() {
                   className="customers-search-input pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm w-full sm:w-64"
                 />
               </div>
-              <button
+              <Button
                 onClick={openNewCustomerModal}
-                className="customers-add-btn flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 text-sm whitespace-nowrap"
+                icon={Plus}
+                className="customers-add-btn bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
               >
-                <Plus className="w-4 h-4" />
                 New Customer
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -465,13 +532,13 @@ export default function CustomersPage() {
             <tbody className="customers-table-body bg-white divide-y divide-gray-200">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8">
+                  <td colSpan={5} className="customers-loading-cell px-4 py-8">
                     <LoadingState />
                   </td>
                 </tr>
               ) : customers.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8">
+                  <td colSpan={5} className="customers-empty-cell px-4 py-8">
                     <EmptyState />
                   </td>
                 </tr>
@@ -479,15 +546,15 @@ export default function CustomersPage() {
                 customers.map((customer) => (
                   <tr key={customer.id} className="customers-table-row hover:bg-gray-50 transition-colors duration-150">
                     <td className="customers-table-cell px-4 py-2 whitespace-nowrap">
-                      <div className="customer-info flex items-center">
-                        <div className="flex-shrink-0 h-8 w-8">
+                      <div className="customers-info flex items-center">
+                        <div className="customers-avatar-wrapper flex-shrink-0 h-8 w-8">
                           <CustomerAvatar customer={customer} />
                         </div>
-                        <div className="customer-details ml-3">
-                          <div className="customer-name text-sm font-medium text-gray-900">
+                        <div className="customers-details ml-3">
+                          <div className="customers-name text-sm font-medium text-gray-900">
                             {customer.firstName} {customer.lastName}
                           </div>
-                          <div className="customer-id text-xs text-gray-500">ID: {customer.id}</div>
+                          <div className="customers-id text-xs text-gray-500">ID: {customer.id}</div>
                         </div>
                       </div>
                     </td>
@@ -495,26 +562,27 @@ export default function CustomersPage() {
                       <ContactInfo customer={customer} />
                     </td>
                     <td className="customers-table-cell px-4 py-2 whitespace-nowrap">
-                      <div className="customer-company text-sm text-gray-900 flex items-center gap-1">
-                        <Building className="w-4 h-4 text-gray-400" />
-                        <span className="truncate max-w-xs">{customer.companyName || 'No company'}</span>
+                      <div className="customers-company text-sm text-gray-900 flex items-center gap-1">
+                        <Building className="customers-company-icon w-4 h-4 text-gray-400" />
+                        <span className="customers-company-text truncate max-w-xs">{customer.companyName || 'No company'}</span>
                       </div>
                     </td>
                     <td className="customers-table-cell px-4 py-2 whitespace-nowrap">
-                      <div className="customer-joined text-sm text-gray-900 flex items-center gap-1">
-                        <Calendar className="w-4 h-4 text-gray-400" />
-                        <span className="text-xs">{customer.joinedDate}</span>
+                      <div className="customers-joined text-sm text-gray-900 flex items-center gap-1">
+                        <Calendar className="customers-joined-icon w-4 h-4 text-gray-400" />
+                        <span className="customers-joined-text text-xs">{customer.joinedDate}</span>
                       </div>
                     </td>
                     <td className="customers-table-cell px-4 py-2 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="customer-actions flex items-center justify-end gap-2">
-                        <button
+                      <div className="customers-actions flex items-center justify-end gap-2">
+                        <Button
                           onClick={() => openEditCustomerModal(customer)}
-                          className="customer-edit-btn text-blue-600 hover:text-blue-800 p-1 hover:bg-blue-50 rounded-lg transition-colors duration-150"
-                          title="Edit Customer"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
+                          variant="secondary"
+                          size="sm"
+                          icon={Edit2}
+                          iconOnly
+                          className="customers-edit-btn"
+                        />
                       </div>
                     </td>
                   </tr>
@@ -523,99 +591,105 @@ export default function CustomersPage() {
             </tbody>
           </table>
         </div>
-      </div>
+      </Card>
 
       {/* Pagination */}
       {totalCount > 0 && !loading && (
-        <div className="customers-pagination bg-white px-4 py-2 flex items-center justify-between border-t border-gray-200 sm:px-6">
-          <div className="customers-pagination-mobile flex-1 flex justify-between sm:hidden">
-            <button
-              onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))}
-              disabled={currentPage === 1}
-              className="customers-pagination-btn relative inline-flex items-center px-3 py-1 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400"
-            >
-              Previous
-            </button>
-            <button
-              onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages))}
-              disabled={currentPage === totalPages}
-              className="customers-pagination-btn ml-3 relative inline-flex items-center px-3 py-1 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400"
-            >
-              Next
-            </button>
-          </div>
-          <div className="customers-pagination-desktop hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-            <div className="customers-pagination-info flex items-center space-x-4">
-              <p className="customers-pagination-status text-sm text-gray-700">
-                Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
-                <span className="font-medium">{endIndex}</span> of{' '}
-                <span className="font-medium">{totalCount.toLocaleString()}</span> results
-              </p>
-              <div className="customers-pagination-controls flex items-center space-x-2">
-                <label className="text-sm text-gray-700">Rows per page:</label>
-                <select
-                  value={rowsPerPage}
-                  onChange={(e) => {
-                    setRowsPerPage(Number(e.target.value));
-                    setCurrentPage(1);
-                  }}
-                  className="customers-pagination-select border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value={10}>10</option>
-                  <option value={20}>20</option>
-                  <option value={50}>50</option>
-                  <option value={100}>100</option>
-                </select>
+        <Card className="customers-pagination">
+          <div className="customers-pagination-content px-4 py-2 flex items-center justify-between sm:px-6">
+            <div className="customers-pagination-mobile flex-1 flex justify-between sm:hidden">
+              <Button
+                onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))}
+                disabled={currentPage === 1}
+                variant="secondary"
+                size="sm"
+                className="customers-pagination-prev"
+              >
+                Previous
+              </Button>
+              <Button
+                onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                variant="secondary"
+                size="sm"
+                className="customers-pagination-next"
+              >
+                Next
+              </Button>
+            </div>
+            <div className="customers-pagination-desktop hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+              <div className="customers-pagination-info flex items-center space-x-4">
+                <p className="customers-pagination-status text-sm text-gray-700">
+                  Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
+                  <span className="font-medium">{endIndex}</span> of{' '}
+                  <span className="font-medium">{totalCount.toLocaleString()}</span> results
+                </p>
+                <div className="customers-pagination-controls flex items-center space-x-2">
+                  <label className="customers-pagination-label text-sm text-gray-700">Rows per page:</label>
+                  <select
+                    value={rowsPerPage}
+                    onChange={(e) => {
+                      setRowsPerPage(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="customers-pagination-select border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+                </div>
+              </div>
+              <div className="customers-pagination-nav">
+                <nav className="customers-pagination-nav-wrapper relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                  <button
+                    onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="customers-pagination-prev-btn relative inline-flex items-center px-2 py-1 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-300"
+                  >
+                    <span className="sr-only">Previous</span>
+                    <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                  
+                  {getPageNumbers().map((pageNumber, index) => (
+                    <React.Fragment key={index}>
+                      {pageNumber === '...' ? (
+                        <span className="customers-pagination-ellipsis relative inline-flex items-center px-3 py-1 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                          ...
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => setCurrentPage(pageNumber as number)}
+                          className={`customers-pagination-page relative inline-flex items-center px-3 py-1 border text-sm font-medium ${
+                            currentPage === pageNumber
+                              ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                              : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                          }`}
+                        >
+                          {pageNumber}
+                        </button>
+                      )}
+                    </React.Fragment>
+                  ))}
+                  
+                  <button
+                    onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="customers-pagination-next-btn relative inline-flex items-center px-2 py-1 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-300"
+                  >
+                    <span className="sr-only">Next</span>
+                    <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                </nav>
               </div>
             </div>
-            <div className="customers-pagination-nav">
-              <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                <button
-                  onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))}
-                  disabled={currentPage === 1}
-                  className="customers-pagination-prev relative inline-flex items-center px-2 py-1 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-300"
-                >
-                  <span className="sr-only">Previous</span>
-                  <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                </button>
-                
-                {getPageNumbers().map((pageNumber, index) => (
-                  <React.Fragment key={index}>
-                    {pageNumber === '...' ? (
-                      <span className="customers-pagination-ellipsis relative inline-flex items-center px-3 py-1 border border-gray-300 bg-white text-sm font-medium text-gray-700">
-                        ...
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => setCurrentPage(pageNumber as number)}
-                        className={`customers-pagination-page relative inline-flex items-center px-3 py-1 border text-sm font-medium ${
-                          currentPage === pageNumber
-                            ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                            : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                        }`}
-                      >
-                        {pageNumber}
-                      </button>
-                    )}
-                  </React.Fragment>
-                ))}
-                
-                <button
-                  onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages))}
-                  disabled={currentPage === totalPages}
-                  className="customers-pagination-next relative inline-flex items-center px-2 py-1 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-300"
-                >
-                  <span className="sr-only">Next</span>
-                  <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                  </svg>
-                </button>
-              </nav>
-            </div>
           </div>
-        </div>
+        </Card>
       )}
 
       {/* Modal */}
@@ -627,13 +701,15 @@ export default function CustomersPage() {
               <h3 className="customers-modal-title text-lg font-semibold text-gray-900">
                 {isEditing ? 'Edit Customer' : 'Add New Customer'}
               </h3>
-              <button
+              <Button
                 onClick={closeModal}
-                className="customers-modal-close text-gray-400 hover:text-gray-600 p-1 hover:bg-gray-100 rounded-lg transition-colors duration-150"
-                disabled={submitLoading}
-              >
-                <X className="w-5 h-5" />
-              </button>
+                variant="secondary"
+                size="sm"
+                icon={X}
+                iconOnly
+                disabled={submitApi.loading}
+                className="customers-modal-close"
+              />
             </div>
 
             {/* Modal Body */}
@@ -691,22 +767,22 @@ export default function CustomersPage() {
 
               {/* Modal Footer */}
               <div className="customers-modal-footer flex flex-col sm:flex-row items-center justify-end gap-3 pt-4 border-t border-gray-200">
-                <button
+                <Button
                   type="button"
                   onClick={closeModal}
-                  disabled={submitLoading}
-                  className="customers-modal-cancel w-full sm:w-auto px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-150 disabled:opacity-50"
+                  variant="secondary"
+                  disabled={submitApi.loading}
+                  className="customers-modal-cancel w-full sm:w-auto"
                 >
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button
                   type="submit"
-                  disabled={submitLoading}
-                  className="customers-modal-submit w-full sm:w-auto px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  loading={submitApi.loading}
+                  className="customers-modal-submit w-full sm:w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
                 >
-                  {submitLoading && <Loader2 className="w-4 h-4 animate-spin" />}
                   {isEditing ? 'Update Customer' : 'Add Customer'}
-                </button>
+                </Button>
               </div>
             </form>
 
@@ -715,19 +791,23 @@ export default function CustomersPage() {
               <div className="customers-modal-extended border-t border-gray-200">
                 {/* Email Actions Section */}
                 <div className="customers-email-actions p-4 sm:p-6 border-b border-gray-200 bg-gray-50">
-                  <div className="flex flex-col sm:flex-row flex-wrap gap-3 mb-4">
-                    <button
+                  <div className="customers-email-buttons flex flex-col sm:flex-row flex-wrap gap-3 mb-4">
+                    <Button
                       onClick={sendResetPasswordEmail}
-                      className="customers-email-btn px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-150 text-sm font-medium"
+                      variant="secondary"
+                      size="sm"
+                      className="customers-reset-email-btn"
                     >
                       SEND RESET PASSWORD EMAIL
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       onClick={sendNewAccountEmail}
-                      className="customers-email-btn px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-150 text-sm font-medium"
+                      variant="secondary"
+                      size="sm"
+                      className="customers-new-account-btn"
                     >
                       SEND NEW ACCOUNT EMAIL
-                    </button>
+                    </Button>
                   </div>
                   <div className="customers-email-info text-sm text-gray-600">
                     <span className="font-medium">Send test email to:</span>
@@ -755,13 +835,15 @@ export default function CustomersPage() {
                       </div>
                     </div>
                     <div className="customers-comment-submit flex justify-end">
-                      <button
+                      <Button
                         type="submit"
                         disabled={!newComment.trim()}
-                        className="customers-comment-btn px-4 py-2 bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 disabled:text-gray-400 text-gray-700 rounded-lg transition-colors duration-150 text-sm font-medium"
+                        variant="secondary"
+                        size="sm"
+                        className="customers-comment-btn"
                       >
                         SUBMIT
-                      </button>
+                      </Button>
                     </div>
                   </form>
 
@@ -794,12 +876,13 @@ export default function CustomersPage() {
                 <div className="customers-addresses p-4 sm:p-6">
                   <div className="customers-addresses-header flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                     <h4 className="customers-addresses-title text-sm font-medium text-gray-700">Addresses</h4>
-                    <button
+                    <Button
                       onClick={() => setShowAddressForm(!showAddressForm)}
-                      className="customers-addresses-add-btn px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg font-medium transition-all duration-200 text-sm"
+                      size="sm"
+                      className="customers-addresses-add-btn bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
                     >
                       NEW ADDRESS
-                    </button>
+                    </Button>
                   </div>
 
                   {/* Address List */}
@@ -814,12 +897,20 @@ export default function CustomersPage() {
                           </div>
                         </div>
                         <div className="customers-address-actions flex items-center gap-2">
-                          <button className="customers-address-edit-btn text-blue-600 hover:text-blue-800 p-1">
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button className="customers-address-delete-btn text-red-600 hover:text-red-800 p-1">
-                            <X className="w-4 h-4" />
-                          </button>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            icon={Edit2}
+                            iconOnly
+                            className="customers-address-edit-btn"
+                          />
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            icon={X}
+                            iconOnly
+                            className="customers-address-delete-btn"
+                          />
                         </div>
                       </div>
                     ))}
@@ -827,7 +918,7 @@ export default function CustomersPage() {
 
                   {/* Add New Address Form */}
                   {showAddressForm && (
-                    <div className="customers-address-form bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <Card className="customers-address-form bg-gray-50 p-4">
                       <h5 className="customers-address-form-title text-sm font-medium text-gray-900 mb-3">Add New Address</h5>
                       <form onSubmit={handleAddressSubmit} className="customers-address-form-fields space-y-3">
                         <div className="customers-address-street">
@@ -879,22 +970,25 @@ export default function CustomersPage() {
                           />
                         </div>
                         <div className="customers-address-form-actions flex flex-col sm:flex-row items-center gap-3">
-                          <button
+                          <Button
                             type="submit"
-                            className="customers-address-submit-btn w-full sm:w-auto px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg font-medium transition-all duration-200 text-sm"
+                            size="sm"
+                            className="customers-address-submit-btn w-full sm:w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
                           >
                             Add Address
-                          </button>
-                          <button
+                          </Button>
+                          <Button
                             type="button"
                             onClick={() => setShowAddressForm(false)}
-                            className="customers-address-cancel-btn w-full sm:w-auto px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-150 text-sm"
+                            variant="secondary"
+                            size="sm"
+                            className="customers-address-cancel-btn w-full sm:w-auto"
                           >
                             Cancel
-                          </button>
+                          </Button>
                         </div>
                       </form>
-                    </div>
+                    </Card>
                   )}
                 </div>
               </div>
