@@ -4,41 +4,21 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/hooks/useAuth';
-import { useAppDispatch, useAppSelector } from '@/hooks/redux';
-import { toggleSidebar } from '@/store/dashboardSlice';
-import { Menu, User, LogOut, Search, BookOpen, Map, HelpCircle } from 'lucide-react';
+import { User, LogOut, Search, BookOpen, Map, HelpCircle } from 'lucide-react';
 
 export const Header: React.FC = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const { user, logout } = useAuth();
   const router = useRouter();
-  const dispatch = useAppDispatch();
-  const { sidebarOpen } = useAppSelector((state) => state.dashboard);
 
   const handleLogout = async () => {
     await logout();
     router.push('/login');
   };
 
-  const handleToggleSidebar = () => {
-    dispatch(toggleSidebar());
-  };
-
   return (
     <header className="dashboard-header bg-white shadow-sm border-b border-secondary-200">
       <div className="dashboard-header-content flex items-center h-16 px-4 lg:px-6 w-full">
-        {/* Hamburger Menu Button */}
-        <div className="dashboard-header-menu flex-shrink-0">
-          <Button
-            variant="secondary"
-            size="sm"
-            icon={Menu}
-            iconOnly
-            onClick={handleToggleSidebar}
-            className="dashboard-header-menu-button mr-4"
-          />
-        </div>
-        
         {/* Search Bar - Full Width */}
         <div className="dashboard-header-search flex-1 max-w-none">
           <div className="relative w-full">
