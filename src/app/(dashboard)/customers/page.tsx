@@ -5,6 +5,7 @@ import { Search, Plus, Edit2, Phone, Mail, Building, Calendar, X, User } from 'l
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { useApi } from '@/hooks/useApi';
+import { usePageSearch, useSearch } from '@/contexts/SearchContext';
 
 interface Customer {
   id: string;
@@ -58,7 +59,7 @@ interface ApiCustomer {
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [totalCount, setTotalCount] = useState(0);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [localSearchTerm, setLocalSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -95,6 +96,9 @@ export default function CustomersPage() {
 
   const { get, post, put, loading } = useApi();
   const submitApi = useApi();
+  
+  // Global search integration
+  const { searchQuery, setSearchResults } = useSearch();
 
   // Transform API customer to our Customer interface
   const transformApiCustomer = (apiCustomer: ApiCustomer): Customer => {
@@ -109,12 +113,64 @@ export default function CustomersPage() {
     };
   };
 
+  // Global search function for header
+  const handleGlobalSearch = useCallback(async (query: string) => {
+    try {
+      const queryParams = new URLSearchParams({
+        website: 'PromotionalProductInc',
+        search: query,
+        count: '10', // Limit results for dropdown
+        index: '0'
+      });
+
+      const response = await get(`/Admin/CustomerEditor/GetCustomersList?${queryParams}`);
+      const transformedCustomers = response.customers.map(transformApiCustomer);
+      
+      // Format results for global search dropdown
+      const searchResults = transformedCustomers.map((customer: Customer) => ({
+        id: customer.id,
+        title: `${customer.firstName} ${customer.lastName}`,
+        subtitle: customer.email,
+        description: customer.companyName || 'No company',
+        type: 'customer',
+        data: customer
+      }));
+      
+      setSearchResults(searchResults);
+    } catch (error) {
+      console.error('Error searching customers:', error);
+      setSearchResults([]);
+    }
+  }, [get, setSearchResults]);
+
+  // Register this page's search configuration
+  usePageSearch({
+    placeholder: 'Search customers by name, email, or company...',
+    enabled: true,
+    searchFunction: handleGlobalSearch,
+    filters: [
+      {
+        key: 'company',
+        label: 'Company',
+        type: 'select',
+        options: [
+          { value: '', label: 'All Companies' },
+          { value: 'with-company', label: 'With Company' },
+          { value: 'without-company', label: 'Without Company' }
+        ]
+      }
+    ]
+  });
+
+  // Use either global search query or local search term
+  const effectiveSearchTerm = searchQuery || localSearchTerm;
+
   // Fetch customers from API
   const fetchCustomers = useCallback(async () => {
     try {
       const queryParams = new URLSearchParams({
         website: 'PromotionalProductInc',
-        search: searchTerm,
+        search: effectiveSearchTerm,
         count: rowsPerPage.toString(),
         index: ((currentPage - 1) * rowsPerPage).toString()
       });
@@ -127,7 +183,7 @@ export default function CustomersPage() {
     } catch (error) {
       console.error('Error fetching customers:', error);
     }
-  }, [searchTerm, currentPage, rowsPerPage, get]);
+  }, [effectiveSearchTerm, currentPage, rowsPerPage, get]);
 
   // Load customers on component mount and when dependencies change
   useEffect(() => {
@@ -139,16 +195,23 @@ export default function CustomersPage() {
     if (currentPage !== 1) {
       setCurrentPage(1);
     }
-  }, [searchTerm]);
+  }, [effectiveSearchTerm]);
 
-  // Debounced search function
+  // Debounced search function for local search
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       fetchCustomers();
     }, 300);
 
     return () => clearTimeout(timeoutId);
-  }, [searchTerm]);
+  }, [localSearchTerm]);
+
+  // Sync global search with local results
+  useEffect(() => {
+    if (searchQuery && searchQuery !== localSearchTerm) {
+      setLocalSearchTerm(searchQuery);
+    }
+  }, [searchQuery, localSearchTerm]);
 
   // Pagination calculations
   const totalPages = Math.ceil(totalCount / rowsPerPage);
@@ -394,8 +457,8 @@ export default function CustomersPage() {
     setNewAddress(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
+  const handleLocalSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setLocalSearchTerm(e.target.value);
   };
 
   // Reusable Components
@@ -464,7 +527,7 @@ export default function CustomersPage() {
       </div>
       <h3 className="customers-empty-title text-lg font-medium text-gray-900 mb-2">No customers found</h3>
       <p className="customers-empty-description text-gray-500 text-sm">
-        {searchTerm ? 'Try adjusting your search terms.' : 'Get started by adding your first customer.'}
+        {effectiveSearchTerm ? 'Try adjusting your search terms.' : 'Get started by adding your first customer.'}
       </p>
     </div>
   );
@@ -486,17 +549,28 @@ export default function CustomersPage() {
               Customer List ({totalCount.toLocaleString()})
             </h3>
             <div className="customers-header-actions flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
-              {/* Search Input */}
-              <div className="customers-search-wrapper relative">
-                <Search className="customers-search-icon absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <input
-                  type="text"
-                  placeholder="Search customers..."
-                  value={searchTerm}
-                  onChange={handleSearchChange}
-                  className="customers-search-input pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm w-full sm:w-64"
-                />
-              </div>
+              {/* Local Search Input (backup when global search is not active) */}
+              {/* {!searchQuery && (
+                <div className="customers-search-wrapper relative">
+                  <Search className="customers-search-icon absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <input
+                    type="text"
+                    placeholder="Search customers locally..."
+                    value={localSearchTerm}
+                    onChange={handleLocalSearchChange}
+                    className="customers-search-input pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm w-full sm:w-64"
+                  />
+                </div>
+              )} */}
+              
+              {/* Search Status Indicator */}
+              {searchQuery && (
+                <div className="flex items-center space-x-2 text-sm text-blue-600 bg-blue-50 px-3 py-2 rounded-lg">
+                  <Search className="w-4 h-4" />
+                  <span>Searching: "{searchQuery}"</span>
+                </div>
+              )}
+              
               <Button
                 onClick={openNewCustomerModal}
                 icon={Plus}
@@ -637,7 +711,7 @@ export default function CustomersPage() {
                     <option value={10}>10</option>
                     <option value={20}>20</option>
                     <option value={50}>50</option>
-                    <option value={100}>100</option>
+                    
                   </select>
                 </div>
               </div>

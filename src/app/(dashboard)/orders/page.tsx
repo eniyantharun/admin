@@ -1,10 +1,13 @@
+// src/app/(dashboard)/orders/page.tsx
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { ListView } from '@/components/ui/ListView';
 import { Search, Plus, Eye, Calendar, DollarSign, User, ShoppingCart } from 'lucide-react';
+import { usePageSearch, useSearch } from '@/contexts/SearchContext';
+import { useApi } from '@/hooks/useApi';
 
 interface Order {
   id: string;
@@ -123,19 +126,76 @@ const OrderItem: React.FC<{ order: Order }> = ({ order }) => (
 );
 
 export default function OrdersPage() {
-  const [searchTerm, setSearchTerm] = useState('');
+  const [localSearchTerm, setLocalSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [orders] = useState<Order[]>(mockOrders);
+  const [orders, setOrders] = useState<Order[]>(mockOrders);
+  
+  const { get } = useApi();
+  const { searchQuery, setSearchResults } = useSearch();
+
+  // Global search function for header
+  const handleGlobalSearch = useCallback(async (query: string) => {
+    // Filter orders based on search query
+    const filteredOrders = mockOrders.filter(order =>
+      order.id.toLowerCase().includes(query.toLowerCase()) ||
+      order.customerName.toLowerCase().includes(query.toLowerCase()) ||
+      order.customerEmail.toLowerCase().includes(query.toLowerCase())
+    );
+
+    // Format results for global search dropdown
+    const searchResults = filteredOrders.map((order: Order) => ({
+      id: order.id,
+      title: order.id,
+      subtitle: `${order.customerName} - $${order.total.toFixed(2)}`,
+      description: `${order.status} • ${order.itemCount} item${order.itemCount !== 1 ? 's' : ''}`,
+      type: 'order',
+      data: order
+    }));
+
+    setSearchResults(searchResults);
+  }, [setSearchResults]);
+
+  // Register this page's search configuration
+  usePageSearch({
+    placeholder: 'Search orders by ID, customer, or email...',
+    enabled: true,
+    searchFunction: handleGlobalSearch,
+    filters: [
+      {
+        key: 'status',
+        label: 'Status',
+        type: 'select',
+        options: [
+          { value: 'all', label: 'All Orders' },
+          { value: 'pending', label: 'Pending' },
+          { value: 'processing', label: 'Processing' },
+          { value: 'shipped', label: 'Shipped' },
+          { value: 'delivered', label: 'Delivered' },
+          { value: 'cancelled', label: 'Cancelled' },
+        ]
+      }
+    ]
+  });
+
+  // Use either global search query or local search term
+  const effectiveSearchTerm = searchQuery || localSearchTerm;
 
   const filteredOrders = orders.filter(order => {
-    const matchesSearch = order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         order.customerEmail.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = order.id.toLowerCase().includes(effectiveSearchTerm.toLowerCase()) ||
+                         order.customerName.toLowerCase().includes(effectiveSearchTerm.toLowerCase()) ||
+                         order.customerEmail.toLowerCase().includes(effectiveSearchTerm.toLowerCase());
     
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
     
     return matchesSearch && matchesStatus;
   });
+
+  // Sync global search with local results
+  useEffect(() => {
+    if (searchQuery && searchQuery !== localSearchTerm) {
+      setLocalSearchTerm(searchQuery);
+    }
+  }, [searchQuery, localSearchTerm]);
 
   const statusOptions = [
     { value: 'all', label: 'All Orders' },
@@ -158,16 +218,27 @@ export default function OrdersPage() {
       <Card className="orders-page-toolbar p-4">
         <div className="orders-toolbar-content flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="orders-toolbar-left flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-1">
-            <div className="orders-search-wrapper relative flex-1 max-w-md">
-              <Search className="orders-search-icon absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-secondary-400" />
-              <input
-                type="text"
-                placeholder="Search orders..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="orders-search-input w-full pl-10 pr-4 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              />
-            </div>
+            {/* Local Search Input (backup when global search is not active) */}
+            {/* {!searchQuery && (
+              <div className="orders-search-wrapper relative flex-1 max-w-md">
+                <Search className="orders-search-icon absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-secondary-400" />
+                <input
+                  type="text"
+                  placeholder="Search orders locally..."
+                  value={localSearchTerm}
+                  onChange={(e) => setLocalSearchTerm(e.target.value)}
+                  className="orders-search-input w-full pl-10 pr-4 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                />
+              </div>
+            )} */}
+
+            {/* Search Status Indicator */}
+            {searchQuery && (
+              <div className="flex items-center space-x-2 text-sm text-blue-600 bg-blue-50 px-3 py-2 rounded-lg">
+                <Search className="w-4 h-4" />
+                <span>Searching: "{searchQuery}"</span>
+              </div>
+            )}
             
             <div className="orders-filter-wrapper">
               <select
@@ -211,7 +282,7 @@ export default function OrdersPage() {
                   No orders found
                 </h3>
                 <p className="orders-empty-description text-secondary-500">
-                  {searchTerm || statusFilter !== 'all' 
+                  {effectiveSearchTerm || statusFilter !== 'all' 
                     ? 'Try adjusting your search or filter criteria.' 
                     : 'No orders have been placed yet.'}
                 </p>
