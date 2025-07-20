@@ -461,12 +461,42 @@ export default function CustomersPage() {
     setLocalSearchTerm(e.target.value);
   };
 
-  // Reusable Components
-  const CustomerAvatar = ({ customer }: { customer: Customer }) => (
-    <div className="customers-avatar h-8 w-8 rounded-full bg-gradient-to-r from-blue-400 to-indigo-500 flex items-center justify-center text-white font-semibold text-xs">
-      {customer.firstName?.charAt(0) || ''}{customer.lastName?.charAt(0) || ''}
-    </div>
-  );
+  const CustomerAvatar = ({ customer }: { customer: Customer }) => {
+ const generateHash = (str: string): number => {
+   let hash = 0;
+   for (let i = 0; i < str.length; i++) {
+     const char = str.charCodeAt(i);
+     hash = ((hash << 5) - hash) + char;
+     hash = hash & hash; 
+   }
+   return Math.abs(hash);
+ };
+
+ const gradients = [
+   'from-slate-700 to-gray-900',
+   'from-blue-700 to-blue-900', 
+   'from-indigo-700 to-purple-900',
+   'from-emerald-700 to-teal-900',
+   'from-rose-700 to-pink-900',
+   'from-orange-700 to-red-900',
+   'from-violet-700 to-purple-900',
+   'from-cyan-700 to-blue-900',
+   'from-green-700 to-emerald-900',
+   'from-amber-700 to-orange-900',
+   'from-red-700 to-rose-900',
+   'from-teal-700 to-cyan-900'
+ ];
+
+ const customerIdentifier = `${customer.id}-${customer.email}`;
+ const gradientIndex = generateHash(customerIdentifier) % gradients.length;
+ const gradient = gradients[gradientIndex];
+ 
+ return (
+   <div className={`customers-avatar h-8 w-8 rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center text-white font-bold text-xs shadow-lg border-2 border-white/20`}>
+     {customer.firstName?.charAt(0) || ''}{customer.lastName?.charAt(0) || ''}
+   </div>
+ );
+};
 
   const ContactInfo = ({ customer }: { customer: Customer }) => (
     <>
@@ -562,7 +592,7 @@ export default function CustomersPage() {
                   />
                 </div>
               )} */}
-              
+
               {/* Search Status Indicator */}
               {searchQuery && (
                 <div className="flex items-center space-x-2 text-sm text-blue-600 bg-blue-50 px-3 py-2 rounded-lg">
@@ -570,7 +600,6 @@ export default function CustomersPage() {
                   <span>Searching: "{searchQuery}"</span>
                 </div>
               )}
-              
               <Button
                 onClick={openNewCustomerModal}
                 icon={Plus}
@@ -581,7 +610,6 @@ export default function CustomersPage() {
             </div>
           </div>
         </div>
-        
         <div className="customers-table-wrapper overflow-x-auto">
           <table className="customers-table min-w-full divide-y divide-gray-200">
             <thead className="customers-table-head bg-gray-50">
@@ -618,7 +646,10 @@ export default function CustomersPage() {
                 </tr>
               ) : (
                 customers.map((customer) => (
-                  <tr key={customer.id} className="customers-table-row hover:bg-gray-50 transition-colors duration-150">
+                  <tr
+                    key={customer.id}
+                    className="customers-table-row hover:bg-gray-50 transition-colors duration-150"
+                  >
                     <td className="customers-table-cell px-4 py-2 whitespace-nowrap">
                       <div className="customers-info flex items-center">
                         <div className="customers-avatar-wrapper flex-shrink-0 h-8 w-8">
@@ -628,7 +659,9 @@ export default function CustomersPage() {
                           <div className="customers-name text-sm font-medium text-gray-900">
                             {customer.firstName} {customer.lastName}
                           </div>
-                          <div className="customers-id text-xs text-gray-500">ID: {customer.id}</div>
+                          <div className="customers-id text-xs text-gray-500">
+                            ID: {customer.id}
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -638,13 +671,17 @@ export default function CustomersPage() {
                     <td className="customers-table-cell px-4 py-2 whitespace-nowrap">
                       <div className="customers-company text-sm text-gray-900 flex items-center gap-1">
                         <Building className="customers-company-icon w-4 h-4 text-gray-400" />
-                        <span className="customers-company-text truncate max-w-xs">{customer.companyName || 'No company'}</span>
+                        <span className="customers-company-text truncate max-w-xs">
+                          {customer.companyName || "No company"}
+                        </span>
                       </div>
                     </td>
                     <td className="customers-table-cell px-4 py-2 whitespace-nowrap">
                       <div className="customers-joined text-sm text-gray-900 flex items-center gap-1">
                         <Calendar className="customers-joined-icon w-4 h-4 text-gray-400" />
-                        <span className="customers-joined-text text-xs">{customer.joinedDate}</span>
+                        <span className="customers-joined-text text-xs">
+                          {customer.joinedDate}
+                        </span>
                       </div>
                     </td>
                     <td className="customers-table-cell px-4 py-2 whitespace-nowrap text-right text-sm font-medium">
@@ -682,7 +719,9 @@ export default function CustomersPage() {
                 Previous
               </Button>
               <Button
-                onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages))}
+                onClick={() =>
+                  setCurrentPage(Math.min(currentPage + 1, totalPages))
+                }
                 disabled={currentPage === totalPages}
                 variant="secondary"
                 size="sm"
@@ -694,12 +733,17 @@ export default function CustomersPage() {
             <div className="customers-pagination-desktop hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
               <div className="customers-pagination-info flex items-center space-x-4">
                 <p className="customers-pagination-status text-sm text-gray-700">
-                  Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
-                  <span className="font-medium">{endIndex}</span> of{' '}
-                  <span className="font-medium">{totalCount.toLocaleString()}</span> results
+                  Showing <span className="font-medium">{startIndex + 1}</span>{" "}
+                  to <span className="font-medium">{endIndex}</span> of{" "}
+                  <span className="font-medium">
+                    {totalCount.toLocaleString()}
+                  </span>{" "}
+                  results
                 </p>
                 <div className="customers-pagination-controls flex items-center space-x-2">
-                  <label className="customers-pagination-label text-sm text-gray-700">Rows per page:</label>
+                  <label className="customers-pagination-label text-sm text-gray-700">
+                    Rows per page:
+                  </label>
                   <select
                     value={rowsPerPage}
                     onChange={(e) => {
@@ -711,26 +755,37 @@ export default function CustomersPage() {
                     <option value={10}>10</option>
                     <option value={20}>20</option>
                     <option value={50}>50</option>
-                    
                   </select>
                 </div>
               </div>
               <div className="customers-pagination-nav">
-                <nav className="customers-pagination-nav-wrapper relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                <nav
+                  className="customers-pagination-nav-wrapper relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
+                  aria-label="Pagination"
+                >
                   <button
                     onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))}
                     disabled={currentPage === 1}
                     className="customers-pagination-prev-btn relative inline-flex items-center px-2 py-1 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-300"
                   >
                     <span className="sr-only">Previous</span>
-                    <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                    <svg
+                      className="h-4 w-4"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                   </button>
-                  
+
                   {getPageNumbers().map((pageNumber, index) => (
                     <React.Fragment key={index}>
-                      {pageNumber === '...' ? (
+                      {pageNumber === "..." ? (
                         <span className="customers-pagination-ellipsis relative inline-flex items-center px-3 py-1 border border-gray-300 bg-white text-sm font-medium text-gray-700">
                           ...
                         </span>
@@ -739,8 +794,8 @@ export default function CustomersPage() {
                           onClick={() => setCurrentPage(pageNumber as number)}
                           className={`customers-pagination-page relative inline-flex items-center px-3 py-1 border text-sm font-medium ${
                             currentPage === pageNumber
-                              ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                              : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                              ? "z-10 bg-blue-50 border-blue-500 text-blue-600"
+                              : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
                           }`}
                         >
                           {pageNumber}
@@ -748,15 +803,26 @@ export default function CustomersPage() {
                       )}
                     </React.Fragment>
                   ))}
-                  
+
                   <button
-                    onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages))}
+                    onClick={() =>
+                      setCurrentPage(Math.min(currentPage + 1, totalPages))
+                    }
                     disabled={currentPage === totalPages}
                     className="customers-pagination-next-btn relative inline-flex items-center px-2 py-1 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-300"
                   >
                     <span className="sr-only">Next</span>
-                    <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                    <svg
+                      className="h-4 w-4"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                   </button>
                 </nav>
@@ -766,14 +832,12 @@ export default function CustomersPage() {
         </Card>
       )}
 
-      {/* Modal */}
       {isModalOpen && (
-        <div className="customers-modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="customers-modal-content bg-white rounded-lg shadow-2xl w-full max-w-2xl lg:max-w-4xl max-h-[90vh] overflow-y-auto">
-            {/* Modal Header */}
+        <div className="customers-modal fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center p-4 z-50 pt-20 overflow-y-auto">
+          <div className="customers-modal-content bg-white rounded-lg shadow-2xl w-full max-w-2xl lg:max-w-4xl max-h-[calc(100vh-5rem)] overflow-y-auto my-4">
             <div className="customers-modal-header flex items-center justify-between p-4 sm:p-6 border-b border-gray-200">
               <h3 className="customers-modal-title text-lg font-semibold text-gray-900">
-                {isEditing ? 'Edit Customer' : 'Add New Customer'}
+                {isEditing ? "Edit Customer" : "Add New Customer"}
               </h3>
               <Button
                 onClick={closeModal}
@@ -787,7 +851,10 @@ export default function CustomersPage() {
             </div>
 
             {/* Modal Body */}
-            <form onSubmit={handleSubmit} className="customers-modal-form p-4 sm:p-6 space-y-4">
+            <form
+              onSubmit={handleSubmit}
+              className="customers-modal-form p-4 sm:p-6 space-y-4"
+            >
               <div className="customers-form-row grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormInput
                   label="First Name"
@@ -839,7 +906,6 @@ export default function CustomersPage() {
                 placeholder="Company Name (Optional)"
               />
 
-              {/* Modal Footer */}
               <div className="customers-modal-footer flex flex-col sm:flex-row items-center justify-end gap-3 pt-4 border-t border-gray-200">
                 <Button
                   type="button"
@@ -855,7 +921,7 @@ export default function CustomersPage() {
                   loading={submitApi.loading}
                   className="customers-modal-submit w-full sm:w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
                 >
-                  {isEditing ? 'Update Customer' : 'Add Customer'}
+                  {isEditing ? "Update Customer" : "Add Customer"}
                 </Button>
               </div>
             </form>
@@ -886,14 +952,21 @@ export default function CustomersPage() {
                   <div className="customers-email-info text-sm text-gray-600">
                     <span className="font-medium">Send test email to:</span>
                     <br />
-                    <span className="text-gray-800 break-all">{selectedCustomer.email}</span>
+                    <span className="text-gray-800 break-all">
+                      {selectedCustomer.email}
+                    </span>
                   </div>
                 </div>
 
                 {/* Comments Section */}
                 <div className="customers-comments p-4 sm:p-6 border-b border-gray-200">
-                  <h4 className="customers-comments-title text-sm font-medium text-gray-700 mb-4">Comment</h4>
-                  <form onSubmit={handleCommentSubmit} className="customers-comments-form space-y-3">
+                  <h4 className="customers-comments-title text-sm font-medium text-gray-700 mb-4">
+                    Comment
+                  </h4>
+                  <form
+                    onSubmit={handleCommentSubmit}
+                    className="customers-comments-form space-y-3"
+                  >
                     <div className="customers-comment-input relative">
                       <textarea
                         value={newComment}
@@ -904,8 +977,12 @@ export default function CustomersPage() {
                         maxLength={1000}
                       />
                       <div className="customers-comment-meta flex justify-between items-center mt-1">
-                        <span className="text-xs text-gray-500">Max. 1000 characters</span>
-                        <span className="text-xs text-gray-500">{newComment.length} / 1000</span>
+                        <span className="text-xs text-gray-500">
+                          Max. 1000 characters
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {newComment.length} / 1000
+                        </span>
                       </div>
                     </div>
                     <div className="customers-comment-submit flex justify-end">
@@ -923,18 +1000,29 @@ export default function CustomersPage() {
 
                   {/* Comments History */}
                   <div className="customers-comments-history mt-6">
-                    <h5 className="customers-comments-history-title text-sm font-medium text-gray-900 mb-3">Comments History</h5>
+                    <h5 className="customers-comments-history-title text-sm font-medium text-gray-900 mb-3">
+                      Comments History
+                    </h5>
                     <div className="customers-comments-list space-y-3 max-h-48 overflow-y-auto">
                       {comments.map((comment) => (
-                        <div key={comment.id} className="customers-comment-item bg-white p-3 rounded-lg border border-gray-200">
+                        <div
+                          key={comment.id}
+                          className="customers-comment-item bg-white p-3 rounded-lg border border-gray-200"
+                        >
                           <div className="customers-comment-content flex items-start justify-between">
                             <div className="flex-1">
-                              <span className={`customers-comment-badge inline-block px-2 py-1 rounded text-xs font-medium mb-2 ${
-                                comment.type === 'auto' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
-                              }`}>
-                                {comment.type === 'auto' ? 'AUTO' : 'MANUAL'}
+                              <span
+                                className={`customers-comment-badge inline-block px-2 py-1 rounded text-xs font-medium mb-2 ${
+                                  comment.type === "auto"
+                                    ? "bg-blue-100 text-blue-800"
+                                    : "bg-gray-100 text-gray-800"
+                                }`}
+                              >
+                                {comment.type === "auto" ? "AUTO" : "MANUAL"}
                               </span>
-                              <p className="customers-comment-text text-sm text-gray-900">{comment.text}</p>
+                              <p className="customers-comment-text text-sm text-gray-900">
+                                {comment.text}
+                              </p>
                             </div>
                           </div>
                           <div className="customers-comment-timestamp text-xs text-gray-500 mt-2 whitespace-pre-line">
@@ -949,7 +1037,9 @@ export default function CustomersPage() {
                 {/* Addresses Section */}
                 <div className="customers-addresses p-4 sm:p-6">
                   <div className="customers-addresses-header flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-                    <h4 className="customers-addresses-title text-sm font-medium text-gray-700">Addresses</h4>
+                    <h4 className="customers-addresses-title text-sm font-medium text-gray-700">
+                      Addresses
+                    </h4>
                     <Button
                       onClick={() => setShowAddressForm(!showAddressForm)}
                       size="sm"
@@ -962,12 +1052,19 @@ export default function CustomersPage() {
                   {/* Address List */}
                   <div className="customers-addresses-list space-y-3 mb-4">
                     {addresses.map((address) => (
-                      <div key={address.id} className="customers-address-item bg-white p-4 rounded-lg border border-gray-200 flex flex-col sm:flex-row items-start justify-between gap-4">
+                      <div
+                        key={address.id}
+                        className="customers-address-item bg-white p-4 rounded-lg border border-gray-200 flex flex-col sm:flex-row items-start justify-between gap-4"
+                      >
                         <div className="customers-address-content flex-1">
-                          <div className="customers-address-company font-medium text-gray-900">{selectedCustomer.companyName || 'No Company'}</div>
+                          <div className="customers-address-company font-medium text-gray-900">
+                            {selectedCustomer.companyName || "No Company"}
+                          </div>
                           <div className="customers-address-details text-sm text-gray-600 mt-1">
-                            {address.street}<br />
-                            {address.city}, {address.state} {address.zipCode} ({address.country})
+                            {address.street}
+                            <br />
+                            {address.city}, {address.state} {address.zipCode} (
+                            {address.country})
                           </div>
                         </div>
                         <div className="customers-address-actions flex items-center gap-2">
@@ -993,8 +1090,13 @@ export default function CustomersPage() {
                   {/* Add New Address Form */}
                   {showAddressForm && (
                     <Card className="customers-address-form bg-gray-50 p-4">
-                      <h5 className="customers-address-form-title text-sm font-medium text-gray-900 mb-3">Add New Address</h5>
-                      <form onSubmit={handleAddressSubmit} className="customers-address-form-fields space-y-3">
+                      <h5 className="customers-address-form-title text-sm font-medium text-gray-900 mb-3">
+                        Add New Address
+                      </h5>
+                      <form
+                        onSubmit={handleAddressSubmit}
+                        className="customers-address-form-fields space-y-3"
+                      >
                         <div className="customers-address-street">
                           <input
                             type="text"
