@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Search, Plus, Edit2, Phone, Mail, Building, X, User, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -64,6 +64,10 @@ interface ApiCustomer {
   createdAt: string;
 }
 
+// Cache for API responses
+const customerCache = new Map();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -73,6 +77,7 @@ export default function CustomersPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(20);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [formData, setFormData] = useState<CustomerFormData>({
     firstName: '',
     lastName: '',
@@ -107,7 +112,7 @@ export default function CustomersPage() {
   
   const { searchQuery, setSearchResults } = useSearch();
 
-  const transformApiCustomer = (apiCustomer: ApiCustomer): Customer => {
+  const transformApiCustomer = useCallback((apiCustomer: ApiCustomer): Customer => {
     return {
       id: apiCustomer.idNum.toString(),
       firstName: apiCustomer.form.firstName || '',
@@ -117,10 +122,18 @@ export default function CustomersPage() {
       companyName: apiCustomer.form.companyName || '',
       joinedDate: new Date(apiCustomer.createdAt).toLocaleString()
     };
-  };
+  }, []);
 
   const handleGlobalSearch = useCallback(async (query: string) => {
     try {
+      const cacheKey = `search_${query}`;
+      const cached = customerCache.get(cacheKey);
+      
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        setSearchResults(cached.data);
+        return;
+      }
+
       const queryParams = new URLSearchParams({
         website: 'PromotionalProductInc',
         search: query,
@@ -140,14 +153,21 @@ export default function CustomersPage() {
         data: customer
       }));
       
+      // Cache the results
+      customerCache.set(cacheKey, {
+        data: searchResults,
+        timestamp: Date.now()
+      });
+      
       setSearchResults(searchResults);
     } catch (error) {
       console.error('Error searching customers:', error);
       setSearchResults([]);
     }
-  }, [get, setSearchResults]);
+  }, [get, setSearchResults, transformApiCustomer]);
 
-  usePageSearch({
+  // Memoized search configuration
+  const searchConfig = useMemo(() => ({
     placeholder: 'Search customers by name, email, or company...',
     enabled: true,
     searchFunction: handleGlobalSearch,
@@ -155,7 +175,7 @@ export default function CustomersPage() {
       {
         key: 'company',
         label: 'Company',
-        type: 'select',
+        type: 'select' as const,
         options: [
           { value: '', label: 'All Companies' },
           { value: 'with-company', label: 'With Company' },
@@ -163,12 +183,25 @@ export default function CustomersPage() {
         ]
       }
     ]
-  });
+  }), [handleGlobalSearch]);
+
+  usePageSearch(searchConfig);
 
   const effectiveSearchTerm = searchQuery || localSearchTerm;
 
   const fetchCustomers = useCallback(async () => {
+    if (!isInitialLoad && loading) return; // Prevent concurrent requests
+
     try {
+      const cacheKey = `customers_${effectiveSearchTerm}_${currentPage}_${rowsPerPage}`;
+      const cached = customerCache.get(cacheKey);
+      
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        setCustomers(cached.customers);
+        setTotalCount(cached.count);
+        return;
+      }
+
       const queryParams = new URLSearchParams({
         website: 'PromotionalProductInc',
         search: effectiveSearchTerm,
@@ -179,12 +212,21 @@ export default function CustomersPage() {
       const response = await get(`/Admin/CustomerEditor/GetCustomersList?${queryParams}`);
       const transformedCustomers = response.customers.map(transformApiCustomer);
       
+      // Cache the results
+      customerCache.set(cacheKey, {
+        customers: transformedCustomers,
+        count: response.count,
+        timestamp: Date.now()
+      });
+      
       setCustomers(transformedCustomers);
       setTotalCount(response.count);
     } catch (error) {
       console.error('Error fetching customers:', error);
+    } finally {
+      setIsInitialLoad(false);
     }
-  }, [effectiveSearchTerm, currentPage, rowsPerPage, get]);
+  }, [effectiveSearchTerm, currentPage, rowsPerPage, get, transformApiCustomer, isInitialLoad, loading]);
 
   useEffect(() => {
     fetchCustomers();
@@ -250,6 +292,8 @@ export default function CustomersPage() {
         });
       }
 
+      // Clear cache to force refresh
+      customerCache.clear();
       await fetchCustomers();
       closeModal();
     } catch (error) {
@@ -375,7 +419,8 @@ export default function CustomersPage() {
     setNewAddress(prev => ({ ...prev, [name]: value }));
   };
 
-  const ContactInfo = ({ customer }: { customer: Customer }) => (
+  // Memoized ContactInfo component
+  const ContactInfo = React.memo(({ customer }: { customer: Customer }) => (
     <>
       <div className="text-sm text-gray-900 flex items-center gap-1">
         <Mail className="w-3 h-3 text-gray-400" />
@@ -386,7 +431,9 @@ export default function CustomersPage() {
         <span>{customer.phone || 'No phone'}</span>
       </div>
     </>
-  );
+  ));
+
+  ContactInfo.displayName = 'ContactInfo';
 
   return (
     <div className="customers-page space-y-4">
@@ -420,7 +467,7 @@ export default function CustomersPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {loading ? (
+              {loading && isInitialLoad ? (
                 <tr>
                   <td colSpan={5} className="px-4 py-8">
                     <LoadingState message="Loading customers..." />
@@ -498,6 +545,7 @@ export default function CustomersPage() {
         </Card>
       )}
 
+      {/* Modal content remains the same but with loading optimizations */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center p-4 z-50 pt-20 overflow-y-auto">
           <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl lg:max-w-4xl max-h-[calc(100vh-5rem)] overflow-y-auto my-4">
@@ -586,6 +634,7 @@ export default function CustomersPage() {
               </div>
             </form>
 
+            {/* Rest of the modal content remains the same */}
             {isEditing && selectedCustomer && (
               <div className="border-t border-gray-200">
                 <div className="p-4 sm:p-6 border-b border-gray-200 bg-gray-50">

@@ -1,5 +1,5 @@
 export const APP_CONFIG = {
-  NAME: process.env.NEXT_PUBLIC_APP_NAME || 'PPI Admin Portal',
+  NAME: process.env.NEXT_PUBLIC_APP_NAME || 'PPI Admin',
   COMPANY: process.env.NEXT_PUBLIC_COMPANY_NAME || 'Promotional Product Inc',
   VERSION: '1.0.0',
   API_TIMEOUT: 10000,

@@ -275,13 +275,13 @@ export default function SuppliersPage() {
 
   return (
     <div className="suppliers-page space-y-4">
-      <Card className="suppliers-table-container overflow-hidden">
-        <div className="suppliers-table-header px-4 py-3 border-b border-gray-200 bg-gray-50">
-          <div className="suppliers-header-content flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <h3 className="suppliers-table-title text-lg font-semibold text-gray-900">
+      <Card className="overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <h3 className="text-lg font-semibold text-gray-900">
               Supplier List ({totalCount.toLocaleString()})
             </h3>
-            <div className="suppliers-header-actions flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
               {searchQuery && <SearchStatusIndicator query={searchQuery} />}
               <Button
                 onClick={openNewSupplierModal}
@@ -293,9 +293,9 @@ export default function SuppliersPage() {
             </div>
           </div>
         </div>
-        <div className="suppliers-table-wrapper overflow-x-auto">
-          <table className="suppliers-table min-w-full divide-y divide-gray-200">
-            <thead className="suppliers-table-head bg-gray-50">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
               <tr>
                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier</th>
                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
@@ -376,7 +376,7 @@ export default function SuppliersPage() {
       </Card>
 
       {totalCount > 0 && !loading && (
-        <Card className="suppliers-pagination">
+        <Card>
           <PaginationControls
             currentPage={currentPage}
             totalPages={totalPages}

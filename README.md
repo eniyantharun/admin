@@ -47,7 +47,7 @@ src/
 cp .env.example .env.local
 Edit .env.local with your API configuration:
 NEXT_PUBLIC_API_BASE_URL=https://api.promowe.com/
-NEXT_PUBLIC_APP_NAME=PPI Admin Portal
+NEXT_PUBLIC_APP_NAME=PPI Admin
 NEXT_PUBLIC_COMPANY_NAME=Promotional Product Inc
 
 

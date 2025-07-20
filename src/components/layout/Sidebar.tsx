@@ -1,11 +1,13 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAppSelector, useAppDispatch } from '@/hooks/redux';
 import { Button } from '@/components/ui/Button';
 import { setSidebarOpen, toggleSidebar } from '@/store/dashboardSlice';
+import { NavigationOptimizer } from '@/lib/routeOptimization';
+import { useApi } from '@/hooks/useApi';
 import {
   LayoutDashboard,
   Package,
@@ -24,23 +26,33 @@ import {
 } from 'lucide-react';
 
 const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Products', href: '/products', icon: Package },
-  { name: 'Categories', href: '/categories', icon: FolderOpen },
-  { name: 'Orders', href: '/orders', icon: ShoppingCart },
-  { name: 'Customers', href: '/customers', icon: User },
-  { name: 'Suppliers', href: '/suppliers', icon: Users },
-  { name: 'Quotes', href: '/quotes', icon: FileText },
-  { name: 'Brands', href: '/brands', icon: Award },
-  { name: 'Keywords', href: '/keywords', icon: Hash },
-  { name: 'Themes', href: '/themes', icon: Palette },
-  { name: 'Searches', href: '/searches', icon: Search },
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, prefetch: true },
+  { name: 'Products', href: '/products', icon: Package, prefetch: true },
+  { name: 'Categories', href: '/categories', icon: FolderOpen, prefetch: false },
+  { name: 'Orders', href: '/orders', icon: ShoppingCart, prefetch: true },
+  { name: 'Customers', href: '/customers', icon: User, prefetch: true },
+  { name: 'Suppliers', href: '/suppliers', icon: Users, prefetch: true },
+  { name: 'Quotes', href: '/quotes', icon: FileText, prefetch: false },
+  { name: 'Brands', href: '/brands', icon: Award, prefetch: false },
+  { name: 'Keywords', href: '/keywords', icon: Hash, prefetch: false },
+  { name: 'Themes', href: '/themes', icon: Palette, prefetch: false },
+  { name: 'Searches', href: '/searches', icon: Search, prefetch: false },
 ];
 
 export const Sidebar: React.FC = () => {
   const pathname = usePathname();
   const { sidebarOpen } = useAppSelector((state) => state.dashboard);
   const dispatch = useAppDispatch();
+  const { get } = useApi({ cancelOnUnmount: false }); // Don't cancel prefetch requests
+
+  // Memoized prefetch functions for each route
+  const prefetchFunctions = useMemo(() => ({
+    '/customers': () => get('/Admin/CustomerEditor/GetCustomersList?website=PromotionalProductInc&search=&count=20&index=0'),
+    '/suppliers': () => get('/Admin/SupplierList/GetSuppliersList'),
+    '/orders': () => Promise.resolve([]), // Mock orders data
+    '/products': () => Promise.resolve([]), // Mock products data
+    '/dashboard': () => Promise.resolve([]), // Mock dashboard data
+  }), [get]);
 
   const handleOverlayClick = () => {
     dispatch(setSidebarOpen(false));
@@ -48,6 +60,19 @@ export const Sidebar: React.FC = () => {
 
   const handleToggleSidebar = () => {
     dispatch(toggleSidebar());
+  };
+
+  // Generate hover handlers for prefetching
+  const getNavItemProps = (item: typeof navigation[0]) => {
+    if (!item.prefetch || !prefetchFunctions[item.href as keyof typeof prefetchFunctions]) {
+      return {};
+    }
+
+    return NavigationOptimizer.prefetchOnHover(
+      item.href,
+      prefetchFunctions[item.href as keyof typeof prefetchFunctions],
+      200 // 200ms delay
+    );
   };
 
   return (
@@ -114,6 +139,7 @@ export const Sidebar: React.FC = () => {
               {navigation.map((item) => {
                 const isActive = pathname === item.href;
                 const Icon = item.icon;
+                const navItemProps = getNavItemProps(item);
 
                 return (
                   <li key={item.name} className="dashboard-sidebar-nav-item">
@@ -125,6 +151,7 @@ export const Sidebar: React.FC = () => {
                           : 'dashboard-sidebar-link-inactive text-slate-300 hover:bg-white/10 hover:text-white hover:shadow-lg'
                       } ${!sidebarOpen ? 'justify-center' : ''}`}
                       title={!sidebarOpen ? item.name : undefined}
+                      {...navItemProps}
                     >
                       {/* Active indicator */}
                       {isActive && (

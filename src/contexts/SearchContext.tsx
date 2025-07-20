@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { debounce } from '@/lib/utils';
 
@@ -48,27 +48,43 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   
   const pathname = usePathname();
   const router = useRouter();
+  const previousPathname = useRef(pathname);
+  const isInitialMount = useRef(true);
 
-  // Clear search when navigating to different pages
+  // Only clear search when actually changing pages, not on initial mount
   useEffect(() => {
-    setSearchQuery('');
-    setSearchResults([]);
-    setFilters({});
-    setSearchConfig(defaultConfig);
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    if (previousPathname.current !== pathname) {
+      // Use setTimeout to prevent blocking the navigation
+      setTimeout(() => {
+        setSearchQuery('');
+        setSearchResults([]);
+        setFilters({});
+        setSearchConfig(defaultConfig);
+        setIsSearching(false);
+      }, 0);
+      
+      previousPathname.current = pathname;
+    }
   }, [pathname]);
 
-  // Debounced search function
+  // Memoized debounced search function
   const debouncedSearch = useCallback(
-    debounce((query: string) => {
-      if (searchConfig.searchFunction && query.trim()) {
+    debounce((query: string, searchFunction?: (query: string) => void) => {
+      if (searchFunction && query.trim()) {
         setIsSearching(true);
-        searchConfig.searchFunction(query);
+        Promise.resolve(searchFunction(query))
+          .finally(() => setIsSearching(false));
       } else {
         setSearchResults([]);
+        setIsSearching(false);
       }
-      setIsSearching(false);
     }, 300),
-    [searchConfig.searchFunction]
+    []
   );
 
   const performSearch = useCallback((query: string) => {
@@ -78,8 +94,8 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setIsSearching(false);
       return;
     }
-    debouncedSearch(query);
-  }, [debouncedSearch]);
+    debouncedSearch(query, searchConfig.searchFunction);
+  }, [debouncedSearch, searchConfig.searchFunction]);
 
   const clearSearch = useCallback(() => {
     setSearchQuery('');
@@ -88,10 +104,9 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setIsSearching(false);
   }, []);
 
-  // Handle keyboard shortcuts
+  // Optimized keyboard shortcuts with proper cleanup
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Cmd/Ctrl + K to focus search
       if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
         event.preventDefault();
         const searchInput = document.querySelector('[data-search-input]') as HTMLInputElement;
@@ -101,7 +116,6 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
       }
       
-      // Escape to clear search
       if (event.key === 'Escape') {
         clearSearch();
       }
@@ -140,16 +154,24 @@ export const useSearch = () => {
   return context;
 };
 
-// Hook for pages to register their search functionality
+// Optimized hook for pages to register their search functionality
 export const usePageSearch = (config: SearchConfig) => {
   const { setSearchConfig } = useSearch();
+  const configRef = useRef(config);
   
+  // Only update if config actually changed
   useEffect(() => {
-    setSearchConfig(config);
-    
-    // Cleanup when component unmounts
+    const hasChanged = JSON.stringify(configRef.current) !== JSON.stringify(config);
+    if (hasChanged) {
+      configRef.current = config;
+      setSearchConfig(config);
+    }
+  }, [config, setSearchConfig]);
+
+  // Cleanup on unmount
+  useEffect(() => {
     return () => {
       setSearchConfig(defaultConfig);
     };
-  }, [config, setSearchConfig]);
+  }, [setSearchConfig]);
 };

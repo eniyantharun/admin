@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { api } from '@/lib/api';
 
 interface UseApiOptions {
@@ -6,81 +6,134 @@ interface UseApiOptions {
   onError?: (error: any) => void;
 }
 
-export const useApi = () => {
+export const useApi = (options: UseApiOptions = {}) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const mountedRef = useRef(true);
 
-  const get = useCallback(async (url: string, options?: UseApiOptions) => {
+  // Track mount status
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  const get = useCallback(async (url: string, requestOptions?: UseApiOptions) => {
+    if (!mountedRef.current) return null;
+    
     setLoading(true);
     setError(null);
     
     try {
       const data = await api.get(url);
+      
+      if (!mountedRef.current) return null;
+      
       options?.onSuccess?.(data);
+      requestOptions?.onSuccess?.(data);
       return data;
     } catch (err: any) {
+      if (!mountedRef.current) return null;
+      
       const errorMessage = err.response?.data?.message || err.message || 'An error occurred';
       setError(errorMessage);
       options?.onError?.(err);
+      requestOptions?.onError?.(err);
       throw err;
     } finally {
-      setLoading(false);
+      if (mountedRef.current) {
+        setLoading(false);
+      }
     }
-  }, []);
+  }, [options]);
 
-  const post = useCallback(async (url: string, data?: any, options?: UseApiOptions) => {
+  const post = useCallback(async (url: string, data?: any, requestOptions?: UseApiOptions) => {
+    if (!mountedRef.current) return null;
+    
     setLoading(true);
     setError(null);
     
     try {
       const response = await api.post(url, data);
+      
+      if (!mountedRef.current) return null;
+      
       options?.onSuccess?.(response);
+      requestOptions?.onSuccess?.(response);
       return response;
     } catch (err: any) {
+      if (!mountedRef.current) return null;
+      
       const errorMessage = err.response?.data?.message || err.message || 'An error occurred';
       setError(errorMessage);
       options?.onError?.(err);
+      requestOptions?.onError?.(err);
       throw err;
     } finally {
-      setLoading(false);
+      if (mountedRef.current) {
+        setLoading(false);
+      }
     }
-  }, []);
+  }, [options]);
 
-  const put = useCallback(async (url: string, data?: any, options?: UseApiOptions) => {
+  const put = useCallback(async (url: string, data?: any, requestOptions?: UseApiOptions) => {
+    if (!mountedRef.current) return null;
+    
     setLoading(true);
     setError(null);
     
     try {
       const response = await api.put(url, data);
+      
+      if (!mountedRef.current) return null;
+      
       options?.onSuccess?.(response);
+      requestOptions?.onSuccess?.(response);
       return response;
     } catch (err: any) {
+      if (!mountedRef.current) return null;
+      
       const errorMessage = err.response?.data?.message || err.message || 'An error occurred';
       setError(errorMessage);
       options?.onError?.(err);
+      requestOptions?.onError?.(err);
       throw err;
     } finally {
-      setLoading(false);
+      if (mountedRef.current) {
+        setLoading(false);
+      }
     }
-  }, []);
+  }, [options]);
 
-  const del = useCallback(async (url: string, options?: UseApiOptions) => {
+  const del = useCallback(async (url: string, requestOptions?: UseApiOptions) => {
+    if (!mountedRef.current) return null;
+    
     setLoading(true);
     setError(null);
     
     try {
       const response = await api.delete(url);
+      
+      if (!mountedRef.current) return null;
+      
       options?.onSuccess?.(response);
+      requestOptions?.onSuccess?.(response);
       return response;
     } catch (err: any) {
+      if (!mountedRef.current) return null;
+      
       const errorMessage = err.response?.data?.message || err.message || 'An error occurred';
       setError(errorMessage);
       options?.onError?.(err);
+      requestOptions?.onError?.(err);
       throw err;
     } finally {
-      setLoading(false);
+      if (mountedRef.current) {
+        setLoading(false);
+      }
     }
-  }, []);
+  }, [options]);
 
   const clearError = useCallback(() => {
     setError(null);
