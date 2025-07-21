@@ -4,12 +4,14 @@ import { api } from '@/lib/api';
 interface UseApiOptions {
   onSuccess?: (data: any) => void;
   onError?: (error: any) => void;
+  cancelOnUnmount?: boolean;
 }
 
 export const useApi = (options: UseApiOptions = {}) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const mountedRef = useRef(true);
+  const { cancelOnUnmount = true } = options;
 
   // Track mount status
   useEffect(() => {
@@ -20,7 +22,7 @@ export const useApi = (options: UseApiOptions = {}) => {
   }, []);
 
   const get = useCallback(async (url: string, requestOptions?: UseApiOptions) => {
-    if (!mountedRef.current) return null;
+    if (cancelOnUnmount && !mountedRef.current) return null;
     
     setLoading(true);
     setError(null);
@@ -28,13 +30,13 @@ export const useApi = (options: UseApiOptions = {}) => {
     try {
       const data = await api.get(url);
       
-      if (!mountedRef.current) return null;
+      if (cancelOnUnmount && !mountedRef.current) return null;
       
       options?.onSuccess?.(data);
       requestOptions?.onSuccess?.(data);
       return data;
     } catch (err: any) {
-      if (!mountedRef.current) return null;
+      if (cancelOnUnmount && !mountedRef.current) return null;
       
       const errorMessage = err.response?.data?.message || err.message || 'An error occurred';
       setError(errorMessage);
@@ -42,14 +44,14 @@ export const useApi = (options: UseApiOptions = {}) => {
       requestOptions?.onError?.(err);
       throw err;
     } finally {
-      if (mountedRef.current) {
+      if (!cancelOnUnmount || mountedRef.current) {
         setLoading(false);
       }
     }
-  }, [options]);
+  }, [options, cancelOnUnmount]);
 
   const post = useCallback(async (url: string, data?: any, requestOptions?: UseApiOptions) => {
-    if (!mountedRef.current) return null;
+    if (cancelOnUnmount && !mountedRef.current) return null;
     
     setLoading(true);
     setError(null);
@@ -57,13 +59,13 @@ export const useApi = (options: UseApiOptions = {}) => {
     try {
       const response = await api.post(url, data);
       
-      if (!mountedRef.current) return null;
+      if (cancelOnUnmount && !mountedRef.current) return null;
       
       options?.onSuccess?.(response);
       requestOptions?.onSuccess?.(response);
       return response;
     } catch (err: any) {
-      if (!mountedRef.current) return null;
+      if (cancelOnUnmount && !mountedRef.current) return null;
       
       const errorMessage = err.response?.data?.message || err.message || 'An error occurred';
       setError(errorMessage);
@@ -71,14 +73,14 @@ export const useApi = (options: UseApiOptions = {}) => {
       requestOptions?.onError?.(err);
       throw err;
     } finally {
-      if (mountedRef.current) {
+      if (!cancelOnUnmount || mountedRef.current) {
         setLoading(false);
       }
     }
-  }, [options]);
+  }, [options, cancelOnUnmount]);
 
   const put = useCallback(async (url: string, data?: any, requestOptions?: UseApiOptions) => {
-    if (!mountedRef.current) return null;
+    if (cancelOnUnmount && !mountedRef.current) return null;
     
     setLoading(true);
     setError(null);
@@ -86,13 +88,13 @@ export const useApi = (options: UseApiOptions = {}) => {
     try {
       const response = await api.put(url, data);
       
-      if (!mountedRef.current) return null;
+      if (cancelOnUnmount && !mountedRef.current) return null;
       
       options?.onSuccess?.(response);
       requestOptions?.onSuccess?.(response);
       return response;
     } catch (err: any) {
-      if (!mountedRef.current) return null;
+      if (cancelOnUnmount && !mountedRef.current) return null;
       
       const errorMessage = err.response?.data?.message || err.message || 'An error occurred';
       setError(errorMessage);
@@ -100,14 +102,14 @@ export const useApi = (options: UseApiOptions = {}) => {
       requestOptions?.onError?.(err);
       throw err;
     } finally {
-      if (mountedRef.current) {
+      if (!cancelOnUnmount || mountedRef.current) {
         setLoading(false);
       }
     }
-  }, [options]);
+  }, [options, cancelOnUnmount]);
 
   const del = useCallback(async (url: string, requestOptions?: UseApiOptions) => {
-    if (!mountedRef.current) return null;
+    if (cancelOnUnmount && !mountedRef.current) return null;
     
     setLoading(true);
     setError(null);
@@ -115,13 +117,13 @@ export const useApi = (options: UseApiOptions = {}) => {
     try {
       const response = await api.delete(url);
       
-      if (!mountedRef.current) return null;
+      if (cancelOnUnmount && !mountedRef.current) return null;
       
       options?.onSuccess?.(response);
       requestOptions?.onSuccess?.(response);
       return response;
     } catch (err: any) {
-      if (!mountedRef.current) return null;
+      if (cancelOnUnmount && !mountedRef.current) return null;
       
       const errorMessage = err.response?.data?.message || err.message || 'An error occurred';
       setError(errorMessage);
@@ -129,11 +131,11 @@ export const useApi = (options: UseApiOptions = {}) => {
       requestOptions?.onError?.(err);
       throw err;
     } finally {
-      if (mountedRef.current) {
+      if (!cancelOnUnmount || mountedRef.current) {
         setLoading(false);
       }
     }
-  }, [options]);
+  }, [options, cancelOnUnmount]);
 
   const clearError = useCallback(() => {
     setError(null);

@@ -16,7 +16,7 @@ import { PaginationControls } from '@/components/helpers/PaginationControls';
 import { SearchStatusIndicator } from '@/components/helpers/SearchStatusIndicator';
 
 interface Customer {
-  id: string;
+  id: number;
   firstName: string;
   lastName: string;
   email: string;
@@ -114,7 +114,7 @@ export default function CustomersPage() {
 
   const transformApiCustomer = useCallback((apiCustomer: ApiCustomer): Customer => {
     return {
-      id: apiCustomer.idNum.toString(),
+      id: apiCustomer.idNum,
       firstName: apiCustomer.form.firstName || '',
       lastName: apiCustomer.form.lastName || '',
       email: apiCustomer.form.email || '',

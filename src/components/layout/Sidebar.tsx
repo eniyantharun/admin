@@ -47,7 +47,7 @@ export const Sidebar: React.FC = () => {
 
   // Memoized prefetch functions for each route
   const prefetchFunctions = useMemo(() => ({
-    '/customers': () => get('/Admin/CustomerEditor/GetCustomersList?website=PromotionalProductInc&search=&count=20&index=0'),
+    '/customers': () => get('/Admin/CustomerEditor/GetCustomersList?website=promotional_product_inc&search=&count=20&index=0'),
     '/suppliers': () => get('/Admin/SupplierList/GetSuppliersList'),
     '/orders': () => Promise.resolve([]), // Mock orders data
     '/products': () => Promise.resolve([]), // Mock products data
