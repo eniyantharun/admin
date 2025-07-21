@@ -28,14 +28,11 @@ import {
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, prefetch: true },
   { name: 'Products', href: '/products', icon: Package, prefetch: true },
-  { name: 'Categories', href: '/categories', icon: FolderOpen, prefetch: false },
   { name: 'Orders', href: '/orders', icon: ShoppingCart, prefetch: true },
+  { name: 'Quotes', href: '/quotes', icon: FileText, prefetch: false },
   { name: 'Customers', href: '/customers', icon: User, prefetch: true },
   { name: 'Suppliers', href: '/suppliers', icon: Users, prefetch: true },
-  { name: 'Quotes', href: '/quotes', icon: FileText, prefetch: false },
   { name: 'Brands', href: '/brands', icon: Award, prefetch: false },
-  { name: 'Keywords', href: '/keywords', icon: Hash, prefetch: false },
-  { name: 'Themes', href: '/themes', icon: Palette, prefetch: false },
   { name: 'Searches', href: '/searches', icon: Search, prefetch: false },
 ];
 
@@ -43,15 +40,14 @@ export const Sidebar: React.FC = () => {
   const pathname = usePathname();
   const { sidebarOpen } = useAppSelector((state) => state.dashboard);
   const dispatch = useAppDispatch();
-  const { get } = useApi({ cancelOnUnmount: false }); // Don't cancel prefetch requests
+  const { get } = useApi({ cancelOnUnmount: false }); 
 
-  // Memoized prefetch functions for each route
   const prefetchFunctions = useMemo(() => ({
     '/customers': () => get('/Admin/CustomerEditor/GetCustomersList?website=promotional_product_inc&search=&count=20&index=0'),
     '/suppliers': () => get('/Admin/SupplierList/GetSuppliersList'),
-    '/orders': () => Promise.resolve([]), // Mock orders data
-    '/products': () => Promise.resolve([]), // Mock products data
-    '/dashboard': () => Promise.resolve([]), // Mock dashboard data
+    '/orders': () => Promise.resolve([]), 
+    '/products': () => Promise.resolve([]),
+    '/dashboard': () => Promise.resolve([]),
   }), [get]);
 
   const handleOverlayClick = () => {
@@ -95,13 +91,22 @@ export const Sidebar: React.FC = () => {
             {sidebarOpen ? (
               <>
                 <div className="dashboard-sidebar-logo-wrapper bg-white/10 backdrop-blur-sm p-2 rounded-xl border border-white/20 shadow-lg mr-3">
-                  <Building2 className="dashboard-sidebar-logo w-6 h-6 text-orange-300" />
+                  {/* <Building2 className="dashboard-sidebar-logo w-6 h-6 text-orange-300" /> */}
+                  <img
+                src="https://www.promotionalproductinc.com/_next/static/media/logo.509527f9.svg"
+                alt="Logo"
+                width={30}
+                height={30}
+                style={{ objectFit: 'contain' }}
+                loading="eager"
+                className="mr-2"
+              />
                 </div>
                 <div className="dashboard-sidebar-title-wrapper flex-1">
                   <h1 className="dashboard-sidebar-title text-lg font-bold text-white truncate">
                     {process.env.NEXT_PUBLIC_APP_NAME || 'PPI Admin'}
                   </h1>
-                  <p className="dashboard-sidebar-subtitle text-xs text-orange-200">Portal</p>
+                  {/* <p className="dashboard-sidebar-subtitle text-xs text-orange-200">Portal</p> */}
                 </div>
                 <Button
                   onClick={handleToggleSidebar}

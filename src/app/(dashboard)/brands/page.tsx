@@ -486,10 +486,8 @@ export default function BrandsPage() {
     <div className="brands-page space-y-6">
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Brand Management</h1>
-          <p className="text-gray-600">
-            Manage your promotional product brands and their collections
-          </p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Brands</h1>
+         
         </div>
         
         <div className="flex items-center gap-3">
