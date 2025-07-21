@@ -54,8 +54,9 @@ export const Header: React.FC = () => {
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
-  };
+  const value = e.target.value;
+  setSearchQuery(value);
+};
 
   const handleSearchClear = () => {
     clearSearch();
@@ -95,17 +96,15 @@ export const Header: React.FC = () => {
             </div>
             
             <input
-              ref={searchInputRef}
-              type="text"
-              placeholder={searchConfig.enabled ? searchConfig.placeholder : "Search (navigate to a page to enable)"}
-              value={searchQuery}
-              onChange={handleSearchChange}
-              onFocus={handleSearchFocus}
-              onBlur={handleSearchBlur}
-              disabled={!searchConfig.enabled}
-              data-search-input
-              className="dashboard-header-search-input w-full pl-9 sm:pl-10 pr-16 py-2.5 sm:py-3 border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-200 placeholder-gray-500 disabled:bg-gray-100 disabled:text-gray-400"
-            />
+  ref={searchInputRef}
+  type="text"
+  placeholder={searchConfig.enabled ? searchConfig.placeholder : "Search (navigate to a page to enable)"}
+  value={searchQuery}
+  onChange={handleSearchChange}
+  onFocus={handleSearchFocus}
+  onBlur={handleSearchBlur}
+  className="dashboard-header-search-input w-full pl-9 sm:pl-10 pr-16 py-2.5 sm:py-3 border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-200 placeholder-gray-500"
+/>
             
             {/* Search Controls */}
             <div className="absolute inset-y-0 right-0 pr-3 flex items-center space-x-2">

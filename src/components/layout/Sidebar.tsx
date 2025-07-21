@@ -121,7 +121,15 @@ export const Sidebar: React.FC = () => {
             ) : (
               <div className="dashboard-sidebar-collapsed-header w-full flex justify-center relative">
                 <div className="dashboard-sidebar-logo-collapsed-wrapper bg-white/10 backdrop-blur-sm p-2 rounded-xl border border-white/20 shadow-lg">
-                  <Building2 className="dashboard-sidebar-logo-collapsed w-6 h-6 text-orange-300" />
+                  <img
+                src="https://www.promotionalproductinc.com/_next/static/media/logo.509527f9.svg"
+                alt="Logo"
+                width={30}
+                height={30}
+                style={{ objectFit: 'contain' }}
+                loading="eager"
+                className="mr-2"
+              />
                 </div>
                 <Button
                   onClick={handleToggleSidebar}

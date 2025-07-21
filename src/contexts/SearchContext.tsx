@@ -20,14 +20,14 @@ export interface SearchFilter {
 
 interface SearchContextType {
   searchQuery: string;
-  setSearchQuery: (query: string) => void;
+  setSearchQuery: (query: string) => void; // Just updates the input
   searchConfig: SearchConfig;
   setSearchConfig: (config: SearchConfig) => void;
   clearSearch: () => void;
   isSearching: boolean;
   searchResults: any[];
   setSearchResults: (results: any[]) => void;
-  performSearch: (query: string) => void;
+  performSearch: (query: string) => void; // Actually performs the search
   filters: Record<string, any>;
   setFilters: (filters: Record<string, any>) => void;
 }
@@ -87,15 +87,23 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     []
   );
 
-  const performSearch = useCallback((query: string) => {
-    setSearchQuery(query);
-    if (query.trim() === '') {
-      setSearchResults([]);
-      setIsSearching(false);
-      return;
-    }
+const performSearch = useCallback((query: string) => {
+  if (query.trim() === '') {
+    setSearchResults([]);
+    setIsSearching(false);
+    return;
+  }
+  
+  if (searchConfig.searchFunction) {
     debouncedSearch(query, searchConfig.searchFunction);
-  }, [debouncedSearch, searchConfig.searchFunction]);
+  }
+}, [debouncedSearch, searchConfig.searchFunction]);
+
+
+const updateSearchQuery = useCallback((query: string) => {
+  setSearchQuery(query);
+  performSearch(query);
+}, [performSearch]);
 
   const clearSearch = useCallback(() => {
     setSearchQuery('');
@@ -126,18 +134,18 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [clearSearch]);
 
   const value: SearchContextType = {
-    searchQuery,
-    setSearchQuery: performSearch,
-    searchConfig,
-    setSearchConfig,
-    clearSearch,
-    isSearching,
-    searchResults,
-    setSearchResults,
-    performSearch,
-    filters,
-    setFilters,
-  };
+  searchQuery,
+  setSearchQuery: updateSearchQuery,
+  searchConfig,
+  setSearchConfig,
+  clearSearch,
+  isSearching,
+  searchResults,
+  setSearchResults,
+  performSearch,
+  filters,
+  setFilters,
+};
 
   return (
     <SearchContext.Provider value={value}>
