@@ -1,163 +1,236 @@
-// src/app/(dashboard)/orders/page.tsx
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
-import { Card } from '@/components/ui/Card';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Search, Plus, Eye, Calendar, DollarSign, User, FileText, Mail, X, CheckCircle, Clock, Send } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { ListView } from '@/components/ui/ListView';
-import { Search, Plus, Eye, Calendar, DollarSign, User, ShoppingCart } from 'lucide-react';
-import { usePageSearch, useSearch } from '@/contexts/SearchContext';
+import { Card } from '@/components/ui/Card';
 import { useApi } from '@/hooks/useApi';
+import { usePageSearch, useSearch } from '@/contexts/SearchContext';
 
-interface Order {
-  id: string;
-  customerName: string;
+// Import helper components
+import { StatusBadge } from '@/components/helpers/StatusBadge';
+import { DateDisplay } from '@/components/helpers/DateDisplay';
+import { EmptyState, LoadingState } from '@/components/helpers/EmptyLoadingStates';
+import { FormInput } from '@/components/helpers/FormInput';
+import { PaginationControls } from '@/components/helpers/PaginationControls';
+import { SearchStatusIndicator } from '@/components/helpers/SearchStatusIndicator';
+
+interface Quote {
+  id: number;
+  quoteNumber: string;
+  customer: string;
   customerEmail: string;
-  total: number;
-  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
-  createdAt: string;
-  itemCount: number;
+  status: 'new-quote' | 'quote-sent-to-customer' | 'quote-converted-to-order';
+  dateTime: string;
+  inHandDate: string | null;
+  customerTotal: number;
 }
 
-const mockOrders: Order[] = [
+interface QuoteFormData {
+  customer: string;
+  customerEmail: string;
+  status: string;
+  customerTotal: string;
+  inHandDate: string;
+}
+
+const mockQuotes: Quote[] = [
   {
-    id: 'ORD-001',
-    customerName: 'John Doe',
-    customerEmail: 'john.doe@example.com',
-    total: 299.99,
-    status: 'delivered',
-    createdAt: '2024-01-15',
-    itemCount: 2,
+    id: 10679,
+    quoteNumber: 'QUO-10679',
+    customer: 'Cynthia Bogucki',
+    customerEmail: 'cynthia.bogucki@example.com',
+    status: 'new-quote',
+    dateTime: '7/18/2025 2:15:42 PM',
+    inHandDate: '7/29/2025',
+    customerTotal: 678.74
   },
   {
-    id: 'ORD-002',
-    customerName: 'Jane Smith',
-    customerEmail: 'jane.smith@example.com',
-    total: 599.98,
-    status: 'processing',
-    createdAt: '2024-01-16',
-    itemCount: 3,
+    id: 10678,
+    quoteNumber: 'QUO-10678',
+    customer: 'Kathy Dennis',
+    customerEmail: 'kathy.dennis@example.com',
+    status: 'new-quote',
+    dateTime: '7/18/2025 1:21:12 PM',
+    inHandDate: '7/24/2025',
+    customerTotal: 748.28
   },
   {
-    id: 'ORD-003',
-    customerName: 'Bob Johnson',
-    customerEmail: 'bob.johnson@example.com',
-    total: 149.99,
-    status: 'shipped',
-    createdAt: '2024-01-17',
-    itemCount: 1,
+    id: 10677,
+    quoteNumber: 'QUO-10677',
+    customer: 'Jake Mahon',
+    customerEmail: 'jake.mahon@example.com',
+    status: 'quote-sent-to-customer',
+    dateTime: '7/15/2025 6:49:46 PM',
+    inHandDate: '8/24/2025',
+    customerTotal: 925.13
   },
+  {
+    id: 10676,
+    quoteNumber: 'QUO-10676',
+    customer: 'Christina Johnson',
+    customerEmail: 'christina.johnson@example.com',
+    status: 'quote-sent-to-customer',
+    dateTime: '7/15/2025 8:07:15 AM',
+    inHandDate: '8/3/2025',
+    customerTotal: 451.18
+  },
+  {
+    id: 10675,
+    quoteNumber: 'QUO-10675',
+    customer: 'Nic Hunter',
+    customerEmail: 'nic.hunter@example.com',
+    status: 'quote-converted-to-order',
+    dateTime: '7/14/2025 11:48:49 AM',
+    inHandDate: '7/30/2025',
+    customerTotal: 556.00
+  },
+  {
+    id: 10674,
+    quoteNumber: 'QUO-10674',
+    customer: 'Rosalie Poulin',
+    customerEmail: 'rosalie.poulin@example.com',
+    status: 'quote-sent-to-customer',
+    dateTime: '7/11/2025 11:09:41 AM',
+    inHandDate: null,
+    customerTotal: 2580.00
+  },
+  {
+    id: 10672,
+    quoteNumber: 'QUO-10672',
+    customer: 'Kaitlin Zull',
+    customerEmail: 'kaitlin.zull@example.com',
+    status: 'quote-sent-to-customer',
+    dateTime: '7/10/2025 1:21:10 PM',
+    inHandDate: '8/28/2025',
+    customerTotal: 598.00
+  },
+  {
+    id: 10671,
+    quoteNumber: 'QUO-10671',
+    customer: 'Natalia Valerin Jimenez',
+    customerEmail: 'natalia.jimenez@example.com',
+    status: 'quote-sent-to-customer',
+    dateTime: '7/9/2025 3:44:42 PM',
+    inHandDate: null,
+    customerTotal: 1350.00
+  },
+  {
+    id: 10670,
+    quoteNumber: 'QUO-10670',
+    customer: 'Taylor Bullock',
+    customerEmail: 'taylor.bullock@example.com',
+    status: 'quote-sent-to-customer',
+    dateTime: '7/9/2025 11:07:58 AM',
+    inHandDate: null,
+    customerTotal: 745.00
+  },
+  {
+    id: 10669,
+    quoteNumber: 'QUO-10669',
+    customer: 'Thomas Washburn',
+    customerEmail: 'thomas.washburn@example.com',
+    status: 'quote-converted-to-order',
+    dateTime: '7/9/2025 9:47:36 AM',
+    inHandDate: null,
+    customerTotal: 1435.00
+  },
+  {
+    id: 10667,
+    quoteNumber: 'QUO-10667',
+    customer: 'Nick Ganz',
+    customerEmail: 'nick.ganz@example.com',
+    status: 'quote-converted-to-order',
+    dateTime: '7/8/2025 9:49:11 PM',
+    inHandDate: '8/23/2025',
+    customerTotal: 302.90
+  }
 ];
 
-const getStatusColor = (status: Order['status']) => {
+const getStatusConfig = (status: Quote['status']) => {
   switch (status) {
-    case 'pending':
-      return 'orders-status-pending text-warning-700 bg-warning-100';
-    case 'processing':
-      return 'orders-status-processing text-primary-700 bg-primary-100';
-    case 'shipped':
-      return 'orders-status-shipped text-secondary-700 bg-secondary-100';
-    case 'delivered':
-      return 'orders-status-delivered text-success-700 bg-success-100';
-    case 'cancelled':
-      return 'orders-status-cancelled text-danger-700 bg-danger-100';
+    case 'new-quote':
+      return { 
+        enabled: true, 
+        label: { enabled: 'New Quote', disabled: 'New Quote' },
+        icon: FileText,
+        color: 'text-blue-600 bg-blue-100'
+      };
+    case 'quote-sent-to-customer':
+      return { 
+        enabled: true, 
+        label: { enabled: 'Quote Sent', disabled: 'Quote Sent' },
+        icon: Send,
+        color: 'text-orange-600 bg-orange-100'
+      };
+    case 'quote-converted-to-order':
+      return { 
+        enabled: true, 
+        label: { enabled: 'Converted to Order', disabled: 'Converted to Order' },
+        icon: CheckCircle,
+        color: 'text-green-600 bg-green-100'
+      };
     default:
-      return 'orders-status-default text-secondary-700 bg-secondary-100';
+      return { 
+        enabled: true, 
+        label: { enabled: 'Unknown', disabled: 'Unknown' },
+        icon: Clock,
+        color: 'text-gray-600 bg-gray-100'
+      };
   }
 };
 
-const OrderItem: React.FC<{ order: Order }> = ({ order }) => (
-  <Card className="orders-list-item p-4">
-    <div className="orders-item-content flex items-center justify-between">
-      <div className="orders-item-info flex items-center space-x-4">
-        <div className="orders-item-icon-wrapper w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
-          <ShoppingCart className="orders-item-icon w-5 h-5 text-primary-600" />
-        </div>
-        
-        <div className="orders-item-details">
-          <div className="orders-item-header flex items-center space-x-3 mb-1">
-            <h3 className="orders-item-id text-sm font-semibold text-secondary-900">
-              {order.id}
-            </h3>
-            <span className={`orders-item-status px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
-              {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-            </span>
-          </div>
-          
-          <div className="orders-item-customer flex items-center space-x-1 mb-1">
-            <User className="orders-customer-icon w-3 h-3 text-secondary-400" />
-            <span className="orders-customer-name text-sm text-secondary-700">{order.customerName}</span>
-            <span className="orders-customer-email text-xs text-secondary-500">({order.customerEmail})</span>
-          </div>
-          
-          <div className="orders-item-meta flex items-center space-x-4">
-            <div className="orders-item-date flex items-center space-x-1">
-              <Calendar className="orders-date-icon w-3 h-3 text-secondary-400" />
-              <span className="orders-date-text text-xs text-secondary-600">{order.createdAt}</span>
-            </div>
-            
-            <div className="orders-item-count">
-              <span className="orders-count-text text-xs text-secondary-600">
-                {order.itemCount} item{order.itemCount !== 1 ? 's' : ''}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <div className="orders-item-right flex items-center space-x-4">
-        <div className="orders-item-total flex items-center space-x-1">
-          <DollarSign className="orders-total-icon w-4 h-4 text-success-500" />
-          <span className="orders-total-text text-lg font-semibold text-success-700">
-            ${order.total.toFixed(2)}
-          </span>
-        </div>
-        
-        <Button
-          variant="secondary"
-          size="sm"
-          icon={Eye}
-          iconOnly
-          className="orders-view-button"
-        />
-      </div>
-    </div>
-  </Card>
-);
-
-export default function OrdersPage() {
+export default function QuotesPage() {
+  const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [localSearchTerm, setLocalSearchTerm] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(20);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [orders, setOrders] = useState<Order[]>(mockOrders);
+  const [formData, setFormData] = useState<QuoteFormData>({
+    customer: '',
+    customerEmail: '',
+    status: 'new-quote',
+    customerTotal: '0',
+    inHandDate: ''
+  });
+  const [formErrors, setFormErrors] = useState<Partial<QuoteFormData>>({});
+
+  const { get, post, put, loading } = useApi();
+  const submitApi = useApi();
   
-  const { get } = useApi();
   const { searchQuery, setSearchResults } = useSearch();
 
-  // Global search function for header
   const handleGlobalSearch = useCallback(async (query: string) => {
-    // Filter orders based on search query
-    const filteredOrders = mockOrders.filter(order =>
-      order.id.toLowerCase().includes(query.toLowerCase()) ||
-      order.customerName.toLowerCase().includes(query.toLowerCase()) ||
-      order.customerEmail.toLowerCase().includes(query.toLowerCase())
-    );
-
-    // Format results for global search dropdown
-    const searchResults = filteredOrders.map((order: Order) => ({
-      id: order.id,
-      title: order.id,
-      subtitle: `${order.customerName} - $${order.total.toFixed(2)}`,
-      description: `${order.status} • ${order.itemCount} item${order.itemCount !== 1 ? 's' : ''}`,
-      type: 'order',
-      data: order
-    }));
-
-    setSearchResults(searchResults);
+    try {
+      const filteredQuotes = mockQuotes.filter((quote: Quote) =>
+        quote.quoteNumber.toLowerCase().includes(query.toLowerCase()) ||
+        quote.customer.toLowerCase().includes(query.toLowerCase()) ||
+        quote.customerEmail.toLowerCase().includes(query.toLowerCase())
+      );
+      
+      const searchResults = filteredQuotes.map((quote: Quote) => ({
+        id: quote.id.toString(),
+        title: quote.quoteNumber,
+        subtitle: `${quote.customer} - ${quote.customerTotal.toFixed(2)}`,
+        description: `${quote.status.replace(/-/g, ' ')} • ${quote.dateTime}`,
+        type: 'quote',
+        data: quote
+      }));
+      
+      setSearchResults(searchResults);
+    } catch (error) {
+      console.error('Error searching quotes:', error);
+      setSearchResults([]);
+    }
   }, [setSearchResults]);
 
-  // Register this page's search configuration
   usePageSearch({
-    placeholder: 'Search orders by ID, customer, or email...',
+    placeholder: 'Search quotes by number, customer, or email...',
     enabled: true,
     searchFunction: handleGlobalSearch,
     filters: [
@@ -166,130 +239,404 @@ export default function OrdersPage() {
         label: 'Status',
         type: 'select',
         options: [
-          { value: 'all', label: 'All Orders' },
-          { value: 'pending', label: 'Pending' },
-          { value: 'processing', label: 'Processing' },
-          { value: 'shipped', label: 'Shipped' },
-          { value: 'delivered', label: 'Delivered' },
-          { value: 'cancelled', label: 'Cancelled' },
+          { value: 'all', label: 'All Quotes' },
+          { value: 'new-quote', label: 'New Quotes' },
+          { value: 'quote-sent-to-customer', label: 'Sent to Customer' },
+          { value: 'quote-converted-to-order', label: 'Converted to Order' }
         ]
       }
     ]
   });
 
-  // Use either global search query or local search term
   const effectiveSearchTerm = searchQuery || localSearchTerm;
 
-  const filteredOrders = orders.filter(order => {
-    const matchesSearch = order.id.toLowerCase().includes(effectiveSearchTerm.toLowerCase()) ||
-                         order.customerName.toLowerCase().includes(effectiveSearchTerm.toLowerCase()) ||
-                         order.customerEmail.toLowerCase().includes(effectiveSearchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
-    
-    return matchesSearch && matchesStatus;
-  });
+  const fetchQuotes = useCallback(async () => {
+    if (!isInitialLoad && loading) return;
 
-  // Sync global search with local results
-  useEffect(() => {
-    if (searchQuery && searchQuery !== localSearchTerm) {
-      setLocalSearchTerm(searchQuery);
+    try {
+      let filteredQuotes = [...mockQuotes];
+      
+      if (effectiveSearchTerm) {
+        filteredQuotes = filteredQuotes.filter((quote: Quote) =>
+          quote.quoteNumber.toLowerCase().includes(effectiveSearchTerm.toLowerCase()) ||
+          quote.customer.toLowerCase().includes(effectiveSearchTerm.toLowerCase()) ||
+          quote.customerEmail.toLowerCase().includes(effectiveSearchTerm.toLowerCase())
+        );
+      }
+
+      if (statusFilter !== 'all') {
+        filteredQuotes = filteredQuotes.filter((quote: Quote) => quote.status === statusFilter);
+      }
+      
+      const startIndex = (currentPage - 1) * rowsPerPage;
+      const paginatedQuotes = filteredQuotes.slice(startIndex, startIndex + rowsPerPage);
+      
+      setQuotes(paginatedQuotes);
+      setTotalCount(filteredQuotes.length);
+    } catch (error) {
+      console.error('Error fetching quotes:', error);
+    } finally {
+      setIsInitialLoad(false);
     }
-  }, [searchQuery, localSearchTerm]);
+  }, [effectiveSearchTerm, statusFilter, currentPage, rowsPerPage, loading, isInitialLoad]);
 
-  const statusOptions = [
-    { value: 'all', label: 'All Orders' },
-    { value: 'pending', label: 'Pending' },
-    { value: 'processing', label: 'Processing' },
-    { value: 'shipped', label: 'Shipped' },
-    { value: 'delivered', label: 'Delivered' },
-    { value: 'cancelled', label: 'Cancelled' },
-  ];
+  useEffect(() => {
+    fetchQuotes();
+  }, [fetchQuotes]);
+
+  useEffect(() => {
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    }
+  }, [effectiveSearchTerm, statusFilter]);
+
+  const totalPages = Math.ceil(totalCount / rowsPerPage);
+  const startIndex = (currentPage - 1) * rowsPerPage;
+  const endIndex = Math.min(startIndex + rowsPerPage, totalCount);
+
+  const validateForm = (): boolean => {
+    const errors: Partial<QuoteFormData> = {};
+    
+    if (!formData.customer.trim()) errors.customer = 'Customer is required';
+    if (!formData.customerEmail.trim()) {
+      errors.customerEmail = 'Email is required';
+    } else if (!/\S+@\S+\.\S+/.test(formData.customerEmail)) {
+      errors.customerEmail = 'Email is invalid';
+    }
+    const customerTotal = parseFloat(formData.customerTotal);
+    if (isNaN(customerTotal) || customerTotal <= 0) errors.customerTotal = 'Customer total must be greater than 0';
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateForm()) return;
+
+    try {
+      if (isEditing && selectedQuote) {
+        console.log('Updating quote:', selectedQuote.id, formData);
+      } else {
+        console.log('Creating quote:', formData);
+      }
+
+      await fetchQuotes();
+      closeModal();
+    } catch (error) {
+      console.error('Error saving quote:', error);
+    }
+  };
+
+  const openNewQuoteModal = () => {
+    setFormData({
+      customer: '',
+      customerEmail: '',
+      status: 'new-quote',
+      customerTotal: '0',
+      inHandDate: ''
+    });
+    setFormErrors({});
+    setIsEditing(false);
+    setSelectedQuote(null);
+    setIsModalOpen(true);
+  };
+
+  const openEditQuoteModal = (quote: Quote) => {
+    setFormData({
+      customer: quote.customer,
+      customerEmail: quote.customerEmail,
+      status: quote.status,
+      customerTotal: quote.customerTotal.toString(),
+      inHandDate: quote.inHandDate || ''
+    });
+    setFormErrors({});
+    setIsEditing(true);
+    setSelectedQuote(quote);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedQuote(null);
+    setIsEditing(false);
+    setFormData({
+      customer: '',
+      customerEmail: '',
+      status: 'new-quote',
+      customerTotal: '0',
+      inHandDate: ''
+    });
+    setFormErrors({});
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ 
+      ...prev, 
+      [name]: value 
+    }));
+    
+    if (formErrors[name as keyof QuoteFormData]) {
+      setFormErrors(prev => ({ ...prev, [name]: undefined }));
+    }
+  };
 
   return (
-    <div className="orders-page-container space-y-6">
-      <div className="orders-page-header">
-        <h1 className="orders-page-title text-2xl font-bold text-secondary-900">Orders</h1>
-        
-      </div>
-
-      <Card className="orders-page-toolbar p-4">
-        <div className="orders-toolbar-content flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="orders-toolbar-left flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-1">
-            {/* Local Search Input (backup when global search is not active) */}
-            {/* {!searchQuery && (
-              <div className="orders-search-wrapper relative flex-1 max-w-md">
-                <Search className="orders-search-icon absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-secondary-400" />
-                <input
-                  type="text"
-                  placeholder="Search orders locally..."
-                  value={localSearchTerm}
-                  onChange={(e) => setLocalSearchTerm(e.target.value)}
-                  className="orders-search-input w-full pl-10 pr-4 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                />
+    <div className="quotes-page space-y-4">
+      <Card className="overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <h3 className="text-lg font-semibold text-gray-900">
+              Quotes ({totalCount.toLocaleString()})
+            </h3>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+              {searchQuery && <SearchStatusIndicator query={searchQuery} />}
+              <div className="flex items-center gap-2">
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                >
+                  <option value="all">All Quotes</option>
+                  <option value="new-quote">New Quotes</option>
+                  <option value="quote-sent-to-customer">Sent to Customer</option>
+                  <option value="quote-converted-to-order">Converted to Order</option>
+                </select>
+                <Button
+                  onClick={openNewQuoteModal}
+                  icon={Plus}
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                >
+                  New Quote
+                </Button>
               </div>
-            )} */}
-
-            {/* Search Status Indicator */}
-            {searchQuery && (
-              <div className="flex items-center space-x-2 text-sm text-blue-600 bg-blue-50 px-3 py-2 rounded-lg">
-                <Search className="w-4 h-4" />
-                <span>Searching: "{searchQuery}"</span>
-              </div>
-            )}
-            
-            <div className="orders-filter-wrapper">
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="orders-status-filter px-3 py-2 border border-secondary-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
-              >
-                {statusOptions.map(option => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
             </div>
           </div>
-          
-          <Button
-            icon={Plus}
-            className="orders-add-button"
-          >
-            Create Order
-          </Button>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quote</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date & Time</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">In-Hand Date</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer Total</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {loading && isInitialLoad ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-8">
+                    <LoadingState message="Loading quotes..." />
+                  </td>
+                </tr>
+              ) : quotes.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-8">
+                    <EmptyState
+                      icon={FileText}
+                      title="No quotes found"
+                      description="Get started by creating your first quote."
+                      hasSearch={!!effectiveSearchTerm || statusFilter !== 'all'}
+                    />
+                  </td>
+                </tr>
+              ) : (
+                quotes.map((quote) => {
+                  const statusConfig = getStatusConfig(quote.status);
+                  const StatusIcon = statusConfig.icon;
+                  return (
+                    <tr key={quote.id} className="hover:bg-gray-50 transition-colors duration-150">
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="flex-shrink-0">
+                            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                              <FileText className="w-5 h-5 text-white" />
+                            </div>
+                          </div>
+                          <div className="ml-3">
+                            <div className="text-sm font-medium text-gray-900">
+                              {quote.quoteNumber}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              ID: {quote.id}
+                            </div>
+                            <div className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${statusConfig.color}`}>
+                              <StatusIcon className="w-3 h-3 mr-1" />
+                              {statusConfig.label.enabled}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="text-sm text-gray-900 flex items-center gap-1">
+                          <User className="w-4 h-4 text-gray-400" />
+                          <span className="font-medium">{quote.customer}</span>
+                        </div>
+                        <div className="text-xs text-gray-500 ml-5 flex items-center gap-1">
+                          <Mail className="w-3 h-3" />
+                          {quote.customerEmail}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="text-sm text-gray-900 flex items-center gap-1">
+                          <Calendar className="w-4 h-4 text-gray-400" />
+                          <span>{quote.dateTime}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {quote.inHandDate || 'N/A'}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="text-sm font-medium text-green-600 flex items-center gap-1">
+                          <DollarSign className="w-4 h-4" />
+                          ${quote.customerTotal.toFixed(2)}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-right">
+                        <Button
+                          onClick={() => openEditQuoteModal(quote)}
+                          variant="secondary"
+                          size="sm"
+                          icon={Eye}
+                          iconOnly
+                          title="View quote"
+                        />
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
       </Card>
 
-      <Card className="orders-page-list">
-        <div className="orders-list-header p-4 border-b border-secondary-200">
-          <h3 className="orders-list-title text-lg font-semibold text-secondary-900">
-            Orders ({filteredOrders.length})
-          </h3>
-        </div>
-        <div className="orders-list-content p-4">
-          <ListView
-            items={filteredOrders}
-            keyExtractor={(order) => order.id}
-            renderItem={(order) => <OrderItem order={order} />}
-            emptyComponent={
-              <div className="orders-empty-state text-center py-8">
-                <ShoppingCart className="orders-empty-icon w-12 h-12 mx-auto text-secondary-300 mb-4" />
-                <h3 className="orders-empty-title text-lg font-medium text-secondary-900 mb-2">
-                  No orders found
-                </h3>
-                <p className="orders-empty-description text-secondary-500">
-                  {effectiveSearchTerm || statusFilter !== 'all' 
-                    ? 'Try adjusting your search or filter criteria.' 
-                    : 'No orders have been placed yet.'}
-                </p>
-              </div>
-            }
-            className="orders-list-items"
+      {totalCount > 0 && !loading && (
+        <Card>
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalCount={totalCount}
+            rowsPerPage={rowsPerPage}
+            onPageChange={setCurrentPage}
+            onRowsPerPageChange={(rows) => {
+              setRowsPerPage(rows);
+              setCurrentPage(1);
+            }}
+            startIndex={startIndex}
+            endIndex={endIndex}
           />
+        </Card>
+      )}
+
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center p-4 z-50 pt-20 overflow-y-auto">
+          <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-[calc(100vh-5rem)] overflow-y-auto my-4">
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-indigo-50">
+              <h3 className="text-lg font-semibold text-gray-900">
+                {isEditing ? "Edit Quote" : "Create New Quote"}
+              </h3>
+              <Button
+                onClick={closeModal}
+                variant="secondary"
+                size="sm"
+                icon={X}
+                iconOnly
+                disabled={submitApi.loading}
+              />
+            </div>
+
+            <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormInput
+                  label="Customer Name"
+                  name="customer"
+                  value={formData.customer}
+                  onChange={handleInputChange}
+                  error={formErrors.customer}
+                  required
+                  placeholder="Enter customer name"
+                />
+
+                <FormInput
+                  label="Customer Email"
+                  name="customerEmail"
+                  type="email"
+                  value={formData.customerEmail}
+                  onChange={handleInputChange}
+                  error={formErrors.customerEmail}
+                  required
+                  placeholder="customer@example.com"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="form-input-group">
+                  <label className="form-label block text-sm font-medium text-gray-700 mb-1">
+                    Status
+                  </label>
+                  <select
+                    name="status"
+                    value={formData.status}
+                    onChange={handleInputChange}
+                    className="form-input w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                  >
+                    <option value="new-quote">New Quote</option>
+                    <option value="quote-sent-to-customer">Quote Sent to Customer</option>
+                    <option value="quote-converted-to-order">Quote Converted to Order</option>
+                  </select>
+                </div>
+
+                <FormInput
+                  label="Customer Total"
+                  name="customerTotal"
+                  type="number"
+                  value={formData.customerTotal}
+                  onChange={handleInputChange}
+                  error={formErrors.customerTotal}
+                  required
+                  placeholder="0.00"
+                />
+              </div>
+
+              <FormInput
+                label="In-Hand Date"
+                name="inHandDate"
+                type="date"
+                value={formData.inHandDate}
+                onChange={handleInputChange}
+                helpText="Expected delivery date (optional)"
+              />
+
+              <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-4 border-t border-gray-200">
+                <Button
+                  type="button"
+                  onClick={closeModal}
+                  variant="secondary"
+                  disabled={submitApi.loading}
+                  className="w-full sm:w-auto"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  loading={submitApi.loading}
+                  className="w-full sm:w-auto bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+                >
+                  {isEditing ? "Update Quote" : "Create Quote"}
+                </Button>
+              </div>
+            </form>
+          </div>
         </div>
-      </Card>
+      )}
     </div>
   );
 }
