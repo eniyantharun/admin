@@ -1,10 +1,12 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { api } from '@/lib/api';
 
 interface UseApiOptions {
   onSuccess?: (data: any) => void;
   onError?: (error: any) => void;
   cancelOnUnmount?: boolean;
+  dedupe?: boolean; // Deduplicate identical requests
+  cacheDuration?: number; // Cache duration in milliseconds
 }
 
 interface ApiResponse<T> {
@@ -13,18 +15,59 @@ interface ApiResponse<T> {
   loading: boolean;
 }
 
+// Request deduplication and caching
+const requestCache = new Map<string, {
+  promise: Promise<any>;
+  timestamp: number;
+  data?: any;
+}>();
+
+const DEFAULT_CACHE_DURATION = 30000; // 30 seconds
+
+// Generate cache key for requests
+const generateCacheKey = (method: string, url: string, data?: any): string => {
+  const dataStr = data ? JSON.stringify(data) : '';
+  return `${method}:${url}:${dataStr}`;
+};
+
+// Clean expired cache entries
+const cleanCache = () => {
+  const now = Date.now();
+  const entries = Array.from(requestCache.entries());
+  for (const [key, entry] of entries) {
+    if (now - entry.timestamp > DEFAULT_CACHE_DURATION) {
+      requestCache.delete(key);
+    }
+  }
+};
+
 export const useApi = (options: UseApiOptions = {}) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const mountedRef = useRef(true);
-  const { cancelOnUnmount = true } = options;
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const { 
+    cancelOnUnmount = true, 
+    dedupe = true, 
+    cacheDuration = DEFAULT_CACHE_DURATION 
+  } = options;
 
   // Track component mount status
   useEffect(() => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+      // Cancel any ongoing request when component unmounts
+      if (cancelOnUnmount && abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
     };
+  }, [cancelOnUnmount]);
+
+  // Clean cache periodically
+  useEffect(() => {
+    const interval = setInterval(cleanCache, 60000); // Clean every minute
+    return () => clearInterval(interval);
   }, []);
 
   // Helper function to check if component is still mounted
@@ -45,91 +88,129 @@ export const useApi = (options: UseApiOptions = {}) => {
   const handleError = useCallback((err: any, requestOptions?: UseApiOptions) => {
     if (!isMounted()) return;
 
+    // Don't set error if request was aborted
+    if (err.name === 'AbortError') return;
+
     const errorMessage = err.response?.data?.message || err.message || 'An error occurred';
     setError(errorMessage);
     options?.onError?.(err);
     requestOptions?.onError?.(err);
   }, [isMounted, options]);
 
-  // GET request
-  const get = useCallback(async <T = any>(url: string, requestOptions?: UseApiOptions): Promise<T | null> => {
+  // Generic request handler with caching and deduplication
+  const makeRequest = useCallback(async <T = any>(
+    method: 'get' | 'post' | 'put' | 'delete',
+    url: string,
+    data?: any,
+    requestOptions?: UseApiOptions
+  ): Promise<T | null> => {
     if (!isMounted()) return null;
-    
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const data = await api.get<T>(url);
-      return handleResponse(data, requestOptions);
-    } catch (err: any) {
-      handleError(err, requestOptions);
-      throw err;
-    } finally {
-      if (isMounted()) {
-        setLoading(false);
-      }
-    }
-  }, [isMounted, handleResponse, handleError]);
 
-  // POST request
-  const post = useCallback(async <T = any>(url: string, data?: any, requestOptions?: UseApiOptions): Promise<T | null> => {
-    if (!isMounted()) return null;
+    const cacheKey = generateCacheKey(method, url, data);
     
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const response = await api.post<T>(url, data);
-      return handleResponse(response, requestOptions);
-    } catch (err: any) {
-      handleError(err, requestOptions);
-      throw err;
-    } finally {
-      if (isMounted()) {
-        setLoading(false);
+    // Check cache for GET requests
+    if (method === 'get' && dedupe) {
+      const cached = requestCache.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < cacheDuration) {
+        if (cached.data) {
+          return handleResponse(cached.data, requestOptions);
+        }
+        // If there's an ongoing request, wait for it
+        if (cached.promise) {
+          try {
+            const result = await cached.promise;
+            return handleResponse(result, requestOptions);
+          } catch (err) {
+            handleError(err, requestOptions);
+            throw err;
+          }
+        }
       }
     }
-  }, [isMounted, handleResponse, handleError]);
 
-  // PUT request
-  const put = useCallback(async <T = any>(url: string, data?: any, requestOptions?: UseApiOptions): Promise<T | null> => {
-    if (!isMounted()) return null;
-    
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const response = await api.put<T>(url, data);
-      return handleResponse(response, requestOptions);
-    } catch (err: any) {
-      handleError(err, requestOptions);
-      throw err;
-    } finally {
-      if (isMounted()) {
-        setLoading(false);
-      }
+    // Cancel previous request if exists
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
     }
-  }, [isMounted, handleResponse, handleError]);
 
-  // DELETE request
-  const del = useCallback(async <T = any>(url: string, requestOptions?: UseApiOptions): Promise<T | null> => {
-    if (!isMounted()) return null;
+    // Create new abort controller
+    abortControllerRef.current = new AbortController();
     
     setLoading(true);
     setError(null);
-    
+
     try {
-      const response = await api.delete<T>(url);
-      return handleResponse(response, requestOptions);
+      let requestPromise: Promise<T>;
+
+      switch (method) {
+        case 'get':
+          requestPromise = api.get<T>(url, { signal: abortControllerRef.current.signal });
+          break;
+        case 'post':
+          requestPromise = api.post<T>(url, data, { signal: abortControllerRef.current.signal });
+          break;
+        case 'put':
+          requestPromise = api.put<T>(url, data, { signal: abortControllerRef.current.signal });
+          break;
+        case 'delete':
+          requestPromise = api.delete<T>(url, { signal: abortControllerRef.current.signal });
+          break;
+        default:
+          throw new Error(`Unsupported method: ${method}`);
+      }
+
+      // Cache the promise for deduplication
+      if (method === 'get' && dedupe) {
+        requestCache.set(cacheKey, {
+          promise: requestPromise,
+          timestamp: Date.now()
+        });
+      }
+
+      const result = await requestPromise;
+
+      // Cache the result for GET requests
+      if (method === 'get' && dedupe) {
+        requestCache.set(cacheKey, {
+          promise: requestPromise,
+          timestamp: Date.now(),
+          data: result
+        });
+      }
+
+      return handleResponse(result, requestOptions);
     } catch (err: any) {
+      // Remove failed request from cache
+      if (method === 'get' && dedupe) {
+        requestCache.delete(cacheKey);
+      }
+      
       handleError(err, requestOptions);
       throw err;
     } finally {
       if (isMounted()) {
         setLoading(false);
       }
+      abortControllerRef.current = null;
     }
-  }, [isMounted, handleResponse, handleError]);
+  }, [isMounted, handleResponse, handleError, dedupe, cacheDuration]);
+
+  // Memoized API methods
+  const get = useCallback(<T = any>(url: string, requestOptions?: UseApiOptions): Promise<T | null> => {
+    return makeRequest<T>('get', url, undefined, requestOptions);
+  }, [makeRequest]);
+
+  const post = useCallback(<T = any>(url: string, data?: any, requestOptions?: UseApiOptions): Promise<T | null> => {
+    return makeRequest<T>('post', url, data, requestOptions);
+  }, [makeRequest]);
+
+  const put = useCallback(<T = any>(url: string, data?: any, requestOptions?: UseApiOptions): Promise<T | null> => {
+    return makeRequest<T>('put', url, data, requestOptions);
+  }, [makeRequest]);
+
+  const del = useCallback(<T = any>(url: string, requestOptions?: UseApiOptions): Promise<T | null> => {
+    return makeRequest<T>('delete', url, undefined, requestOptions);
+  }, [makeRequest]);
 
   // Clear error state
   const clearError = useCallback(() => {
@@ -138,11 +219,22 @@ export const useApi = (options: UseApiOptions = {}) => {
 
   // Reset all states
   const reset = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
     setLoading(false);
     setError(null);
   }, []);
 
-  return {
+  // Cancel current request
+  const cancel = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+  }, []);
+
+  // Memoize return object to prevent unnecessary re-renders
+  return useMemo(() => ({
     loading,
     error,
     get,
@@ -151,17 +243,19 @@ export const useApi = (options: UseApiOptions = {}) => {
     delete: del,
     clearError,
     reset,
-  };
+    cancel,
+  }), [loading, error, get, post, put, del, clearError, reset, cancel]);
 };
 
-// Specialized hooks for common patterns
+// Optimized query hook with better caching
 export const useApiQuery = <T = any>(
   url: string | null, 
-  options?: UseApiOptions & { enabled?: boolean }
+  options?: UseApiOptions & { enabled?: boolean; refreshInterval?: number }
 ) => {
   const [data, setData] = useState<T | null>(null);
-  const { get, loading, error, clearError } = useApi(options);
-  const { enabled = true } = options || {};
+  const { get, loading, error, clearError, cancel } = useApi(options);
+  const { enabled = true, refreshInterval } = options || {};
+  const refreshIntervalRef = useRef<NodeJS.Timeout>();
 
   const fetchData = useCallback(async () => {
     if (!url || !enabled) return;
@@ -174,28 +268,55 @@ export const useApiQuery = <T = any>(
     }
   }, [url, enabled, get]);
 
+  // Initial fetch
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Set up refresh interval
+  useEffect(() => {
+    if (refreshInterval && enabled && url) {
+      refreshIntervalRef.current = setInterval(fetchData, refreshInterval);
+      return () => {
+        if (refreshIntervalRef.current) {
+          clearInterval(refreshIntervalRef.current);
+        }
+      };
+    }
+  }, [refreshInterval, enabled, url, fetchData]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      cancel();
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+      }
+    };
+  }, [cancel]);
 
   const refetch = useCallback(() => {
     clearError();
     fetchData();
   }, [clearError, fetchData]);
 
-  return {
+  return useMemo(() => ({
     data,
     loading,
     error,
     refetch,
     clearError,
-  };
+  }), [data, loading, error, refetch, clearError]);
 };
 
-// Hook for mutations (POST, PUT, DELETE)
-export const useApiMutation = <T = any>(options?: UseApiOptions) => {
+// Hook for mutations with optimistic updates
+export const useApiMutation = <T = any>(options?: UseApiOptions & {
+  optimisticUpdate?: (data: any) => void;
+  rollback?: () => void;
+}) => {
   const [data, setData] = useState<T | null>(null);
   const api = useApi(options);
+  const { optimisticUpdate, rollback } = options || {};
 
   const mutate = useCallback(async (
     method: 'post' | 'put' | 'delete',
@@ -203,6 +324,11 @@ export const useApiMutation = <T = any>(options?: UseApiOptions) => {
     requestData?: any,
     requestOptions?: UseApiOptions
   ): Promise<T | null> => {
+    // Apply optimistic update
+    if (optimisticUpdate && requestData) {
+      optimisticUpdate(requestData);
+    }
+
     try {
       let result: T | null = null;
       
@@ -221,9 +347,13 @@ export const useApiMutation = <T = any>(options?: UseApiOptions) => {
       setData(result);
       return result;
     } catch (error) {
+      // Rollback optimistic update on error
+      if (rollback) {
+        rollback();
+      }
       throw error;
     }
-  }, [api]);
+  }, [api, optimisticUpdate, rollback]);
 
   const post = useCallback((url: string, data?: any, requestOptions?: UseApiOptions) => {
     return mutate('post', url, data, requestOptions);
@@ -237,7 +367,7 @@ export const useApiMutation = <T = any>(options?: UseApiOptions) => {
     return mutate('delete', url, undefined, requestOptions);
   }, [mutate]);
 
-  return {
+  return useMemo(() => ({
     data,
     loading: api.loading,
     error: api.error,
@@ -246,5 +376,5 @@ export const useApiMutation = <T = any>(options?: UseApiOptions) => {
     delete: del,
     clearError: api.clearError,
     reset: api.reset,
-  };
+  }), [api.loading, api.error, api.clearError, api.reset, data, post, put, del]);
 };

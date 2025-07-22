@@ -5,7 +5,6 @@ import { Search, Plus, Eye, Calendar, DollarSign, User, FileText, Mail, X, Check
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { useApi } from '@/hooks/useApi';
-import { usePageSearch, useSearch } from '@/contexts/SearchContext';
 
 // Import helper components
 import { StatusBadge } from '@/components/helpers/StatusBadge';
@@ -13,7 +12,6 @@ import { DateDisplay } from '@/components/helpers/DateDisplay';
 import { EmptyState, LoadingState } from '@/components/helpers/EmptyLoadingStates';
 import { FormInput } from '@/components/helpers/FormInput';
 import { PaginationControls } from '@/components/helpers/PaginationControls';
-import { SearchStatusIndicator } from '@/components/helpers/SearchStatusIndicator';
 
 interface Quote {
   id: number;
@@ -202,53 +200,6 @@ export default function QuotesPage() {
 
   const { get, post, put, loading } = useApi();
   const submitApi = useApi();
-  
-  const { searchQuery, setSearchResults } = useSearch();
-
-  const handleGlobalSearch = useCallback(async (query: string) => {
-    try {
-      const filteredQuotes = mockQuotes.filter((quote: Quote) =>
-        quote.quoteNumber.toLowerCase().includes(query.toLowerCase()) ||
-        quote.customer.toLowerCase().includes(query.toLowerCase()) ||
-        quote.customerEmail.toLowerCase().includes(query.toLowerCase())
-      );
-      
-      const searchResults = filteredQuotes.map((quote: Quote) => ({
-        id: quote.id.toString(),
-        title: quote.quoteNumber,
-        subtitle: `${quote.customer} - ${quote.customerTotal.toFixed(2)}`,
-        description: `${quote.status.replace(/-/g, ' ')} • ${quote.dateTime}`,
-        type: 'quote',
-        data: quote
-      }));
-      
-      setSearchResults(searchResults);
-    } catch (error) {
-      console.error('Error searching quotes:', error);
-      setSearchResults([]);
-    }
-  }, [setSearchResults]);
-
-  usePageSearch({
-    placeholder: 'Search quotes by number, customer, or email...',
-    enabled: true,
-    searchFunction: handleGlobalSearch,
-    filters: [
-      {
-        key: 'status',
-        label: 'Status',
-        type: 'select',
-        options: [
-          { value: 'all', label: 'All Quotes' },
-          { value: 'new-quote', label: 'New Quotes' },
-          { value: 'quote-sent-to-customer', label: 'Sent to Customer' },
-          { value: 'quote-converted-to-order', label: 'Converted to Order' }
-        ]
-      }
-    ]
-  });
-
-  const effectiveSearchTerm = searchQuery || localSearchTerm;
 
   const fetchQuotes = useCallback(async () => {
     if (!isInitialLoad && loading) return;
@@ -256,11 +207,11 @@ export default function QuotesPage() {
     try {
       let filteredQuotes = [...mockQuotes];
       
-      if (effectiveSearchTerm) {
+      if (localSearchTerm) {
         filteredQuotes = filteredQuotes.filter((quote: Quote) =>
-          quote.quoteNumber.toLowerCase().includes(effectiveSearchTerm.toLowerCase()) ||
-          quote.customer.toLowerCase().includes(effectiveSearchTerm.toLowerCase()) ||
-          quote.customerEmail.toLowerCase().includes(effectiveSearchTerm.toLowerCase())
+          quote.quoteNumber.toLowerCase().includes(localSearchTerm.toLowerCase()) ||
+          quote.customer.toLowerCase().includes(localSearchTerm.toLowerCase()) ||
+          quote.customerEmail.toLowerCase().includes(localSearchTerm.toLowerCase())
         );
       }
 
@@ -273,12 +224,14 @@ export default function QuotesPage() {
       
       setQuotes(paginatedQuotes);
       setTotalCount(filteredQuotes.length);
-    } catch (error) {
-      console.error('Error fetching quotes:', error);
+    } catch (error: any) {
+      if (error?.name !== 'CanceledError' && error?.code !== 'ERR_CANCELED') {
+        console.error('Error fetching quotes:', error);
+      }
     } finally {
       setIsInitialLoad(false);
     }
-  }, [effectiveSearchTerm, statusFilter, currentPage, rowsPerPage, loading, isInitialLoad]);
+  }, [localSearchTerm, statusFilter, currentPage, rowsPerPage, loading, isInitialLoad]);
 
   useEffect(() => {
     fetchQuotes();
@@ -288,7 +241,7 @@ export default function QuotesPage() {
     if (currentPage !== 1) {
       setCurrentPage(1);
     }
-  }, [effectiveSearchTerm, statusFilter]);
+  }, [localSearchTerm, statusFilter]);
 
   const totalPages = Math.ceil(totalCount / rowsPerPage);
   const startIndex = (currentPage - 1) * rowsPerPage;
@@ -324,8 +277,10 @@ export default function QuotesPage() {
 
       await fetchQuotes();
       closeModal();
-    } catch (error) {
-      console.error('Error saving quote:', error);
+    } catch (error: any) {
+      if (error?.name !== 'CanceledError' && error?.code !== 'ERR_CANCELED') {
+        console.error('Error saving quote:', error);
+      }
     }
   };
 
@@ -383,8 +338,33 @@ export default function QuotesPage() {
     }
   };
 
+  const handleLocalSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setLocalSearchTerm(e.target.value);
+  };
+
+  const clearLocalSearch = () => {
+    setLocalSearchTerm('');
+  };
+
   return (
-    <div className="quotes-page space-y-4">
+    <div className="quotes-page space-y-6">
+      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Quotes</h1>
+          <p className="text-gray-600">Manage your quote pipeline</p>
+        </div>
+        
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={openNewQuoteModal}
+            icon={Plus}
+            className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-lg"
+          >
+            Add Quote
+          </Button>
+        </div>
+      </div>
+
       <Card className="overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -392,25 +372,39 @@ export default function QuotesPage() {
               Quotes ({totalCount.toLocaleString()})
             </h3>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
-              {searchQuery && <SearchStatusIndicator query={searchQuery} />}
+              {/* Local search bar */}
+              <div className="relative w-full sm:w-auto">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Search className="w-4 h-4 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search quotes..."
+                  value={localSearchTerm}
+                  onChange={handleLocalSearchChange}
+                  className="w-full sm:w-64 pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                />
+                {localSearchTerm && (
+                  <button
+                    onClick={clearLocalSearch}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  >
+                    <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+                  </button>
+                )}
+              </div>
+              
               <div className="flex items-center gap-2">
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
                 >
                   <option value="all">All Quotes</option>
                   <option value="new-quote">New Quotes</option>
                   <option value="quote-sent-to-customer">Sent to Customer</option>
                   <option value="quote-converted-to-order">Converted to Order</option>
                 </select>
-                <Button
-                  onClick={openNewQuoteModal}
-                  icon={Plus}
-                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-                >
-                  New Quote
-                </Button>
               </div>
             </div>
           </div>
@@ -441,7 +435,7 @@ export default function QuotesPage() {
                       icon={FileText}
                       title="No quotes found"
                       description="Get started by creating your first quote."
-                      hasSearch={!!effectiveSearchTerm || statusFilter !== 'all'}
+                      hasSearch={!!localSearchTerm || statusFilter !== 'all'}
                     />
                   </td>
                 </tr>
@@ -586,7 +580,7 @@ export default function QuotesPage() {
                     name="status"
                     value={formData.status}
                     onChange={handleInputChange}
-                    className="form-input w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                    className="form-input w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
                   >
                     <option value="new-quote">New Quote</option>
                     <option value="quote-sent-to-customer">Quote Sent to Customer</option>

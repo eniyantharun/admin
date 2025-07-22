@@ -5,7 +5,6 @@ import { Search, Plus, Eye, Calendar, DollarSign, User, ShoppingCart, CreditCard
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { useApi } from '@/hooks/useApi';
-import { usePageSearch, useSearch } from '@/contexts/SearchContext';
 
 // Import helper components
 import { StatusBadge } from '@/components/helpers/StatusBadge';
@@ -13,7 +12,6 @@ import { DateDisplay } from '@/components/helpers/DateDisplay';
 import { EmptyState, LoadingState } from '@/components/helpers/EmptyLoadingStates';
 import { FormInput } from '@/components/helpers/FormInput';
 import { PaginationControls } from '@/components/helpers/PaginationControls';
-import { SearchStatusIndicator } from '@/components/helpers/SearchStatusIndicator';
 
 interface Order {
   id: number;
@@ -234,55 +232,6 @@ export default function OrdersPage() {
 
   const { get, post, put, loading } = useApi();
   const submitApi = useApi();
-  
-  const { searchQuery, setSearchResults } = useSearch();
-
-  const handleGlobalSearch = useCallback(async (query: string) => {
-    try {
-      const filteredOrders = mockOrders.filter((order: Order) =>
-        order.orderNumber.toLowerCase().includes(query.toLowerCase()) ||
-        order.customer.toLowerCase().includes(query.toLowerCase()) ||
-        order.customerEmail.toLowerCase().includes(query.toLowerCase())
-      );
-      
-      const searchResults = filteredOrders.map((order: Order) => ({
-        id: order.id.toString(),
-        title: order.orderNumber,
-        subtitle: `${order.customer} - $${order.customerTotal.toFixed(2)}`,
-        description: `${order.status} • ${order.itemCount || 0} items`,
-        type: 'order',
-        data: order
-      }));
-      
-      setSearchResults(searchResults);
-    } catch (error) {
-      console.error('Error searching orders:', error);
-      setSearchResults([]);
-    }
-  }, [setSearchResults]);
-
-  usePageSearch({
-    placeholder: 'Search orders by number, customer, or email...',
-    enabled: true,
-    searchFunction: handleGlobalSearch,
-    filters: [
-      {
-        key: 'status',
-        label: 'Status',
-        type: 'select',
-        options: [
-          { value: 'all', label: 'All Orders' },
-          { value: 'new', label: 'New Orders' },
-          { value: 'in-production', label: 'In Production' },
-          { value: 'shipped', label: 'Shipped' },
-          { value: 'delivered', label: 'Delivered' },
-          { value: 'cancelled', label: 'Cancelled' }
-        ]
-      }
-    ]
-  });
-
-  const effectiveSearchTerm = searchQuery || localSearchTerm;
 
   const fetchOrders = useCallback(async () => {
     if (!isInitialLoad && loading) return;
@@ -290,11 +239,11 @@ export default function OrdersPage() {
     try {
       let filteredOrders = [...mockOrders];
       
-      if (effectiveSearchTerm) {
+      if (localSearchTerm) {
         filteredOrders = filteredOrders.filter((order: Order) =>
-          order.orderNumber.toLowerCase().includes(effectiveSearchTerm.toLowerCase()) ||
-          order.customer.toLowerCase().includes(effectiveSearchTerm.toLowerCase()) ||
-          order.customerEmail.toLowerCase().includes(effectiveSearchTerm.toLowerCase())
+          order.orderNumber.toLowerCase().includes(localSearchTerm.toLowerCase()) ||
+          order.customer.toLowerCase().includes(localSearchTerm.toLowerCase()) ||
+          order.customerEmail.toLowerCase().includes(localSearchTerm.toLowerCase())
         );
       }
 
@@ -307,12 +256,14 @@ export default function OrdersPage() {
       
       setOrders(paginatedOrders);
       setTotalCount(filteredOrders.length);
-    } catch (error) {
-      console.error('Error fetching orders:', error);
+    } catch (error: any) {
+      if (error?.name !== 'CanceledError' && error?.code !== 'ERR_CANCELED') {
+        console.error('Error fetching orders:', error);
+      }
     } finally {
       setIsInitialLoad(false);
     }
-  }, [effectiveSearchTerm, statusFilter, currentPage, rowsPerPage, loading, isInitialLoad]);
+  }, [localSearchTerm, statusFilter, currentPage, rowsPerPage, loading, isInitialLoad]);
 
   useEffect(() => {
     fetchOrders();
@@ -322,7 +273,7 @@ export default function OrdersPage() {
     if (currentPage !== 1) {
       setCurrentPage(1);
     }
-  }, [effectiveSearchTerm, statusFilter]);
+  }, [localSearchTerm, statusFilter]);
 
   const totalPages = Math.ceil(totalCount / rowsPerPage);
   const startIndex = (currentPage - 1) * rowsPerPage;
@@ -353,8 +304,10 @@ export default function OrdersPage() {
 
       await fetchOrders();
       closeModal();
-    } catch (error) {
-      console.error('Error saving order:', error);
+    } catch (error: any) {
+      if (error?.name !== 'CanceledError' && error?.code !== 'ERR_CANCELED') {
+        console.error('Error saving order:', error);
+      }
     }
   };
 
@@ -412,8 +365,33 @@ export default function OrdersPage() {
     }
   };
 
+  const handleLocalSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setLocalSearchTerm(e.target.value);
+  };
+
+  const clearLocalSearch = () => {
+    setLocalSearchTerm('');
+  };
+
   return (
-    <div className="orders-page space-y-4">
+    <div className="orders-page space-y-6">
+      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Orders</h1>
+          <p className="text-gray-600">Manage your order pipeline</p>
+        </div>
+        
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={openNewOrderModal}
+            icon={Plus}
+            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg"
+          >
+            Add Order
+          </Button>
+        </div>
+      </div>
+
       <Card className="overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -421,7 +399,28 @@ export default function OrdersPage() {
               Orders ({totalCount.toLocaleString()})
             </h3>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
-              {searchQuery && <SearchStatusIndicator query={searchQuery} />}
+              {/* Local search bar */}
+              <div className="relative w-full sm:w-auto">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Search className="w-4 h-4 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search orders..."
+                  value={localSearchTerm}
+                  onChange={handleLocalSearchChange}
+                  className="w-full sm:w-64 pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                />
+                {localSearchTerm && (
+                  <button
+                    onClick={clearLocalSearch}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  >
+                    <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+                  </button>
+                )}
+              </div>
+              
               <div className="flex items-center gap-2">
                 <select
                   value={statusFilter}
@@ -435,13 +434,6 @@ export default function OrdersPage() {
                   <option value="delivered">Delivered</option>
                   <option value="cancelled">Cancelled</option>
                 </select>
-                <Button
-                  onClick={openNewOrderModal}
-                  icon={Plus}
-                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-                >
-                  New Order
-                </Button>
               </div>
             </div>
           </div>
@@ -475,7 +467,7 @@ export default function OrdersPage() {
                       icon={ShoppingCart}
                       title="No orders found"
                       description="Get started by creating your first order."
-                      hasSearch={!!effectiveSearchTerm || statusFilter !== 'all'}
+                      hasSearch={!!localSearchTerm || statusFilter !== 'all'}
                     />
                   </td>
                 </tr>

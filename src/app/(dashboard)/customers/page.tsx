@@ -1,11 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { Search, Plus, Edit2, Phone, Mail, Building, X, User, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { useApi } from '@/hooks/useApi';
-import { usePageSearch, useSearch } from '@/contexts/SearchContext';
 
 // Import helper components
 import { EntityAvatar } from '@/components/helpers/EntityAvatar';
@@ -13,7 +12,6 @@ import { DateDisplay } from '@/components/helpers/DateDisplay';
 import { EmptyState, LoadingState } from '@/components/helpers/EmptyLoadingStates';
 import { FormInput } from '@/components/helpers/FormInput';
 import { PaginationControls } from '@/components/helpers/PaginationControls';
-import { SearchStatusIndicator } from '@/components/helpers/SearchStatusIndicator';
 
 interface Customer {
   id: number;
@@ -64,6 +62,22 @@ interface ApiCustomer {
   createdAt: string;
 }
 
+// Memoized ContactInfo component
+const ContactInfo = memo<{ customer: Customer }>(({ customer }) => (
+  <>
+    <div className="text-sm text-gray-900 flex items-center gap-1">
+      <Mail className="w-3 h-3 text-gray-400" />
+      <span className="truncate max-w-xs">{customer.email}</span>
+    </div>
+    <div className="text-xs text-gray-500 flex items-center gap-1 mt-1">
+      <Phone className="w-3 h-3 text-gray-400" />
+      <span>{customer.phone || 'No phone'}</span>
+    </div>
+  </>
+));
+
+ContactInfo.displayName = 'ContactInfo';
+
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -105,8 +119,6 @@ export default function CustomersPage() {
 
   const { get, post, put, loading } = useApi();
   const submitApi = useApi();
-  
-  const { searchQuery, setSearchResults } = useSearch();
 
   const transformApiCustomer = useCallback((apiCustomer: ApiCustomer): Customer => {
     return {
@@ -120,79 +132,32 @@ export default function CustomersPage() {
     };
   }, []);
 
-  const handleGlobalSearch = useCallback(async (query: string) => {
-    try {
-      const queryParams = new URLSearchParams({
-        website: 'PromotionalProductInc',
-        search: query,
-        count: '10',
-        index: '0'
-      });
-
-      const response = await get(`/Admin/CustomerEditor/GetCustomersList?${queryParams}`);
-      const transformedCustomers = response.customers.map(transformApiCustomer);
-      
-      const searchResults = transformedCustomers.map((customer: Customer) => ({
-        id: customer.id,
-        title: `${customer.firstName} ${customer.lastName}`,
-        subtitle: customer.email,
-        description: customer.companyName || 'No company',
-        type: 'customer',
-        data: customer
-      }));
-      
-      setSearchResults(searchResults);
-    } catch (error) {
-      console.error('Error searching customers:', error);
-      setSearchResults([]);
-    }
-  }, [get, setSearchResults, transformApiCustomer]);
-
-  // Memoized search configuration
-  const searchConfig = useMemo(() => ({
-    placeholder: 'Search customers by name, email, or company...',
-    enabled: true,
-    searchFunction: handleGlobalSearch,
-    filters: [
-      {
-        key: 'company',
-        label: 'Company',
-        type: 'select' as const,
-        options: [
-          { value: '', label: 'All Companies' },
-          { value: 'with-company', label: 'With Company' },
-          { value: 'without-company', label: 'Without Company' }
-        ]
-      }
-    ]
-  }), [handleGlobalSearch]);
-
-  usePageSearch(searchConfig);
-
-  const effectiveSearchTerm = searchQuery || localSearchTerm;
-
   const fetchCustomers = useCallback(async () => {
     if (!isInitialLoad && loading) return;
 
     try {
       const queryParams = new URLSearchParams({
         website: 'PromotionalProductInc',
-        search: effectiveSearchTerm,
+        search: localSearchTerm,
         count: rowsPerPage.toString(),
         index: ((currentPage - 1) * rowsPerPage).toString()
       });
 
       const response = await get(`/Admin/CustomerEditor/GetCustomersList?${queryParams}`);
+      if (!response?.customers) return;
+      
       const transformedCustomers = response.customers.map(transformApiCustomer);
       
       setCustomers(transformedCustomers);
       setTotalCount(response.count);
-    } catch (error) {
-      console.error('Error fetching customers:', error);
+    } catch (error: any) {
+      if (error?.name !== 'CanceledError' && error?.code !== 'ERR_CANCELED') {
+        console.error('Error fetching customers:', error);
+      }
     } finally {
       setIsInitialLoad(false);
     }
-  }, [effectiveSearchTerm, currentPage, rowsPerPage, get, transformApiCustomer, isInitialLoad, loading]);
+  }, [localSearchTerm, currentPage, rowsPerPage, get, transformApiCustomer, isInitialLoad, loading]);
 
   useEffect(() => {
     fetchCustomers();
@@ -202,13 +167,7 @@ export default function CustomersPage() {
     if (currentPage !== 1) {
       setCurrentPage(1);
     }
-  }, [effectiveSearchTerm]);
-
-  useEffect(() => {
-    if (searchQuery && searchQuery !== localSearchTerm) {
-      setLocalSearchTerm(searchQuery);
-    }
-  }, [searchQuery, localSearchTerm]);
+  }, [localSearchTerm]);
 
   const totalPages = Math.ceil(totalCount / rowsPerPage);
   const startIndex = (currentPage - 1) * rowsPerPage;
@@ -260,8 +219,10 @@ export default function CustomersPage() {
 
       await fetchCustomers();
       closeModal();
-    } catch (error) {
-      console.error('Error saving customer:', error);
+    } catch (error: any) {
+      if (error?.name !== 'CanceledError' && error?.code !== 'ERR_CANCELED') {
+        console.error('Error saving customer:', error);
+      }
     }
   };
 
@@ -346,9 +307,11 @@ export default function CustomersPage() {
         });
         alert(`Reset password email sent to ${selectedCustomer.email}`);
         addAutoComment(`Sent reset password email to ${selectedCustomer.email}`);
-      } catch (error) {
-        console.error('Error sending reset password email:', error);
-        alert('Failed to send reset password email');
+      } catch (error: any) {
+        if (error?.name !== 'CanceledError' && error?.code !== 'ERR_CANCELED') {
+          console.error('Error sending reset password email:', error);
+          alert('Failed to send reset password email');
+        }
       }
     }
   };
@@ -362,9 +325,11 @@ export default function CustomersPage() {
         });
         alert(`New account email sent to ${selectedCustomer.email}`);
         addAutoComment(`Sent new account email to ${selectedCustomer.email}`);
-      } catch (error) {
-        console.error('Error sending new account email:', error);
-        alert('Failed to send new account email');
+      } catch (error: any) {
+        if (error?.name !== 'CanceledError' && error?.code !== 'ERR_CANCELED') {
+          console.error('Error sending new account email:', error);
+          alert('Failed to send new account email');
+        }
       }
     }
   };
@@ -383,39 +348,60 @@ export default function CustomersPage() {
     setNewAddress(prev => ({ ...prev, [name]: value }));
   };
 
-  // Memoized ContactInfo component
-  const ContactInfo = React.memo(({ customer }: { customer: Customer }) => (
-    <>
-      <div className="text-sm text-gray-900 flex items-center gap-1">
-        <Mail className="w-3 h-3 text-gray-400" />
-        <span className="truncate max-w-xs">{customer.email}</span>
-      </div>
-      <div className="text-xs text-gray-500 flex items-center gap-1 mt-1">
-        <Phone className="w-3 h-3 text-gray-400" />
-        <span>{customer.phone || 'No phone'}</span>
-      </div>
-    </>
-  ));
+  const handleLocalSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setLocalSearchTerm(e.target.value);
+  };
 
-  ContactInfo.displayName = 'ContactInfo';
+  const clearLocalSearch = () => {
+    setLocalSearchTerm('');
+  };
 
   return (
-    <div className="customers-page space-y-4">
+    <div className="customers-page space-y-6">
+      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Customers</h1>
+          <p className="text-gray-600">Manage your customer database</p>
+        </div>
+        
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={openNewCustomerModal}
+            icon={Plus}
+            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg"
+          >
+            Add Customer
+          </Button>
+        </div>
+      </div>
+
       <Card className="overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <h3 className="text-lg font-semibold text-gray-900">
               Customer List ({totalCount.toLocaleString()})
             </h3>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
-              {searchQuery && <SearchStatusIndicator query={searchQuery} />}
-              <Button
-                onClick={openNewCustomerModal}
-                icon={Plus}
-                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-              >
-                New Customer
-              </Button>
+            
+            {/* Local search bar */}
+            <div className="relative w-full sm:w-auto">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="w-4 h-4 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                placeholder="Search customers..."
+                value={localSearchTerm}
+                onChange={handleLocalSearchChange}
+                className="w-full sm:w-64 pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              />
+              {localSearchTerm && (
+                <button
+                  onClick={clearLocalSearch}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                >
+                  <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -444,7 +430,7 @@ export default function CustomersPage() {
                       icon={User}
                       title="No customers found"
                       description="Get started by adding your first customer."
-                      hasSearch={!!effectiveSearchTerm}
+                      hasSearch={!!localSearchTerm}
                     />
                   </td>
                 </tr>

@@ -4,7 +4,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/hooks/useAuth';
-import { useSearch } from '@/contexts/SearchContext';
 import { 
   User, 
   LogOut, 
@@ -15,25 +14,16 @@ import {
   Bell,
   Settings,
   ChevronDown,
-  X,
-  Loader2
+  X
 } from 'lucide-react';
 
 export const Header: React.FC = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
+  const [searchValue, setSearchValue] = useState('');
   const { user, logout } = useAuth();
   const router = useRouter();
   const searchInputRef = useRef<HTMLInputElement>(null);
-  
-  const {
-    searchQuery,
-    setSearchQuery,
-    searchConfig,
-    clearSearch,
-    isSearching,
-    searchResults,
-  } = useSearch();
 
   const handleLogout = async () => {
     await logout();
@@ -49,24 +39,18 @@ export const Header: React.FC = () => {
   };
 
   const handleSearchBlur = () => {
-    // Delay blur to allow for result clicks
+    // Delay blur to allow for potential interactions
     setTimeout(() => setSearchFocused(false), 200);
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-  const value = e.target.value;
-  setSearchQuery(value);
-};
-
-  const handleSearchClear = () => {
-    clearSearch();
-    searchInputRef.current?.focus();
+    setSearchValue(e.target.value);
+    // No actual search functionality - purely visual
   };
 
-  const handleSearchResultClick = (result: any) => {
-    // Handle navigation to search result
-    console.log('Navigate to result:', result);
-    setSearchFocused(false);
+  const handleSearchClear = () => {
+    setSearchValue('');
+    searchInputRef.current?.focus();
   };
 
   // Close dropdown when clicking outside
@@ -84,11 +68,31 @@ export const Header: React.FC = () => {
     }
   }, [dropdownOpen]);
 
+  // Keyboard shortcuts for visual feedback only
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+      }
+      
+      if (event.key === 'Escape') {
+        setSearchValue('');
+        setSearchFocused(false);
+        searchInputRef.current?.blur();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown, { passive: false });
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   return (
     <header className="dashboard-header bg-gradient-to-r from-white via-gray-50 to-blue-50 shadow-lg border-b border-gray-200/50 backdrop-blur-sm w-full relative z-30">
       <div className="dashboard-header-content flex items-center h-16 px-4 sm:px-6 lg:px-8 w-full max-w-none mx-0">
         
-        {/* Global Search */}
+        {/* Visual-Only Search Bar */}
         <div className="dashboard-header-search flex-1 max-w-none sm:max-w-2xl">
           <div className="relative w-full">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -96,25 +100,20 @@ export const Header: React.FC = () => {
             </div>
             
             <input
-  ref={searchInputRef}
-  type="text"
-  placeholder={searchConfig.enabled ? searchConfig.placeholder : "Search (navigate to a page to enable)"}
-  value={searchQuery}
-  onChange={handleSearchChange}
-  onFocus={handleSearchFocus}
-  onBlur={handleSearchBlur}
-  className="dashboard-header-search-input w-full pl-9 sm:pl-10 pr-16 py-2.5 sm:py-3 border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-200 placeholder-gray-500"
-/>
+              ref={searchInputRef}
+              type="text"
+              placeholder="Search (visual placeholder - no functionality)"
+              value={searchValue}
+              onChange={handleSearchChange}
+              onFocus={handleSearchFocus}
+              onBlur={handleSearchBlur}
+              className="dashboard-header-search-input w-full pl-9 sm:pl-10 pr-16 py-2.5 sm:py-3 border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-200 placeholder-gray-500"
+            />
             
             {/* Search Controls */}
             <div className="absolute inset-y-0 right-0 pr-3 flex items-center space-x-2">
-              {/* Loading Spinner */}
-              {isSearching && (
-                <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
-              )}
-              
               {/* Clear Search */}
-              {searchQuery && !isSearching && (
+              {searchValue && (
                 <button
                   onClick={handleSearchClear}
                   className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
@@ -130,52 +129,14 @@ export const Header: React.FC = () => {
               </kbd>
             </div>
 
-            {/* Search Results Dropdown */}
-            {searchFocused && searchConfig.enabled && (searchQuery || searchResults.length > 0) && (
+            {/* Visual Search Results Dropdown (Shows only when focused with content) */}
+            {searchFocused && searchValue && (
               <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-200 max-h-96 overflow-y-auto z-50">
-                {isSearching ? (
-                  <div className="p-4 text-center">
-                    <Loader2 className="w-6 h-6 mx-auto text-blue-500 animate-spin mb-2" />
-                    <p className="text-sm text-gray-500">Searching...</p>
-                  </div>
-                ) : searchResults.length > 0 ? (
-                  <div className="py-2">
-                    <div className="px-4 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
-                      Search Results ({searchResults.length})
-                    </div>
-                    {searchResults.map((result, index) => (
-                      <button
-                        key={index}
-                        onClick={() => handleSearchResultClick(result)}
-                        className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
-                      >
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                            <User className="w-4 h-4 text-blue-600" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900 truncate">
-                              {result.title || result.name}
-                            </p>
-                            <p className="text-xs text-gray-500 truncate">
-                              {result.subtitle || result.description}
-                            </p>
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                ) : searchQuery ? (
-                  <div className="p-4 text-center">
-                    <Search className="w-6 h-6 mx-auto text-gray-400 mb-2" />
-                    <p className="text-sm text-gray-500">No results found for "{searchQuery}"</p>
-                  </div>
-                ) : (
-                  <div className="p-4 text-center">
-                    <Search className="w-6 h-6 mx-auto text-gray-400 mb-2" />
-                    <p className="text-sm text-gray-500">Start typing to search...</p>
-                  </div>
-                )}
+                <div className="p-4 text-center">
+                  <Search className="w-6 h-6 mx-auto text-gray-400 mb-2" />
+                  <p className="text-sm text-gray-500">Search functionality coming soon...</p>
+                  <p className="text-xs text-gray-400 mt-1">This is a visual placeholder</p>
+                </div>
               </div>
             )}
           </div>

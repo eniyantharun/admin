@@ -5,7 +5,6 @@ import { Search, Plus, Edit2, Eye, X, Award, Building, ExternalLink, Calendar, P
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { useApi } from '@/hooks/useApi';
-import { usePageSearch, useSearch } from '@/contexts/SearchContext';
 
 // Import helper components
 import { StatusBadge } from '@/components/helpers/StatusBadge';
@@ -13,7 +12,6 @@ import { DateDisplay } from '@/components/helpers/DateDisplay';
 import { EmptyState, LoadingState } from '@/components/helpers/EmptyLoadingStates';
 import { FormInput } from '@/components/helpers/FormInput';
 import { PaginationControls } from '@/components/helpers/PaginationControls';
-import { SearchStatusIndicator } from '@/components/helpers/SearchStatusIndicator';
 
 interface Brand {
   id: number;
@@ -127,9 +125,6 @@ const mockBrands: Brand[] =[
   }
 ];
 
-const brandCache = new Map();
-const CACHE_DURATION = 5 * 60 * 1000;
-
 export default function BrandsPage() {
   const [brands, setBrands] = useState<Brand[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -152,39 +147,6 @@ export default function BrandsPage() {
 
   const { get, post, put, loading } = useApi();
   const submitApi = useApi();
-  
-  const { searchQuery, setSearchResults } = useSearch();
-
-  const handleGlobalSearch = useCallback(async (query: string) => {
-    try {
-      const filteredBrands = mockBrands.filter((brand: Brand) =>
-        brand.name.toLowerCase().includes(query.toLowerCase()) ||
-        (brand.description && brand.description.toLowerCase().includes(query.toLowerCase()))
-      );
-      
-      const searchResults = filteredBrands.map((brand: Brand) => ({
-        id: brand.id.toString(),
-        title: brand.name,
-        subtitle: brand.description || 'No description',
-        description: `${brand.productCount} products • ${brand.enabled ? 'Enabled' : 'Disabled'}`,
-        type: 'brand',
-        data: brand
-      }));
-      
-      setSearchResults(searchResults);
-    } catch (error) {
-      console.error('Error searching brands:', error);
-      setSearchResults([]);
-    }
-  }, [setSearchResults]);
-
-  usePageSearch({
-    placeholder: 'Search brands by name or description...',
-    enabled: true,
-    searchFunction: handleGlobalSearch
-  });
-
-  const effectiveSearchTerm = searchQuery || localSearchTerm;
 
   const fetchBrands = useCallback(async () => {
     if (!isInitialLoad && loading) return;
@@ -192,10 +154,10 @@ export default function BrandsPage() {
     try {
       let filteredBrands = [...mockBrands];
       
-      if (effectiveSearchTerm) {
+      if (localSearchTerm) {
         filteredBrands = filteredBrands.filter((brand: Brand) =>
-          brand.name.toLowerCase().includes(effectiveSearchTerm.toLowerCase()) ||
-          (brand.description && brand.description.toLowerCase().includes(effectiveSearchTerm.toLowerCase()))
+          brand.name.toLowerCase().includes(localSearchTerm.toLowerCase()) ||
+          (brand.description && brand.description.toLowerCase().includes(localSearchTerm.toLowerCase()))
         );
       }
       
@@ -204,12 +166,14 @@ export default function BrandsPage() {
       
       setBrands(paginatedBrands);
       setTotalCount(filteredBrands.length);
-    } catch (error) {
-      console.error('Error fetching brands:', error);
+    } catch (error: any) {
+      if (error?.name !== 'CanceledError' && error?.code !== 'ERR_CANCELED') {
+        console.error('Error fetching brands:', error);
+      }
     } finally {
       setIsInitialLoad(false);
     }
-  }, [effectiveSearchTerm, currentPage, rowsPerPage, loading, isInitialLoad]);
+  }, [localSearchTerm, currentPage, rowsPerPage, loading, isInitialLoad]);
 
   useEffect(() => {
     fetchBrands();
@@ -219,7 +183,7 @@ export default function BrandsPage() {
     if (currentPage !== 1) {
       setCurrentPage(1);
     }
-  }, [effectiveSearchTerm]);
+  }, [localSearchTerm]);
 
   const totalPages = Math.ceil(totalCount / rowsPerPage);
   const startIndex = (currentPage - 1) * rowsPerPage;
@@ -251,8 +215,10 @@ export default function BrandsPage() {
 
       await fetchBrands();
       closeModal();
-    } catch (error) {
-      console.error('Error saving brand:', error);
+    } catch (error: any) {
+      if (error?.name !== 'CanceledError' && error?.code !== 'ERR_CANCELED') {
+        console.error('Error saving brand:', error);
+      }
     }
   };
 
@@ -310,6 +276,14 @@ export default function BrandsPage() {
     if (formErrors[name as keyof BrandFormData]) {
       setFormErrors(prev => ({ ...prev, [name]: undefined }));
     }
+  };
+
+  const handleLocalSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setLocalSearchTerm(e.target.value);
+  };
+
+  const clearLocalSearch = () => {
+    setLocalSearchTerm('');
   };
 
   const BrandCard = ({ brand }: { brand: Brand }) => {
@@ -487,15 +461,14 @@ export default function BrandsPage() {
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Brands</h1>
-         
+          <p className="text-gray-600">Manage your brand portfolio</p>
         </div>
         
         <div className="flex items-center gap-3">
-          {searchQuery && <SearchStatusIndicator query={searchQuery} />}
           <Button
             onClick={openNewBrandModal}
             icon={Plus}
-            className="brands-add-button shadow-lg"
+            className="bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 shadow-lg"
           >
             Add Brand
           </Button>
@@ -508,6 +481,28 @@ export default function BrandsPage() {
             <h3 className="text-lg font-semibold text-gray-900">
               {totalCount} {totalCount === 1 ? 'Brand' : 'Brands'}
             </h3>
+            
+            {/* Local search bar */}
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="w-4 h-4 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                placeholder="Search brands..."
+                value={localSearchTerm}
+                onChange={handleLocalSearchChange}
+                className="w-64 pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
+              />
+              {localSearchTerm && (
+                <button
+                  onClick={clearLocalSearch}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                >
+                  <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+                </button>
+              )}
+            </div>
           </div>
           
           <div className="flex items-center gap-2">
@@ -516,7 +511,7 @@ export default function BrandsPage() {
               <button
                 onClick={() => setViewMode('grid')}
                 className={`px-3 py-1 text-sm rounded transition-colors ${
-                  viewMode === 'grid' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-600 hover:text-gray-900'
+                  viewMode === 'grid' ? 'bg-white shadow-sm text-orange-600' : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
                 Grid
@@ -524,7 +519,7 @@ export default function BrandsPage() {
               <button
                 onClick={() => setViewMode('list')}
                 className={`px-3 py-1 text-sm rounded transition-colors ${
-                  viewMode === 'list' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-600 hover:text-gray-900'
+                  viewMode === 'list' ? 'bg-white shadow-sm text-orange-600' : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
                 List
@@ -542,11 +537,11 @@ export default function BrandsPage() {
             <EmptyState
               icon={Award}
               title="No brands found"
-              description={effectiveSearchTerm ? 
+              description={localSearchTerm ? 
                 "Try adjusting your search terms to find brands." : 
                 "Get started by adding your first brand to showcase your product collections."
               }
-              hasSearch={!!effectiveSearchTerm}
+              hasSearch={!!localSearchTerm}
             />
           </div>
         ) : (
