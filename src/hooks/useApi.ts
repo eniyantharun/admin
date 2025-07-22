@@ -5,8 +5,8 @@ interface UseApiOptions {
   onSuccess?: (data: any) => void;
   onError?: (error: any) => void;
   cancelOnUnmount?: boolean;
-  dedupe?: boolean; // Deduplicate identical requests
-  cacheDuration?: number; // Cache duration in milliseconds
+  dedupe?: boolean;
+  cacheDuration?: number;
 }
 
 interface ApiResponse<T> {
@@ -57,7 +57,7 @@ export const useApi = (options: UseApiOptions = {}) => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
-      // Cancel any ongoing request when component unmounts
+      // Only cancel if cancelOnUnmount is true AND component is unmounting
       if (cancelOnUnmount && abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
@@ -88,14 +88,17 @@ export const useApi = (options: UseApiOptions = {}) => {
   const handleError = useCallback((err: any, requestOptions?: UseApiOptions) => {
     if (!isMounted()) return;
 
-    // Don't set error if request was aborted
-    if (err.name === 'AbortError') return;
+    // Don't set error if request was aborted and cancelOnUnmount is true
+    if (err.name === 'AbortError' || (err.name === 'CanceledError' && cancelOnUnmount)) {
+      console.log('Request was canceled/aborted - this is expected behavior');
+      return;
+    }
 
     const errorMessage = err.response?.data?.message || err.message || 'An error occurred';
     setError(errorMessage);
     options?.onError?.(err);
     requestOptions?.onError?.(err);
-  }, [isMounted, options]);
+  }, [isMounted, options, cancelOnUnmount]);
 
   // Generic request handler with caching and deduplication
   const makeRequest = useCallback(async <T = any>(
@@ -128,32 +131,35 @@ export const useApi = (options: UseApiOptions = {}) => {
       }
     }
 
-    // Cancel previous request if exists
-    if (abortControllerRef.current) {
+    // Only cancel previous request if cancelOnUnmount is true
+    if (cancelOnUnmount && abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
 
-    // Create new abort controller
-    abortControllerRef.current = new AbortController();
+    // Create new abort controller only if cancelOnUnmount is true
+    if (cancelOnUnmount) {
+      abortControllerRef.current = new AbortController();
+    }
     
     setLoading(true);
     setError(null);
 
     try {
       let requestPromise: Promise<T>;
+      const config = cancelOnUnmount ? { signal: abortControllerRef.current?.signal } : {};
 
       switch (method) {
         case 'get':
-          requestPromise = api.get<T>(url, { signal: abortControllerRef.current.signal });
+          requestPromise = api.get<T>(url, config);
           break;
         case 'post':
-          requestPromise = api.post<T>(url, data, { signal: abortControllerRef.current.signal });
+          requestPromise = api.post<T>(url, data, config);
           break;
         case 'put':
-          requestPromise = api.put<T>(url, data, { signal: abortControllerRef.current.signal });
+          requestPromise = api.put<T>(url, data, config);
           break;
         case 'delete':
-          requestPromise = api.delete<T>(url, { signal: abortControllerRef.current.signal });
+          requestPromise = api.delete<T>(url, config);
           break;
         default:
           throw new Error(`Unsupported method: ${method}`);
@@ -191,9 +197,11 @@ export const useApi = (options: UseApiOptions = {}) => {
       if (isMounted()) {
         setLoading(false);
       }
-      abortControllerRef.current = null;
+      if (cancelOnUnmount) {
+        abortControllerRef.current = null;
+      }
     }
-  }, [isMounted, handleResponse, handleError, dedupe, cacheDuration]);
+  }, [isMounted, handleResponse, handleError, dedupe, cacheDuration, cancelOnUnmount]);
 
   // Memoized API methods
   const get = useCallback(<T = any>(url: string, requestOptions?: UseApiOptions): Promise<T | null> => {
@@ -219,12 +227,12 @@ export const useApi = (options: UseApiOptions = {}) => {
 
   // Reset all states
   const reset = useCallback(() => {
-    if (abortControllerRef.current) {
+    if (cancelOnUnmount && abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
     setLoading(false);
     setError(null);
-  }, []);
+  }, [cancelOnUnmount]);
 
   // Cancel current request
   const cancel = useCallback(() => {

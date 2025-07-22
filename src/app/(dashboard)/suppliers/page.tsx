@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, memo } from 'react';
+import React, { useState, useEffect, useCallback, memo, useRef } from 'react';
 import { Search, Plus, Edit2, Phone, Mail, Globe, X, Building } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -95,21 +95,34 @@ export default function SuppliersPage() {
   });
   const [formErrors, setFormErrors] = useState<Partial<SupplierFormData>>({});
 
-  // Use the original useApi hook
-  const { get, post, put, loading } = useApi();
-  const submitApi = useApi();
+  // TECHNIQUE 1: Stable API instances using useRef (immediate fix)
+  // This prevents the API hook from being recreated on every render
+  const mainApiRef = useRef(useApi({ 
+    cancelOnUnmount: false,  // TECHNIQUE 2: Use improved useApi with cancellation control
+    dedupe: true,
+    cacheDuration: 60000 // 1 minute cache for list data
+  }));
+  
+  const submitApiRef = useRef(useApi({ 
+    cancelOnUnmount: false,  // Don't cancel form submissions
+    dedupe: false // Don't cache mutations
+  }));
+  
+  const mainApi = mainApiRef.current;
+  const submitApi = submitApiRef.current;
 
-  // Simplified fetch function that handles cancellation gracefully
+  // Optimized fetchSuppliers with proper dependency management
   const fetchSuppliers = useCallback(async () => {
-    if (!isInitialLoad && loading) return;
+    // Prevent multiple simultaneous requests
+    if (!isInitialLoad && mainApi.loading) return;
 
     try {
-      const response = await get(`/Admin/SupplierList/GetSuppliersList`);
+      const response = await mainApi.get(`/Admin/SupplierList/GetSuppliersList`);
       if (!response?.suppliers) return;
       
       let filteredSuppliers = response.suppliers;
       
-      // Simple local search filter
+      // Client-side filtering for better UX
       if (localSearchTerm) {
         filteredSuppliers = filteredSuppliers.filter((supplier: Supplier) =>
           supplier.companyName.toLowerCase().includes(localSearchTerm.toLowerCase()) ||
@@ -118,20 +131,21 @@ export default function SuppliersPage() {
         );
       }
       
+      // Client-side pagination
       const startIndex = (currentPage - 1) * rowsPerPage;
       const paginatedSuppliers = filteredSuppliers.slice(startIndex, startIndex + rowsPerPage);
       
       setSuppliers(paginatedSuppliers);
       setTotalCount(filteredSuppliers.length);
     } catch (error: any) {
-      // Only log non-cancellation errors
+      // Improved error handling - only log real errors
       if (error?.name !== 'CanceledError' && error?.code !== 'ERR_CANCELED') {
         console.error('Error fetching suppliers:', error);
       }
     } finally {
       setIsInitialLoad(false);
     }
-  }, [localSearchTerm, currentPage, rowsPerPage, get, loading, isInitialLoad]);
+  }, [localSearchTerm, currentPage, rowsPerPage, mainApi.get, isInitialLoad]);
 
   useEffect(() => {
     fetchSuppliers();
@@ -152,6 +166,9 @@ export default function SuppliersPage() {
     
     if (!formData.companyName.trim()) errors.companyName = 'Company name is required';
     if (!formData.webUrl.trim()) errors.webUrl = 'Website URL is required';
+    else if (!formData.webUrl.startsWith('http')) {
+      errors.webUrl = 'Website URL must start with http:// or https://';
+    }
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -169,16 +186,20 @@ export default function SuppliersPage() {
         await submitApi.post('/Admin/SupplierList/CreateSupplier', formData);
       }
 
+      // Refresh the list after successful mutation
       await fetchSuppliers();
+      
+      // Close modal and reset form
       closeModal();
     } catch (error: any) {
       if (error?.name !== 'CanceledError' && error?.code !== 'ERR_CANCELED') {
         console.error('Error saving supplier:', error);
       }
     }
-  }, [validateForm, isEditing, selectedSupplier, formData, submitApi, fetchSuppliers]);
+  }, [validateForm, isEditing, selectedSupplier, formData, submitApi.put, submitApi.post, fetchSuppliers]);
 
-  const openNewSupplierModal = () => {
+  // Memoized modal handlers to prevent unnecessary re-renders
+  const openNewSupplierModal = useCallback(() => {
     setFormData({
       companyName: '',
       webUrl: '',
@@ -191,9 +212,9 @@ export default function SuppliersPage() {
     setIsEditing(false);
     setSelectedSupplier(null);
     setIsModalOpen(true);
-  };
+  }, []);
 
-  const openEditSupplierModal = (supplier: Supplier) => {
+  const openEditSupplierModal = useCallback((supplier: Supplier) => {
     setFormData({
       companyName: supplier.companyName,
       webUrl: supplier.webUrl,
@@ -206,9 +227,9 @@ export default function SuppliersPage() {
     setIsEditing(true);
     setSelectedSupplier(supplier);
     setIsModalOpen(true);
-  };
+  }, []);
 
-  const closeModal = () => {
+  const closeModal = useCallback(() => {
     setIsModalOpen(false);
     setSelectedSupplier(null);
     setIsEditing(false);
@@ -221,27 +242,35 @@ export default function SuppliersPage() {
       exclusive: false
     });
     setFormErrors({});
-  };
+  }, []);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Optimized input handler
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
+    
     setFormData(prev => ({ 
       ...prev, 
       [name]: type === 'checkbox' ? checked : value 
     }));
     
+    // Clear field-specific errors on change
     if (formErrors[name as keyof SupplierFormData]) {
-      setFormErrors(prev => ({ ...prev, [name]: undefined }));
+      setFormErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[name as keyof SupplierFormData];
+        return newErrors;
+      });
     }
-  };
+  }, [formErrors]);
 
-  const handleLocalSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Search handlers
+  const handleLocalSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setLocalSearchTerm(e.target.value);
-  };
+  }, []);
 
-  const clearLocalSearch = () => {
+  const clearLocalSearch = useCallback(() => {
     setLocalSearchTerm('');
-  };
+  }, []);
 
   return (
     <div className="suppliers-page space-y-6">
@@ -269,7 +298,6 @@ export default function SuppliersPage() {
               Supplier List ({totalCount.toLocaleString()})
             </h3>
             
-            {/* Local search bar */}
             <div className="relative w-full sm:w-auto">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Search className="w-4 h-4 text-gray-400" />
@@ -306,7 +334,7 @@ export default function SuppliersPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {loading && isInitialLoad ? (
+              {mainApi.loading && isInitialLoad ? (
                 <tr>
                   <td colSpan={6} className="px-4 py-8">
                     <LoadingState message="Loading suppliers..." />
@@ -349,7 +377,7 @@ export default function SuppliersPage() {
                     <td className="px-4 py-2 whitespace-nowrap">
                       <ProductStats 
                         totalProducts={supplier.productCount}
-                        enabledProducts={supplier.visibilityStats.Enabled || 0}
+                        enabledProducts={supplier.visibilityStats?.Enabled || 0}
                       />
                     </td>
                     <td className="px-4 py-2 whitespace-nowrap">
@@ -375,7 +403,7 @@ export default function SuppliersPage() {
         </div>
       </Card>
 
-      {totalCount > 0 && !loading && (
+      {totalCount > 0 && !mainApi.loading && (
         <Card>
           <PaginationControls
             currentPage={currentPage}
@@ -393,7 +421,6 @@ export default function SuppliersPage() {
         </Card>
       )}
 
-      {/* Simplified Modal - Only renders when open */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center p-4 z-50 pt-20 overflow-y-auto">
           <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-[calc(100vh-5rem)] overflow-y-auto my-4">
