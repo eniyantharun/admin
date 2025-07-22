@@ -55,6 +55,7 @@ export default function SuppliersPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(20);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [formData, setFormData] = useState<SupplierFormData>({
     companyName: '',
     webUrl: '',
@@ -116,6 +117,8 @@ export default function SuppliersPage() {
   const effectiveSearchTerm = searchQuery || localSearchTerm;
 
   const fetchSuppliers = useCallback(async () => {
+    if (!isInitialLoad && loading) return;
+
     try {
       const response = await get(`/Admin/SupplierList/GetSuppliersList`);
       
@@ -136,8 +139,10 @@ export default function SuppliersPage() {
       setTotalCount(filteredSuppliers.length);
     } catch (error) {
       console.error('Error fetching suppliers:', error);
+    } finally {
+      setIsInitialLoad(false);
     }
-  }, [effectiveSearchTerm, currentPage, rowsPerPage, get]);
+  }, [effectiveSearchTerm, currentPage, rowsPerPage, get, loading, isInitialLoad]);
 
   useEffect(() => {
     fetchSuppliers();
@@ -306,7 +311,7 @@ export default function SuppliersPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {loading ? (
+              {loading && isInitialLoad ? (
                 <tr>
                   <td colSpan={6} className="px-4 py-8">
                     <LoadingState message="Loading suppliers..." />

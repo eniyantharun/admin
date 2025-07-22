@@ -1,11 +1,9 @@
 'use client';
 
-import React, { memo, useEffect } from 'react';
+import React, { memo } from 'react';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Header } from '@/components/layout/Header';
 import { Sidebar } from '@/components/layout/Sidebar';
-import { NavigationPerformanceMonitor } from '@/lib/routeOptimization';
-import { usePathname } from 'next/navigation';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -56,23 +54,6 @@ ContentWrapper.displayName = 'ContentWrapper';
 
 // Main dashboard layout component
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
-  const pathname = usePathname();
-
-  // Performance monitoring
-  useEffect(() => {
-    const endTiming = NavigationPerformanceMonitor.startTiming(pathname);
-    
-    // Mark the route as loaded after a short delay
-    const timeoutId = setTimeout(() => {
-      endTiming();
-    }, 100);
-
-    return () => {
-      clearTimeout(timeoutId);
-      endTiming();
-    };
-  }, [pathname]);
-
   return (
     <AuthGuard>
       <div className="dashboard-layout-container flex h-screen bg-gradient-to-br from-gray-50 via-blue-50/50 to-indigo-50 relative overflow-hidden">

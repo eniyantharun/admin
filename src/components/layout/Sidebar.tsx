@@ -1,13 +1,11 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAppSelector, useAppDispatch } from '@/hooks/redux';
 import { Button } from '@/components/ui/Button';
 import { setSidebarOpen, toggleSidebar } from '@/store/dashboardSlice';
-import { NavigationOptimizer } from '@/lib/routeOptimization';
-import { useApi } from '@/hooks/useApi';
 import {
   LayoutDashboard,
   Package,
@@ -26,29 +24,20 @@ import {
 } from 'lucide-react';
 
 const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, prefetch: true },
-  { name: 'Products', href: '/products', icon: Package, prefetch: true },
-  { name: 'Orders', href: '/orders', icon: ShoppingCart, prefetch: true },
-  { name: 'Quotes', href: '/quotes', icon: FileText, prefetch: false },
-  { name: 'Customers', href: '/customers', icon: User, prefetch: true },
-  { name: 'Suppliers', href: '/suppliers', icon: Users, prefetch: true },
-  { name: 'Brands', href: '/brands', icon: Award, prefetch: false },
-  { name: 'Searches', href: '/searches', icon: Search, prefetch: false },
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Products', href: '/products', icon: Package },
+  { name: 'Orders', href: '/orders', icon: ShoppingCart },
+  { name: 'Quotes', href: '/quotes', icon: FileText },
+  { name: 'Customers', href: '/customers', icon: User },
+  { name: 'Suppliers', href: '/suppliers', icon: Users },
+  { name: 'Brands', href: '/brands', icon: Award },
+  { name: 'Searches', href: '/searches', icon: Search },
 ];
 
 export const Sidebar: React.FC = () => {
   const pathname = usePathname();
   const { sidebarOpen } = useAppSelector((state) => state.dashboard);
   const dispatch = useAppDispatch();
-  const { get } = useApi({ cancelOnUnmount: false }); 
-
-  const prefetchFunctions = useMemo(() => ({
-    '/customers': () => get('/Admin/CustomerEditor/GetCustomersList?website=promotional_product_inc&search=&count=20&index=0'),
-    '/suppliers': () => get('/Admin/SupplierList/GetSuppliersList'),
-    '/orders': () => Promise.resolve([]), 
-    '/products': () => Promise.resolve([]),
-    '/dashboard': () => Promise.resolve([]),
-  }), [get]);
 
   const handleOverlayClick = () => {
     dispatch(setSidebarOpen(false));
@@ -56,19 +45,6 @@ export const Sidebar: React.FC = () => {
 
   const handleToggleSidebar = () => {
     dispatch(toggleSidebar());
-  };
-
-  // Generate hover handlers for prefetching
-  const getNavItemProps = (item: typeof navigation[0]) => {
-    if (!item.prefetch || !prefetchFunctions[item.href as keyof typeof prefetchFunctions]) {
-      return {};
-    }
-
-    return NavigationOptimizer.prefetchOnHover(
-      item.href,
-      prefetchFunctions[item.href as keyof typeof prefetchFunctions],
-      200 // 200ms delay
-    );
   };
 
   return (
@@ -91,22 +67,20 @@ export const Sidebar: React.FC = () => {
             {sidebarOpen ? (
               <>
                 <div className="dashboard-sidebar-logo-wrapper bg-white/10 backdrop-blur-sm p-2 rounded-xl border border-white/20 shadow-lg mr-3">
-                  {/* <Building2 className="dashboard-sidebar-logo w-6 h-6 text-orange-300" /> */}
                   <img
-                src="https://www.promotionalproductinc.com/_next/static/media/logo.509527f9.svg"
-                alt="Logo"
-                width={30}
-                height={30}
-                style={{ objectFit: 'contain' }}
-                loading="eager"
-                className="mr-2"
-              />
+                    src="https://www.promotionalproductinc.com/_next/static/media/logo.509527f9.svg"
+                    alt="Logo"
+                    width={30}
+                    height={30}
+                    style={{ objectFit: 'contain' }}
+                    loading="eager"
+                    className="mr-2"
+                  />
                 </div>
                 <div className="dashboard-sidebar-title-wrapper flex-1">
                   <h1 className="dashboard-sidebar-title text-lg font-bold text-white truncate">
                     {process.env.NEXT_PUBLIC_APP_NAME || 'PPI Admin'}
                   </h1>
-                  {/* <p className="dashboard-sidebar-subtitle text-xs text-orange-200">Portal</p> */}
                 </div>
                 <Button
                   onClick={handleToggleSidebar}
@@ -122,14 +96,14 @@ export const Sidebar: React.FC = () => {
               <div className="dashboard-sidebar-collapsed-header w-full flex justify-center relative">
                 <div className="dashboard-sidebar-logo-collapsed-wrapper bg-white/10 backdrop-blur-sm p-2 rounded-xl border border-white/20 shadow-lg">
                   <img
-                src="https://www.promotionalproductinc.com/_next/static/media/logo.509527f9.svg"
-                alt="Logo"
-                width={30}
-                height={30}
-                style={{ objectFit: 'contain' }}
-                loading="eager"
-                className="mr-2"
-              />
+                    src="https://www.promotionalproductinc.com/_next/static/media/logo.509527f9.svg"
+                    alt="Logo"
+                    width={30}
+                    height={30}
+                    style={{ objectFit: 'contain' }}
+                    loading="eager"
+                    className="mr-2"
+                  />
                 </div>
                 <Button
                   onClick={handleToggleSidebar}
@@ -152,7 +126,6 @@ export const Sidebar: React.FC = () => {
               {navigation.map((item) => {
                 const isActive = pathname === item.href;
                 const Icon = item.icon;
-                const navItemProps = getNavItemProps(item);
 
                 return (
                   <li key={item.name} className="dashboard-sidebar-nav-item">
@@ -164,7 +137,6 @@ export const Sidebar: React.FC = () => {
                           : 'dashboard-sidebar-link-inactive text-slate-300 hover:bg-white/10 hover:text-white hover:shadow-lg'
                       } ${!sidebarOpen ? 'justify-center' : ''}`}
                       title={!sidebarOpen ? item.name : undefined}
-                      {...navItemProps}
                     >
                       {/* Active indicator */}
                       {isActive && (

@@ -64,10 +64,6 @@ interface ApiCustomer {
   createdAt: string;
 }
 
-// Cache for API responses
-const customerCache = new Map();
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -126,14 +122,6 @@ export default function CustomersPage() {
 
   const handleGlobalSearch = useCallback(async (query: string) => {
     try {
-      const cacheKey = `search_${query}`;
-      const cached = customerCache.get(cacheKey);
-      
-      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-        setSearchResults(cached.data);
-        return;
-      }
-
       const queryParams = new URLSearchParams({
         website: 'PromotionalProductInc',
         search: query,
@@ -152,12 +140,6 @@ export default function CustomersPage() {
         type: 'customer',
         data: customer
       }));
-      
-      // Cache the results
-      customerCache.set(cacheKey, {
-        data: searchResults,
-        timestamp: Date.now()
-      });
       
       setSearchResults(searchResults);
     } catch (error) {
@@ -190,18 +172,9 @@ export default function CustomersPage() {
   const effectiveSearchTerm = searchQuery || localSearchTerm;
 
   const fetchCustomers = useCallback(async () => {
-    if (!isInitialLoad && loading) return; // Prevent concurrent requests
+    if (!isInitialLoad && loading) return;
 
     try {
-      const cacheKey = `customers_${effectiveSearchTerm}_${currentPage}_${rowsPerPage}`;
-      const cached = customerCache.get(cacheKey);
-      
-      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-        setCustomers(cached.customers);
-        setTotalCount(cached.count);
-        return;
-      }
-
       const queryParams = new URLSearchParams({
         website: 'PromotionalProductInc',
         search: effectiveSearchTerm,
@@ -211,13 +184,6 @@ export default function CustomersPage() {
 
       const response = await get(`/Admin/CustomerEditor/GetCustomersList?${queryParams}`);
       const transformedCustomers = response.customers.map(transformApiCustomer);
-      
-      // Cache the results
-      customerCache.set(cacheKey, {
-        customers: transformedCustomers,
-        count: response.count,
-        timestamp: Date.now()
-      });
       
       setCustomers(transformedCustomers);
       setTotalCount(response.count);
@@ -292,8 +258,6 @@ export default function CustomersPage() {
         });
       }
 
-      // Clear cache to force refresh
-      customerCache.clear();
       await fetchCustomers();
       closeModal();
     } catch (error) {
@@ -545,7 +509,7 @@ export default function CustomersPage() {
         </Card>
       )}
 
-      {/* Modal content remains the same but with loading optimizations */}
+      {/* Modal content with improved organization */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center p-4 z-50 pt-20 overflow-y-auto">
           <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl lg:max-w-4xl max-h-[calc(100vh-5rem)] overflow-y-auto my-4">
@@ -634,7 +598,7 @@ export default function CustomersPage() {
               </div>
             </form>
 
-            {/* Rest of the modal content remains the same */}
+            {/* Additional sections for editing mode */}
             {isEditing && selectedCustomer && (
               <div className="border-t border-gray-200">
                 <div className="p-4 sm:p-6 border-b border-gray-200 bg-gray-50">
@@ -799,7 +763,7 @@ export default function CustomersPage() {
                           >
                             Cancel
                           </Button>
-                          </div>
+                        </div>
                       </form>
                     </Card>
                   )}
