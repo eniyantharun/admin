@@ -49,10 +49,10 @@ export const Sidebar: React.FC = () => {
 
   return (
     <>
-      {/* Mobile Overlay */}
+      {/* Mobile Overlay - REMOVED BLUR */}
       {sidebarOpen && (
         <div
-          className="dashboard-sidebar-overlay fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden transition-all duration-300"
+          className="dashboard-sidebar-overlay fixed inset-0 bg-black/50 z-40 lg:hidden transition-all duration-300"
           onClick={handleOverlayClick}
         />
       )}
@@ -62,11 +62,11 @@ export const Sidebar: React.FC = () => {
         sidebarOpen ? 'translate-x-0 w-64' : '-translate-x-full w-64 lg:translate-x-0 lg:w-20'
       }`}>
         <div className="dashboard-sidebar-container flex flex-col h-full relative">
-          {/* Sidebar Header */}
-          <div className="dashboard-sidebar-header flex items-center h-16 px-4 border-b border-slate-700/50 bg-white/5 backdrop-blur-sm">
+          {/* Sidebar Header - REMOVED BLUR */}
+          <div className="dashboard-sidebar-header flex items-center h-16 px-4 border-b border-slate-700/50 bg-white/5">
             {sidebarOpen ? (
               <>
-                <div className="dashboard-sidebar-logo-wrapper bg-white/10 backdrop-blur-sm p-2 rounded-xl border border-white/20 shadow-lg mr-3">
+                <div className="dashboard-sidebar-logo-wrapper bg-white/10 p-2 rounded-xl border border-white/20 shadow-lg mr-3">
                   <img
                     src="https://www.promotionalproductinc.com/_next/static/media/logo.509527f9.svg"
                     alt="Logo"
@@ -88,13 +88,13 @@ export const Sidebar: React.FC = () => {
                   size="sm"
                   icon={ChevronLeft}
                   iconOnly
-                  className="dashboard-sidebar-collapse-btn ml-2 hidden lg:flex bg-white/10 backdrop-blur-sm border-white/20 text-white hover:bg-white/20 shadow-lg"
+                  className="dashboard-sidebar-collapse-btn ml-2 hidden lg:flex bg-white/10 border-white/20 text-white hover:bg-white/20 shadow-lg"
                   title="Collapse sidebar"
                 />
               </>
             ) : (
               <div className="dashboard-sidebar-collapsed-header w-full flex justify-center relative">
-                <div className="dashboard-sidebar-logo-collapsed-wrapper bg-white/10 backdrop-blur-sm p-2 rounded-xl border border-white/20 shadow-lg">
+                <div className="dashboard-sidebar-logo-collapsed-wrapper bg-white/10 p-2 rounded-xl border border-white/20 shadow-lg">
                   <img
                     src="https://www.promotionalproductinc.com/_next/static/media/logo.509527f9.svg"
                     alt="Logo"
@@ -169,9 +169,9 @@ export const Sidebar: React.FC = () => {
             </ul>
           </nav>
 
-          {/* Sidebar Footer */}
+          {/* Sidebar Footer - REMOVED BLUR */}
           {sidebarOpen && (
-            <div className="dashboard-sidebar-footer border-t border-slate-700/50 p-4 bg-white/5 backdrop-blur-sm">
+            <div className="dashboard-sidebar-footer border-t border-slate-700/50 p-4 bg-white/5">
               <div className="dashboard-sidebar-footer-content text-center">
                 <p className="dashboard-sidebar-footer-text text-xs text-slate-400">
                   © 2025 {process.env.NEXT_PUBLIC_COMPANY_NAME || 'PPI'}

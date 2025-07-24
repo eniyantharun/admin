@@ -45,7 +45,7 @@ const LoginPage: NextPage<LoginPageProps> = async ({ searchParams }) => {
               <div className="login-page-logo-wrapper flex items-center justify-center mb-3 lg:mb-6">
                 <a
                   href="https://www.promotionalproductinc.com"
-                  className="login-page-logo-link bg-white/15 backdrop-blur-sm p-3 lg:p-6 rounded-2xl border border-white/30 shadow-2xl hover:bg-white/20 transition-all duration-300"
+                  className="login-page-logo-link bg-white/15 p-3 lg:p-6 rounded-2xl border border-white/30 shadow-2xl hover:bg-white/20 transition-all duration-300"
                 >
                   <NextImage
                     src={ppi_logo}

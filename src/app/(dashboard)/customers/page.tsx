@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, memo, useRef } from 'react';
 import { Search, Plus, Edit2, Phone, Mail, Building, X, User, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -79,6 +79,7 @@ const ContactInfo = memo<{ customer: Customer }>(({ customer }) => (
 ContactInfo.displayName = 'ContactInfo';
 
 export default function CustomersPage() {
+  // State management
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [localSearchTerm, setLocalSearchTerm] = useState('');
@@ -88,6 +89,8 @@ export default function CustomersPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(20);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  
+  // Form state
   const [formData, setFormData] = useState<CustomerFormData>({
     firstName: '',
     lastName: '',
@@ -96,6 +99,8 @@ export default function CustomersPage() {
     companyName: ''
   });
   const [formErrors, setFormErrors] = useState<Partial<CustomerFormData>>({});
+  
+  // Modal-specific state
   const [newComment, setNewComment] = useState('');
   const [comments, setComments] = useState<Comment[]>([]);
   const [addresses, setAddresses] = useState<Address[]>([
@@ -117,9 +122,23 @@ export default function CustomersPage() {
     country: ''
   });
 
-  const { get, post, put, loading } = useApi();
-  const submitApi = useApi();
+  // Refs for stability
+  const mountedRef = useRef(true);
+  const fetchTimeoutRef = useRef<NodeJS.Timeout>();
 
+  // API hooks with stable configuration
+  const mainApi = useApi({ 
+    cancelOnUnmount: true,
+    dedupe: true,
+    cacheDuration: 60000 
+  });
+  
+  const submitApi = useApi({ 
+    cancelOnUnmount: false,
+    dedupe: false 
+  });
+
+  // Stable transform function
   const transformApiCustomer = useCallback((apiCustomer: ApiCustomer): Customer => {
     return {
       id: apiCustomer.idNum,
@@ -132,48 +151,90 @@ export default function CustomersPage() {
     };
   }, []);
 
+  // Optimized fetchCustomers with proper dependency management
   const fetchCustomers = useCallback(async () => {
-    if (!isInitialLoad && loading) return;
-
-    try {
-      const queryParams = new URLSearchParams({
-        website: 'PromotionalProductInc',
-        search: localSearchTerm,
-        count: rowsPerPage.toString(),
-        index: ((currentPage - 1) * rowsPerPage).toString()
-      });
-
-      const response = await get(`/Admin/CustomerEditor/GetCustomersList?${queryParams}`);
-      if (!response?.customers) return;
-      
-      const transformedCustomers = response.customers.map(transformApiCustomer);
-      
-      setCustomers(transformedCustomers);
-      setTotalCount(response.count);
-    } catch (error: any) {
-      if (error?.name !== 'CanceledError' && error?.code !== 'ERR_CANCELED') {
-        console.error('Error fetching customers:', error);
-      }
-    } finally {
-      setIsInitialLoad(false);
+    // Prevent fetch if component unmounted or already loading
+    if (!mountedRef.current || (!isInitialLoad && mainApi.loading)) {
+      return;
     }
-  }, [localSearchTerm, currentPage, rowsPerPage, get, transformApiCustomer, isInitialLoad, loading]);
 
+    // Clear any pending timeout
+    if (fetchTimeoutRef.current) {
+      clearTimeout(fetchTimeoutRef.current);
+    }
+
+    // Debounce rapid calls
+    fetchTimeoutRef.current = setTimeout(async () => {
+      if (!mountedRef.current) return;
+
+      try {
+        const queryParams = new URLSearchParams({
+          website: 'PromotionalProductInc',
+          search: localSearchTerm,
+          count: rowsPerPage.toString(),
+          index: ((currentPage - 1) * rowsPerPage).toString()
+        });
+
+        const response = await mainApi.get(`/Admin/CustomerEditor/GetCustomersList?${queryParams}`);
+        
+        if (!mountedRef.current || !response?.customers) return;
+        
+        const transformedCustomers = response.customers.map(transformApiCustomer);
+        
+        setCustomers(transformedCustomers);
+        setTotalCount(response.count);
+      } catch (error: any) {
+        if (error?.name !== 'CanceledError' && error?.code !== 'ERR_CANCELED') {
+          console.error('Error fetching customers:', error);
+        }
+      } finally {
+        if (mountedRef.current) {
+          setIsInitialLoad(false);
+        }
+      }
+    }, 100); // 100ms debounce
+  }, [
+    localSearchTerm, 
+    currentPage, 
+    rowsPerPage, 
+    mainApi.get, 
+    transformApiCustomer, 
+    isInitialLoad, 
+    mainApi.loading
+  ]);
+
+  // Mount/unmount tracking
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (fetchTimeoutRef.current) {
+        clearTimeout(fetchTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Fetch data effect
   useEffect(() => {
     fetchCustomers();
   }, [fetchCustomers]);
 
+  // Reset page when search changes
   useEffect(() => {
     if (currentPage !== 1) {
       setCurrentPage(1);
     }
-  }, [localSearchTerm]);
+  }, [localSearchTerm, currentPage]);
 
-  const totalPages = Math.ceil(totalCount / rowsPerPage);
-  const startIndex = (currentPage - 1) * rowsPerPage;
-  const endIndex = Math.min(startIndex + rowsPerPage, totalCount);
+  // Memoized calculations
+  const paginationData = useMemo(() => ({
+    totalPages: Math.ceil(totalCount / rowsPerPage),
+    startIndex: (currentPage - 1) * rowsPerPage,
+    endIndex: Math.min((currentPage - 1) * rowsPerPage + rowsPerPage, totalCount)
+  }), [totalCount, rowsPerPage, currentPage]);
 
-  const validateForm = (): boolean => {
+  // Form validation
+  const validateForm = useCallback((): boolean => {
     const errors: Partial<CustomerFormData> = {};
     
     if (!formData.firstName.trim()) errors.firstName = 'First name is required';
@@ -186,9 +247,10 @@ export default function CustomersPage() {
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
-  };
+  }, [formData]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Form submission
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateForm()) return;
@@ -224,17 +286,18 @@ export default function CustomersPage() {
         console.error('Error saving customer:', error);
       }
     }
-  };
+  }, [validateForm, isEditing, selectedCustomer, formData, submitApi.put, submitApi.post, fetchCustomers]);
 
-  const openNewCustomerModal = () => {
+  // Modal handlers
+  const openNewCustomerModal = useCallback(() => {
     setFormData({ firstName: '', lastName: '', email: '', phone: '', companyName: '' });
     setFormErrors({});
     setIsEditing(false);
     setSelectedCustomer(null);
     setIsModalOpen(true);
-  };
+  }, []);
 
-  const openEditCustomerModal = (customer: Customer) => {
+  const openEditCustomerModal = useCallback((customer: Customer) => {
     setFormData({
       firstName: customer.firstName,
       lastName: customer.lastName,
@@ -246,9 +309,9 @@ export default function CustomersPage() {
     setIsEditing(true);
     setSelectedCustomer(customer);
     setIsModalOpen(true);
-  };
+  }, []);
 
-  const closeModal = () => {
+  const closeModal = useCallback(() => {
     setIsModalOpen(false);
     setSelectedCustomer(null);
     setIsEditing(false);
@@ -257,9 +320,28 @@ export default function CustomersPage() {
     setNewComment('');
     setShowAddressForm(false);
     setNewAddress({ street: '', city: '', state: '', zipCode: '', country: '' });
-  };
+  }, []);
 
-  const handleCommentSubmit = (e: React.FormEvent) => {
+  // Input handlers
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    if (formErrors[name as keyof CustomerFormData]) {
+      setFormErrors(prev => ({ ...prev, [name]: undefined }));
+    }
+  }, [formErrors]);
+
+  const handleLocalSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setLocalSearchTerm(e.target.value);
+  }, []);
+
+  const clearLocalSearch = useCallback(() => {
+    setLocalSearchTerm('');
+  }, []);
+
+  // Comment handlers
+  const handleCommentSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     if (!newComment.trim()) return;
 
@@ -270,21 +352,22 @@ export default function CustomersPage() {
       type: 'manual'
     };
 
-    setComments([comment, ...comments]);
+    setComments(prev => [comment, ...prev]);
     setNewComment('');
-  };
+  }, [newComment]);
 
-  const addAutoComment = (text: string) => {
+  const addAutoComment = useCallback((text: string) => {
     const comment: Comment = {
       id: Date.now().toString(),
       text,
       timestamp: new Date().toLocaleDateString() + '\n' + new Date().toLocaleTimeString(),
       type: 'auto'
     };
-    setComments([comment, ...comments]);
-  };
+    setComments(prev => [comment, ...prev]);
+  }, []);
 
-  const handleAddressSubmit = (e: React.FormEvent) => {
+  // Address handlers
+  const handleAddressSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     if (!newAddress.street.trim() || !newAddress.city.trim()) return;
 
@@ -293,68 +376,52 @@ export default function CustomersPage() {
       ...newAddress
     };
 
-    setAddresses([...addresses, address]);
+    setAddresses(prev => [...prev, address]);
     setNewAddress({ street: '', city: '', state: '', zipCode: '', country: '' });
     setShowAddressForm(false);
-  };
+  }, [newAddress]);
 
-  const sendResetPasswordEmail = async () => {
-    if (selectedCustomer) {
-      try {
-        await post('/Admin/CustomerEditor/SendResetPasswordEmail', {
-          email: selectedCustomer.email,
-          website: 'PromotionalProductInc'
-        });
-        alert(`Reset password email sent to ${selectedCustomer.email}`);
-        addAutoComment(`Sent reset password email to ${selectedCustomer.email}`);
-      } catch (error: any) {
-        if (error?.name !== 'CanceledError' && error?.code !== 'ERR_CANCELED') {
-          console.error('Error sending reset password email:', error);
-          alert('Failed to send reset password email');
-        }
-      }
-    }
-  };
-
-  const sendNewAccountEmail = async () => {
-    if (selectedCustomer) {
-      try {
-        await post('/Admin/CustomerEditor/SendNewAccountEmail', {
-          email: selectedCustomer.email,
-          website: 'PromotionalProductInc'
-        });
-        alert(`New account email sent to ${selectedCustomer.email}`);
-        addAutoComment(`Sent new account email to ${selectedCustomer.email}`);
-      } catch (error: any) {
-        if (error?.name !== 'CanceledError' && error?.code !== 'ERR_CANCELED') {
-          console.error('Error sending new account email:', error);
-          alert('Failed to send new account email');
-        }
-      }
-    }
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    
-    if (formErrors[name as keyof CustomerFormData]) {
-      setFormErrors(prev => ({ ...prev, [name]: undefined }));
-    }
-  };
-
-  const handleAddressInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAddressInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setNewAddress(prev => ({ ...prev, [name]: value }));
-  };
+  }, []);
 
-  const handleLocalSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setLocalSearchTerm(e.target.value);
-  };
+  // Email actions
+  const sendResetPasswordEmail = useCallback(async () => {
+    if (!selectedCustomer) return;
+    
+    try {
+      await mainApi.post('/Admin/CustomerEditor/SendResetPasswordEmail', {
+        email: selectedCustomer.email,
+        website: 'PromotionalProductInc'
+      });
+      alert(`Reset password email sent to ${selectedCustomer.email}`);
+      addAutoComment(`Sent reset password email to ${selectedCustomer.email}`);
+    } catch (error: any) {
+      if (error?.name !== 'CanceledError' && error?.code !== 'ERR_CANCELED') {
+        console.error('Error sending reset password email:', error);
+        alert('Failed to send reset password email');
+      }
+    }
+  }, [selectedCustomer, mainApi.post, addAutoComment]);
 
-  const clearLocalSearch = () => {
-    setLocalSearchTerm('');
-  };
+  const sendNewAccountEmail = useCallback(async () => {
+    if (!selectedCustomer) return;
+    
+    try {
+      await mainApi.post('/Admin/CustomerEditor/SendNewAccountEmail', {
+        email: selectedCustomer.email,
+        website: 'PromotionalProductInc'
+      });
+      alert(`New account email sent to ${selectedCustomer.email}`);
+      addAutoComment(`Sent new account email to ${selectedCustomer.email}`);
+    } catch (error: any) {
+      if (error?.name !== 'CanceledError' && error?.code !== 'ERR_CANCELED') {
+        console.error('Error sending new account email:', error);
+        alert('Failed to send new account email');
+      }
+    }
+  }, [selectedCustomer, mainApi.post, addAutoComment]);
 
   return (
     <div className="customers-page space-y-6">
@@ -417,7 +484,7 @@ export default function CustomersPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {loading && isInitialLoad ? (
+              {mainApi.loading && isInitialLoad ? (
                 <tr>
                   <td colSpan={5} className="px-4 py-8">
                     <LoadingState message="Loading customers..." />
@@ -477,11 +544,11 @@ export default function CustomersPage() {
         </div>
       </Card>
 
-      {totalCount > 0 && !loading && (
+      {totalCount > 0 && !mainApi.loading && (
         <Card>
           <PaginationControls
             currentPage={currentPage}
-            totalPages={totalPages}
+            totalPages={paginationData.totalPages}
             totalCount={totalCount}
             rowsPerPage={rowsPerPage}
             onPageChange={setCurrentPage}
@@ -489,13 +556,13 @@ export default function CustomersPage() {
               setRowsPerPage(rows);
               setCurrentPage(1);
             }}
-            startIndex={startIndex}
-            endIndex={endIndex}
+            startIndex={paginationData.startIndex}
+            endIndex={paginationData.endIndex}
           />
         </Card>
       )}
 
-      {/* Modal content with improved organization */}
+      {/* Modal content remains the same but wrapped with proper handlers */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center p-4 z-50 pt-20 overflow-y-auto">
           <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl lg:max-w-4xl max-h-[calc(100vh-5rem)] overflow-y-auto my-4">

@@ -39,13 +39,11 @@ export const Header: React.FC = () => {
   };
 
   const handleSearchBlur = () => {
-    // Delay blur to allow for potential interactions
     setTimeout(() => setSearchFocused(false), 200);
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchValue(e.target.value);
-    // No actual search functionality - purely visual
   };
 
   const handleSearchClear = () => {
@@ -53,7 +51,6 @@ export const Header: React.FC = () => {
     searchInputRef.current?.focus();
   };
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Element;
@@ -68,7 +65,6 @@ export const Header: React.FC = () => {
     }
   }, [dropdownOpen]);
 
-  // Keyboard shortcuts for visual feedback only
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
@@ -89,10 +85,9 @@ export const Header: React.FC = () => {
   }, []);
 
   return (
-    <header className="dashboard-header bg-gradient-to-r from-white via-gray-50 to-blue-50 shadow-lg border-b border-gray-200/50 backdrop-blur-sm w-full relative z-30">
+    <header className="dashboard-header bg-gradient-to-r from-white via-gray-50 to-blue-50 shadow-lg border-b border-gray-200/50 w-full relative z-30">
       <div className="dashboard-header-content flex items-center h-16 px-4 sm:px-6 lg:px-8 w-full max-w-none mx-0">
         
-        {/* Visual-Only Search Bar */}
         <div className="dashboard-header-search flex-1 max-w-none sm:max-w-2xl">
           <div className="relative w-full">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -107,12 +102,10 @@ export const Header: React.FC = () => {
               onChange={handleSearchChange}
               onFocus={handleSearchFocus}
               onBlur={handleSearchBlur}
-              className="dashboard-header-search-input w-full pl-9 sm:pl-10 pr-16 py-2.5 sm:py-3 border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-200 placeholder-gray-500"
+              className="dashboard-header-search-input w-full pl-9 sm:pl-10 pr-16 py-2.5 sm:py-3 border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white/80 shadow-sm hover:shadow-md transition-all duration-200 placeholder-gray-500"
             />
             
-            {/* Search Controls */}
             <div className="absolute inset-y-0 right-0 pr-3 flex items-center space-x-2">
-              {/* Clear Search */}
               {searchValue && (
                 <button
                   onClick={handleSearchClear}
@@ -123,13 +116,11 @@ export const Header: React.FC = () => {
                 </button>
               )}
               
-              {/* Keyboard Shortcut */}
               <kbd className="hidden sm:inline-flex items-center rounded border border-gray-200 px-2 py-1 text-xs font-sans text-gray-400 bg-gray-50">
                 ⌘K
               </kbd>
             </div>
 
-            {/* Visual Search Results Dropdown (Shows only when focused with content) */}
             {searchFocused && searchValue && (
               <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-200 max-h-96 overflow-y-auto z-50">
                 <div className="p-4 text-center">
@@ -142,7 +133,6 @@ export const Header: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Side Controls */}
         <div className="dashboard-header-right flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
           <div className="dashboard-header-notifications">
             <Button
@@ -150,7 +140,7 @@ export const Header: React.FC = () => {
               size="sm"
               icon={Bell}
               iconOnly
-              className="dashboard-header-notification-btn relative bg-white/80 backdrop-blur-sm border-gray-200 hover:bg-blue-50 hover:border-blue-300 shadow-sm hover:shadow-md transition-all duration-200 w-9 h-9 sm:w-10 sm:h-10"
+              className="dashboard-header-notification-btn relative bg-white/80 border-gray-200 hover:bg-blue-50 hover:border-blue-300 shadow-sm hover:shadow-md transition-all duration-200 w-9 h-9 sm:w-10 sm:h-10"
               title="Notifications"
             >
               <span className="absolute -top-1 -right-1 h-2.5 w-2.5 sm:h-3 sm:w-3 bg-red-500 rounded-full border-2 border-white"></span>
@@ -163,7 +153,7 @@ export const Header: React.FC = () => {
               size="sm"
               icon={Settings}
               iconOnly
-              className="dashboard-header-settings-btn bg-white/80 backdrop-blur-sm border-gray-200 hover:bg-blue-50 hover:border-blue-300 shadow-sm hover:shadow-md transition-all duration-200 w-9 h-9 sm:w-10 sm:h-10"
+              className="dashboard-header-settings-btn bg-white/80 border-gray-200 hover:bg-blue-50 hover:border-blue-300 shadow-sm hover:shadow-md transition-all duration-200 w-9 h-9 sm:w-10 sm:h-10"
               title="Settings"
             />
           </div>
@@ -172,7 +162,7 @@ export const Header: React.FC = () => {
             <Button
               variant="secondary"
               onClick={handleDropdownToggle}
-              className="dashboard-header-user-button flex items-center space-x-2 sm:space-x-3 bg-white/80 backdrop-blur-sm border-gray-200 hover:bg-blue-50 hover:border-blue-300 shadow-sm hover:shadow-md transition-all duration-200 px-2 sm:px-4 py-2 h-9 sm:h-10"
+              className="dashboard-header-user-button flex items-center space-x-2 sm:space-x-3 bg-white/80 border-gray-200 hover:bg-blue-50 hover:border-blue-300 shadow-sm hover:shadow-md transition-all duration-200 px-2 sm:px-4 py-2 h-9 sm:h-10"
             >
               <div className="dashboard-header-user-avatar w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center shadow-sm flex-shrink-0">
                 <User className="dashboard-header-user-icon w-3 h-3 sm:w-4 sm:h-4 text-white" />
@@ -191,7 +181,7 @@ export const Header: React.FC = () => {
             </Button>
 
             {dropdownOpen && (
-              <div className="dashboard-header-dropdown absolute right-0 mt-2 w-48 sm:w-56 bg-white/95 backdrop-blur-sm rounded-xl shadow-xl border border-gray-200/50 py-2 z-50 animate-slide-down">
+              <div className="dashboard-header-dropdown absolute right-0 mt-2 w-48 sm:w-56 bg-white/95 rounded-xl shadow-xl border border-gray-200/50 py-2 z-50 animate-slide-down">
                 <div className="dashboard-header-dropdown-header px-4 py-3 border-b border-gray-100">
                   <p className="text-sm font-semibold text-gray-900 truncate">{user?.username || 'Admin User'}</p>
                   <p className="text-xs text-gray-500 truncate">{user?.email || 'admin@ppi.com'}</p>
@@ -282,7 +272,6 @@ export const Header: React.FC = () => {
         </div>
       </div>
 
-      {/* Header bottom border gradient */}
       <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-blue-300/50 to-transparent"></div>
     </header>
   );
