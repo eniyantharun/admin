@@ -1,195 +1,443 @@
 # PPI Admin Portal
 
-A modern, clean, and maintainable admin dashboard built with Next.js 14, TypeScript, and Tailwind CSS.
+A modern, production-ready admin dashboard built with Next.js 14, TypeScript, and Tailwind CSS for Promotional Product Inc.
 
-## 🚀 Features
+## 🌟 Features
 
-- **Clean Architecture**: Well-organized folder structure following Next.js best practices
-- **Type Safety**: Full TypeScript support with proper type definitions
-- **Modern UI**: Beautiful components built with Tailwind CSS
-- **Authentication**: Secure auth system with JWT tokens
-- **State Management**: Redux Toolkit for predictable state management
-- **Responsive Design**: Mobile-first responsive design
-- **Performance**: Optimized with Next.js App Router
+### Core Features
+- **Modern Architecture**: Built with Next.js 14 App Router and TypeScript for type safety
+- **Authentication System**: Secure JWT-based authentication with cookie storage
+- **Responsive Design**: Mobile-first responsive design that works on all devices
+- **Performance Optimized**: Request caching, deduplication, and optimized API calls
+- **Real-time State Management**: Redux Toolkit for predictable state management
 
-## 📁 Project Structure
+### Business Modules
+- **Dashboard**: Overview with key metrics, recent activity, and quick actions
+- **Customer Management**: Full CRUD operations with advanced search and filtering
+- **Supplier Management**: Comprehensive supplier database with product statistics
+- **Order Processing**: Order lifecycle management with status tracking
+- **Quote System**: Quote-to-order conversion pipeline
+- **Brand Management**: Brand portfolio with product associations
+- **Product Catalog**: (Framework ready for implementation)
 
+### Technical Excellence
+- **Type Safety**: Full TypeScript coverage with strict mode
+- **Error Handling**: Comprehensive error boundaries and user feedback
+- **Caching Strategy**: Intelligent API response caching and request deduplication
+- **Security**: XSS protection, secure cookie handling, and input validation
+- **Accessibility**: WCAG-compliant components and keyboard navigation
+
+## 🏗️ Architecture
+
+### Project Structure
+```
 src/
-├── app/                    # Next.js App Router pages
-├── components/             # Reusable UI components
-├── hooks/                  # Custom React hooks
-├── lib/                    # Utilities and configurations
-├── store/                  # Redux store and slices
-├── types/                  # TypeScript type definitions
-└── assets/                 # Static assets
+├── app/                    # Next.js 14 App Router
+│   ├── (auth)/            # Authentication routes
+│   ├── (dashboard)/       # Protected dashboard routes
+│   └── layout.tsx         # Root layout
+├── components/            # Reusable UI components
+│   ├── ui/               # Base UI components (Button, Card, etc.)
+│   ├── layout/           # Layout components (Header, Sidebar)
+│   ├── forms/            # Form components
+│   └── helpers/          # Helper components (StatusBadge, etc.)
+├── hooks/                # Custom React hooks
+│   ├── useApi.ts         # Advanced API hook with caching
+│   ├── useAuth.ts        # Authentication hook
+│   └── redux.ts          # Redux hooks
+├── lib/                  # Utilities and configurations
+│   ├── api.ts            # API client with interceptors
+│   ├── auth.ts           # Authentication utilities
+│   ├── constants.ts      # Application constants
+│   └── utils.ts          # Common utilities
+├── store/                # Redux store and slices
+│   ├── authSlice.ts      # Authentication state
+│   └── dashboardSlice.ts # Dashboard state
+└── types/                # TypeScript type definitions
+```
 
-## 🛠️ Tech Stack
+## 🚀 Getting Started
 
-- **Framework**: Next.js 14 with App Router
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS
-- **State Management**: Redux Toolkit
-- **Authentication**: JWT with secure cookies
-- **Icons**: Lucide React
-- **HTTP Client**: Axios
+### Prerequisites
+- Node.js 18+ 
+- npm, yarn, or pnpm
+- Git
 
-## 🏃‍♂️ Getting Started
+### Installation
 
 1. **Clone the repository**
    ```bash
    git clone <repository-url>
    cd ppi-admin-portal
+   ```
 
 2. **Install dependencies**
-    npm install
+   ```bash
+   npm install
+   # or
+   yarn install
+   # or
+   pnpm install
+   ```
 
-3. **Set up environment variables**
-cp .env.example .env.local
-Edit .env.local with your API configuration:
-NEXT_PUBLIC_API_BASE_URL=https://api.promowe.com/
-NEXT_PUBLIC_APP_NAME=PPI Admin
-NEXT_PUBLIC_COMPANY_NAME=Promotional Product Inc
+3. **Environment Setup**
+   ```bash
+   cp .env.example .env.local
+   ```
+   
+   Configure your environment variables:
+   ```env
+   NEXT_PUBLIC_API_BASE_URL=https://your-api-endpoint.com/
+   NEXT_PUBLIC_APP_NAME=PPI Admin
+   NEXT_PUBLIC_COMPANY_NAME=Promotional Product Inc
+   ```
 
+4. **Development Server**
+   ```bash
+   npm run dev
+   # or
+   yarn dev
+   # or
+   pnpm dev
+   ```
 
-4. **Run the development server**
-bashnpm run dev
+5. **Open in Browser**
+   Navigate to [http://localhost:3000](http://localhost:3000)
 
-5. **Build for production**
-bashnpm run build
+### Build for Production
+```bash
+npm run build
 npm start
+```
 
+## 🎨 Theme & Styling
 
-**🎨 Theme Customization**
-The project uses a centralized theme system in tailwind.config.ts. You can customize colors by modifying the theme configuration:
-typescriptcolors: {
-  primary: { /* Your primary colors */ },
-  secondary: { /* Your secondary colors */ },
-  danger: { /* Error/delete colors */ },
-  success: { /* Success colors */ },
-  warning: { /* Warning colors */ },
+### Design System
+The application uses a comprehensive design system built with Tailwind CSS:
+
+```typescript
+// Tailwind Color Palette
+colors: {
+  primary: { /* Blue shades for primary actions */ },
+  secondary: { /* Gray shades for neutral elements */ },
+  danger: { /* Red shades for destructive actions */ },
+  success: { /* Green shades for positive feedback */ },
+  warning: { /* Yellow/Orange for warnings */ }
 }
-**🧩 Component Usage**
-*Button Component*
-tsximport { Button } from '@/components/ui/Button';
+```
+
+### Component Variants
+All components support multiple variants for consistent theming:
+
+```tsx
+// Button variants
+<Button variant="primary">Primary Action</Button>
+<Button variant="secondary">Secondary Action</Button>
+<Button variant="danger">Delete</Button>
+
+// Card with custom styling
+<Card padding="lg" shadow="md" border={true}>
+  Content here
+</Card>
+```
+
+## 🧩 Component Library
+
+### Core UI Components
+
+#### Button Component
+```tsx
+import { Button } from '@/components/ui/Button';
 import { Plus, Edit, Trash } from 'lucide-react';
 
 // Text button
 <Button>Save Changes</Button>
 
-// Icon + text
+// With icon
 <Button icon={Plus}>Add New</Button>
 
 // Icon only
-<Button icon={Edit} iconOnly />
+<Button icon={Edit} iconOnly size="sm" />
 
-// Danger button
+// Loading state
+<Button loading={isSubmitting}>Submit</Button>
+
+// Variants
 <Button variant="danger" icon={Trash}>Delete</Button>
+```
 
-// Small square icon button
-<Button size="sm" icon={Edit} iconOnly />
+#### Form Components
+```tsx
+import { FormInput } from '@/components/helpers/FormInput';
 
-*Card Component*
-tsximport { Card } from '@/components/ui/Card';
-
-<Card padding="lg" shadow="md">
-  <h3>Card Title</h3>
-  <p>Card content goes here</p>
-</Card>
-
-*ListView Component*
-tsximport { ListView } from '@/components/ui/ListView';
-
-<ListView
-  items={customers}
-  keyExtractor={(item) => item.id}
-  renderItem={(customer) => (
-    <div className="p-4 border rounded">
-      {customer.name}
-    </div>
-  )}
-  emptyComponent={<div>No customers found</div>}
+<FormInput
+  label="Email Address"
+  name="email"
+  type="email"
+  value={formData.email}
+  onChange={handleChange}
+  error={errors.email}
+  required
+  placeholder="user@example.com"
+  helpText="We'll never share your email"
 />
+```
 
-*Image Component*
-tsximport { Image } from '@/components/ui/Image';
+#### Status & Display Components
+```tsx
+import { StatusBadge } from '@/components/helpers/StatusBadge';
+import { DateDisplay } from '@/components/helpers/DateDisplay';
+import { EntityAvatar } from '@/components/helpers/EntityAvatar';
 
-<Image
-  src="/path/to/image.jpg"
-  alt="Description"
-  width={200}
-  height={200}
-  showFallback
-/>
+<StatusBadge enabled={item.enabled} />
+<DateDisplay date={item.createdAt} format="relative" />
+<EntityAvatar name="John Doe" id={123} type="customer" />
+```
 
-**🔐 Authentication**
-The auth system is built with secure practices:
+### Layout Components
 
-JWT tokens stored in secure HTTP-only cookies
-Automatic token refresh
-Route protection with AuthGuard
-Centralized auth state management
+#### Responsive Sidebar
+- Collapsible on desktop
+- Mobile overlay
+- Active route highlighting
+- Smooth animations
 
-*Using Auth Hook*
-tsximport { useAuth } from '@/hooks/useAuth';
+#### Header with Search
+- Global search (visual placeholder)
+- User menu with dropdown
+- Notification center
+- Keyboard shortcuts (⌘K)
 
-function MyComponent() {
-  const { user, login, logout, loading } = useAuth();
+## 🔧 API Integration
+
+### useApi Hook
+Advanced API hook with caching, deduplication, and error handling:
+
+```tsx
+import { useApi } from '@/hooks/useApi';
+
+function CustomerList() {
+  const { get, post, loading, error } = useApi({
+    onSuccess: (data) => console.log('Success:', data),
+    onError: (error) => console.error('Error:', error),
+    cancelOnUnmount: true,
+    dedupe: true,
+    cacheDuration: 60000 // 1 minute
+  });
+
+  const fetchCustomers = async () => {
+    const customers = await get('/Admin/CustomerEditor/GetCustomersList');
+    setCustomers(customers);
+  };
+}
+```
+
+### API Client Configuration
+```typescript
+// lib/api.ts
+const apiClient = axios.create({
+  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL,
+  timeout: 15000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Automatic authentication
+apiClient.interceptors.request.use((config) => {
+  const token = Cookies.get('auth_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+```
+
+### Service Classes
+```typescript
+import { CustomerService } from '@/lib/api';
+
+// Using specialized service classes
+const customers = await CustomerService.getCustomers({
+  website: 'PromotionalProductInc',
+  search: 'john',
+  count: 20,
+  index: 0
+});
+```
+
+## 🔐 Authentication System
+
+### Secure Authentication Flow
+```typescript
+import { useAuth } from '@/hooks/useAuth';
+
+function LoginPage() {
+  const { login, loading, error } = useAuth();
   
-  if (loading) return <div>Loading...</div>;
-  
+  const handleLogin = async (credentials) => {
+    try {
+      await login(credentials.username, credentials.password);
+      router.push('/dashboard');
+    } catch (error) {
+      // Error handling managed by hook
+    }
+  };
+}
+```
+
+### Protected Routes
+```tsx
+import { AuthGuard } from '@/components/layout/AuthGuard';
+
+export default function DashboardLayout({ children }) {
   return (
-    <div>
-      Welcome, {user?.username}!
-      <button onClick={logout}>Logout</button>
-    </div>
+    <AuthGuard>
+      {children}
+    </AuthGuard>
   );
 }
+```
 
-*📱 Responsive Design*
-The application is built mobile-first with responsive breakpoints:
+## 📊 State Management
 
-sm: 640px and up
-md: 768px and up
-lg: 1024px and up
-xl: 1280px and up
+### Redux Store Structure
+```typescript
+// store/index.ts
+export const store = configureStore({
+  reducer: {
+    auth: authSlice,
+    dashboard: dashboardSlice,
+  },
+});
 
-**🧪 Development Guidelines**
-*File Organization*
+// Usage in components
+import { useAppSelector, useAppDispatch } from '@/hooks/redux';
 
-Use kebab-case for file names
-Components should be in PascalCase
-Group related components in folders
-Keep components small and focused
+const { user, isAuthenticated } = useAppSelector(state => state.auth);
+const dispatch = useAppDispatch();
+```
 
-*TypeScript*
-Always define proper interfaces
-Use strict mode
-Avoid any type
-Export types from centralized locations
+### Authentication State
+```typescript
+// Automatic token validation
+const { isAuthenticated, loading, user } = useAuth();
 
-*Styling*
-Use Tailwind utility classes
-Prefer component variants over custom CSS
-Use the centralized color system
-Follow mobile-first approach
+// Login/logout actions
+await login(username, password);
+await logout();
+```
 
-*State Management*
-Use Redux for global state
-Use React state for component-specific state
-Keep actions and reducers simple
-Use TypeScript with Redux
+## 🎯 Performance Optimizations
 
-**🚀 Deployment**
-*Environment Variables*
-Make sure to set these in your production environment:
+### Request Optimization
+- **Deduplication**: Prevents duplicate API calls
+- **Caching**: Intelligent response caching with TTL
+- **Cancellation**: Automatic request cancellation on component unmount
+- **Error Boundaries**: Graceful error handling
 
-NEXT_PUBLIC_API_BASE_URL
-NEXT_PUBLIC_APP_NAME
-NEXT_PUBLIC_COMPANY_NAME
+### Rendering Optimization
+- **Memoization**: Strategic use of React.memo and useMemo
+- **Code Splitting**: Route-based code splitting with Next.js
+- **Image Optimization**: Next.js Image component with fallbacks
+- **Lazy Loading**: Component and route lazy loading
 
-*Build Commands*
-# Development
-npm run dev
+### Bundle Optimization
+```typescript
+// Dynamic imports for heavy components
+const ChartComponent = dynamic(() => import('./Chart'), {
+  loading: () => <LoadingSpinner />,
+  ssr: false
+});
+```
+
+## 🧪 Development Guidelines
+
+### File Naming Conventions
+- **Components**: PascalCase (`CustomerList.tsx`)
+- **Hooks**: camelCase starting with 'use' (`useApi.ts`)
+- **Utilities**: camelCase (`formatDate.ts`)
+- **Constants**: UPPER_SNAKE_CASE
+
+### TypeScript Best Practices
+```typescript
+// Define interfaces for all data structures
+interface Customer {
+  id: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string; // Optional fields
+}
+
+// Use discriminated unions for variants
+type ButtonVariant = 'primary' | 'secondary' | 'danger';
+
+// Generic components
+interface ApiResponse<T> {
+  data: T;
+  status: number;
+  message?: string;
+}
+```
+
+### Component Architecture
+```tsx
+// Composable components with clear interfaces
+interface CustomerCardProps {
+  customer: Customer;
+  onEdit: (id: number) => void;
+  onDelete: (id: number) => void;
+  readonly?: boolean;
+}
+
+export const CustomerCard: React.FC<CustomerCardProps> = ({
+  customer,
+  onEdit,
+  onDelete,
+  readonly = false
+}) => {
+  // Component implementation
+};
+```
+
+### Error Handling
+```tsx
+// Comprehensive error boundaries
+import { EmptyState, LoadingState } from '@/components/helpers/EmptyLoadingStates';
+
+{loading ? (
+  <LoadingState message="Loading customers..." />
+) : customers.length === 0 ? (
+  <EmptyState
+    icon={User}
+    title="No customers found"
+    description="Get started by adding your first customer."
+    hasSearch={!!searchTerm}
+  />
+) : (
+  <CustomerList customers={customers} />
+)}
+```
+
+## 🚀 Deployment
+
+### Environment Variables
+```env
+# Production environment
+NEXT_PUBLIC_API_BASE_URL=https://api.promowe.com/
+NEXT_PUBLIC_APP_NAME=PPI Admin
+NEXT_PUBLIC_COMPANY_NAME=Promotional Product Inc
+NODE_ENV=production
+```
+
+### Build Commands
+```bash
+# Type checking
+npm run type-check
+
+# Linting
+npm run lint
 
 # Production build
 npm run build
@@ -197,32 +445,112 @@ npm run build
 # Start production server
 npm start
 
-# Linting
-npm run lint
+# Clean build cache
+npm run clean
+```
 
+### Docker Deployment
+```dockerfile
+# Dockerfile
+FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+COPY . .
+RUN npm run build
+EXPOSE 3000
+CMD ["npm", "start"]
+```
 
-**📊 Performance**
-The application is optimized for performance:
+## 🔍 Monitoring & Debugging
 
-Next.js App Router for optimal routing
-Image optimization with Next.js Image component
-Code splitting and lazy loading
-Efficient state management
-Minimal bundle size
+### Performance Monitoring
+```typescript
+// Built-in navigation performance tracking
+import { NavigationPerformanceMonitor } from '@/lib/routeOptimization';
 
-*🤝 Contributing*
+const stopTiming = NavigationPerformanceMonitor.startTiming('/customers');
+// Route navigation
+stopTiming(); // Logs performance metrics
+```
 
-Create a feature branch from main
-Make your changes following the coding guidelines
-Test your changes thoroughly
-Submit a pull request with a clear description
+### Error Monitoring
+- Console error tracking
+- API error logging
+- User feedback collection
+- Performance metrics
 
-*📞 Support*
-For support and questions:
+### Debug Tools
+```bash
+# Development debugging
+npm run dev -- --inspect
 
-Check the documentation in /docs
-Create an issue in the repository
-Contact the development team at www.cognigennxt.com
+# Bundle analysis
+npm run build
+npm run analyze
+```
 
-📄 License
-This project is licensed under the UNLICENSED license.
+## 🤝 Contributing
+
+### Development Workflow
+1. Create feature branch from `main`
+2. Follow TypeScript strict mode
+3. Write tests for new features
+4. Ensure components are accessible
+5. Update documentation
+6. Submit pull request
+
+### Code Quality
+- **ESLint**: Configured with Next.js rules
+- **TypeScript**: Strict mode enabled
+- **Prettier**: Code formatting (configure as needed)
+- **Husky**: Pre-commit hooks (can be added)
+
+### Testing Strategy
+```bash
+# Unit tests (framework ready)
+npm run test
+
+# E2E tests (framework ready)
+npm run test:e2e
+
+# Type checking
+npm run type-check
+```
+
+## 📚 Additional Resources
+
+### Documentation
+- [Next.js 14 Documentation](https://nextjs.org/docs)
+- [TypeScript Handbook](https://www.typescriptlang.org/docs/)
+- [Tailwind CSS Documentation](https://tailwindcss.com/docs)
+- [Redux Toolkit Documentation](https://redux-toolkit.js.org/)
+
+### API Documentation
+- Internal API endpoints documented in `/lib/api.ts`
+- Swagger documentation: `${API_BASE_URL}/swagger` (if available)
+
+### Design System
+- Lucide React Icons: [https://lucide.dev/](https://lucide.dev/)
+- Tailwind Color Palette: [https://tailwindcss.com/docs/customizing-colors](https://tailwindcss.com/docs/customizing-colors)
+
+## 📞 Support & Contact
+
+### Development Team
+- **Primary Contact**: Cogni GenNxt
+- **Website**: [www.cognigennxt.com](https://www.cognigennxt.com)
+- **Repository**: Contact team for access
+
+### Support Channels
+1. Create an issue in the repository
+2. Check existing documentation
+3. Contact the development team
+4. Review API documentation
+
+---
+
+## 📄 License
+
+This project is licensed under the **UNLICENSED** license - see the repository for details.
+
+**Built with ❤️ by Cogni GenNxt for Promotional Product Inc**
