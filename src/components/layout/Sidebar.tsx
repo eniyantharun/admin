@@ -49,7 +49,6 @@ export const Sidebar: React.FC = () => {
 
   return (
     <>
-      {/* Mobile Overlay - REMOVED BLUR */}
       {sidebarOpen && (
         <div
           className="dashboard-sidebar-overlay fixed inset-0 bg-black/50 z-40 lg:hidden transition-all duration-300"
@@ -57,12 +56,10 @@ export const Sidebar: React.FC = () => {
         />
       )}
 
-      {/* Sidebar */}
       <aside className={`dashboard-sidebar fixed inset-y-0 left-0 z-50 bg-gradient-to-b from-slate-800 via-slate-900 to-indigo-900 shadow-2xl border-r border-slate-700/50 transform transition-all duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${
         sidebarOpen ? 'translate-x-0 w-64' : '-translate-x-full w-64 lg:translate-x-0 lg:w-20'
       }`}>
         <div className="dashboard-sidebar-container flex flex-col h-full relative">
-          {/* Sidebar Header - REMOVED BLUR */}
           <div className="dashboard-sidebar-header flex items-center h-16 px-4 border-b border-slate-700/50 bg-white/5">
             {sidebarOpen ? (
               <>
@@ -118,7 +115,6 @@ export const Sidebar: React.FC = () => {
             )}
           </div>
 
-          {/* Navigation */}
           <nav className={`dashboard-sidebar-nav flex-1 py-6 overflow-y-auto scrollbar-hide ${
             sidebarOpen ? 'px-4' : 'px-2'
           }`}>
@@ -138,12 +134,10 @@ export const Sidebar: React.FC = () => {
                       } ${!sidebarOpen ? 'justify-center' : ''}`}
                       title={!sidebarOpen ? item.name : undefined}
                     >
-                      {/* Active indicator */}
                       {isActive && (
                         <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-400 via-indigo-400 to-purple-400 rounded-r-full"></div>
                       )}
                       
-                      {/* Background animation */}
                       <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-indigo-500/10 to-purple-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl"></div>
                       
                       <Icon className={`dashboard-sidebar-link-icon w-5 h-5 flex-shrink-0 relative z-10 ${
@@ -160,7 +154,6 @@ export const Sidebar: React.FC = () => {
                         </span>
                       )}
                       
-                      {/* Hover glow effect */}
                       <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-transparent via-white/5 to-transparent"></div>
                     </Link>
                   </li>
@@ -169,7 +162,6 @@ export const Sidebar: React.FC = () => {
             </ul>
           </nav>
 
-          {/* Sidebar Footer - REMOVED BLUR */}
           {sidebarOpen && (
             <div className="dashboard-sidebar-footer border-t border-slate-700/50 p-4 bg-white/5">
               <div className="dashboard-sidebar-footer-content text-center">
@@ -183,7 +175,6 @@ export const Sidebar: React.FC = () => {
             </div>
           )}
 
-          {/* Decorative elements */}
           <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-blue-400/50 to-transparent"></div>
           <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-indigo-400/50 to-transparent"></div>
         </div>

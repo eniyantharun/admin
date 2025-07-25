@@ -15,22 +15,19 @@ interface ApiResponse<T> {
   loading: boolean;
 }
 
-// Request deduplication and caching
 const requestCache = new Map<string, {
   promise: Promise<any>;
   timestamp: number;
   data?: any;
 }>();
 
-const DEFAULT_CACHE_DURATION = 30000; // 30 seconds
+const DEFAULT_CACHE_DURATION = 30000; 
 
-// Generate cache key for requests
 const generateCacheKey = (method: string, url: string, data?: any): string => {
   const dataStr = data ? JSON.stringify(data) : '';
   return `${method}:${url}:${dataStr}`;
 };
 
-// Clean expired cache entries
 const cleanCache = () => {
   const now = Date.now();
   const entries = Array.from(requestCache.entries());
@@ -52,30 +49,25 @@ export const useApi = (options: UseApiOptions = {}) => {
     cacheDuration = DEFAULT_CACHE_DURATION 
   } = options;
 
-  // Track component mount status
   useEffect(() => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
-      // Only cancel if cancelOnUnmount is true AND component is unmounting
       if (cancelOnUnmount && abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
     };
   }, [cancelOnUnmount]);
 
-  // Clean cache periodically
   useEffect(() => {
-    const interval = setInterval(cleanCache, 60000); // Clean every minute
+    const interval = setInterval(cleanCache, 60000); 
     return () => clearInterval(interval);
   }, []);
 
-  // Helper function to check if component is still mounted
   const isMounted = useCallback(() => {
     return !cancelOnUnmount || mountedRef.current;
   }, [cancelOnUnmount]);
 
-  // Helper function to handle API responses
   const handleResponse = useCallback((data: any, requestOptions?: UseApiOptions) => {
     if (!isMounted()) return null;
 
@@ -84,11 +76,9 @@ export const useApi = (options: UseApiOptions = {}) => {
     return data;
   }, [isMounted, options]);
 
-  // Helper function to handle API errors
   const handleError = useCallback((err: any, requestOptions?: UseApiOptions) => {
     if (!isMounted()) return;
 
-    // Don't set error if request was aborted and cancelOnUnmount is true
     if (err.name === 'AbortError' || (err.name === 'CanceledError' && cancelOnUnmount)) {
       console.log('Request was canceled/aborted - this is expected behavior');
       return;
@@ -100,7 +90,6 @@ export const useApi = (options: UseApiOptions = {}) => {
     requestOptions?.onError?.(err);
   }, [isMounted, options, cancelOnUnmount]);
 
-  // Generic request handler with caching and deduplication
   const makeRequest = useCallback(async <T = any>(
     method: 'get' | 'post' | 'put' | 'delete',
     url: string,
@@ -111,14 +100,12 @@ export const useApi = (options: UseApiOptions = {}) => {
 
     const cacheKey = generateCacheKey(method, url, data);
     
-    // Check cache for GET requests
     if (method === 'get' && dedupe) {
       const cached = requestCache.get(cacheKey);
       if (cached && Date.now() - cached.timestamp < cacheDuration) {
         if (cached.data) {
           return handleResponse(cached.data, requestOptions);
         }
-        // If there's an ongoing request, wait for it
         if (cached.promise) {
           try {
             const result = await cached.promise;
@@ -131,12 +118,10 @@ export const useApi = (options: UseApiOptions = {}) => {
       }
     }
 
-    // Only cancel previous request if cancelOnUnmount is true
     if (cancelOnUnmount && abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
 
-    // Create new abort controller only if cancelOnUnmount is true
     if (cancelOnUnmount) {
       abortControllerRef.current = new AbortController();
     }
@@ -165,7 +150,6 @@ export const useApi = (options: UseApiOptions = {}) => {
           throw new Error(`Unsupported method: ${method}`);
       }
 
-      // Cache the promise for deduplication
       if (method === 'get' && dedupe) {
         requestCache.set(cacheKey, {
           promise: requestPromise,
@@ -175,7 +159,6 @@ export const useApi = (options: UseApiOptions = {}) => {
 
       const result = await requestPromise;
 
-      // Cache the result for GET requests
       if (method === 'get' && dedupe) {
         requestCache.set(cacheKey, {
           promise: requestPromise,
@@ -186,7 +169,6 @@ export const useApi = (options: UseApiOptions = {}) => {
 
       return handleResponse(result, requestOptions);
     } catch (err: any) {
-      // Remove failed request from cache
       if (method === 'get' && dedupe) {
         requestCache.delete(cacheKey);
       }
@@ -203,7 +185,6 @@ export const useApi = (options: UseApiOptions = {}) => {
     }
   }, [isMounted, handleResponse, handleError, dedupe, cacheDuration, cancelOnUnmount]);
 
-  // Memoized API methods
   const get = useCallback(<T = any>(url: string, requestOptions?: UseApiOptions): Promise<T | null> => {
     return makeRequest<T>('get', url, undefined, requestOptions);
   }, [makeRequest]);
@@ -220,12 +201,10 @@ export const useApi = (options: UseApiOptions = {}) => {
     return makeRequest<T>('delete', url, undefined, requestOptions);
   }, [makeRequest]);
 
-  // Clear error state
   const clearError = useCallback(() => {
     setError(null);
   }, []);
 
-  // Reset all states
   const reset = useCallback(() => {
     if (cancelOnUnmount && abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -234,14 +213,12 @@ export const useApi = (options: UseApiOptions = {}) => {
     setError(null);
   }, [cancelOnUnmount]);
 
-  // Cancel current request
   const cancel = useCallback(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
   }, []);
 
-  // Memoize return object to prevent unnecessary re-renders
   return useMemo(() => ({
     loading,
     error,
@@ -255,7 +232,6 @@ export const useApi = (options: UseApiOptions = {}) => {
   }), [loading, error, get, post, put, del, clearError, reset, cancel]);
 };
 
-// Optimized query hook with better caching
 export const useApiQuery = <T = any>(
   url: string | null, 
   options?: UseApiOptions & { enabled?: boolean; refreshInterval?: number }
@@ -272,16 +248,13 @@ export const useApiQuery = <T = any>(
       const result = await get<T>(url);
       setData(result);
     } catch (err) {
-      // Error is already handled by useApi
     }
   }, [url, enabled, get]);
 
-  // Initial fetch
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  // Set up refresh interval
   useEffect(() => {
     if (refreshInterval && enabled && url) {
       refreshIntervalRef.current = setInterval(fetchData, refreshInterval);
@@ -293,7 +266,6 @@ export const useApiQuery = <T = any>(
     }
   }, [refreshInterval, enabled, url, fetchData]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       cancel();
@@ -317,7 +289,6 @@ export const useApiQuery = <T = any>(
   }), [data, loading, error, refetch, clearError]);
 };
 
-// Hook for mutations with optimistic updates
 export const useApiMutation = <T = any>(options?: UseApiOptions & {
   optimisticUpdate?: (data: any) => void;
   rollback?: () => void;
@@ -332,7 +303,6 @@ export const useApiMutation = <T = any>(options?: UseApiOptions & {
     requestData?: any,
     requestOptions?: UseApiOptions
   ): Promise<T | null> => {
-    // Apply optimistic update
     if (optimisticUpdate && requestData) {
       optimisticUpdate(requestData);
     }
@@ -355,7 +325,6 @@ export const useApiMutation = <T = any>(options?: UseApiOptions & {
       setData(result);
       return result;
     } catch (error) {
-      // Rollback optimistic update on error
       if (rollback) {
         rollback();
       }

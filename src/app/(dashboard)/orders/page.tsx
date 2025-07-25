@@ -5,13 +5,12 @@ import { Search, Plus, Eye, Calendar, DollarSign, User, ShoppingCart, CreditCard
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { useApi } from '@/hooks/useApi';
-
-// Import helper components
 import { StatusBadge } from '@/components/helpers/StatusBadge';
 import { DateDisplay } from '@/components/helpers/DateDisplay';
 import { EmptyState, LoadingState } from '@/components/helpers/EmptyLoadingStates';
-import { FormInput } from '@/components/helpers/FormInput';
 import { PaginationControls } from '@/components/helpers/PaginationControls';
+import { EntityDrawer } from '@/components/helpers/EntityDrawer';
+import { OrderForm } from '@/components/forms/OrderForm';
 
 interface Order {
   id: number;
@@ -30,10 +29,12 @@ interface Order {
 
 interface OrderFormData {
   customer: string;
+  customerEmail: string;
   status: string;
   paymentMethod: string;
   customerTotal: string;
   supplierTotal: string;
+  inHandDate: string;
 }
 
 const mockOrders: Order[] = [
@@ -214,21 +215,13 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [localSearchTerm, setLocalSearchTerm] = useState('');
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(20);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [formData, setFormData] = useState<OrderFormData>({
-    customer: '',
-    status: 'new',
-    paymentMethod: 'Credit Card',
-    customerTotal: '0',
-    supplierTotal: '0'
-  });
-  const [formErrors, setFormErrors] = useState<Partial<OrderFormData>>({});
 
   const { get, post, put, loading } = useApi();
   const submitApi = useApi();
@@ -279,22 +272,7 @@ export default function OrdersPage() {
   const startIndex = (currentPage - 1) * rowsPerPage;
   const endIndex = Math.min(startIndex + rowsPerPage, totalCount);
 
-  const validateForm = (): boolean => {
-    const errors: Partial<OrderFormData> = {};
-    
-    if (!formData.customer.trim()) errors.customer = 'Customer is required';
-    const customerTotal = parseFloat(formData.customerTotal);
-    if (isNaN(customerTotal) || customerTotal <= 0) errors.customerTotal = 'Customer total must be greater than 0';
-
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateForm()) return;
-
+  const handleSubmit = async (formData: OrderFormData) => {
     try {
       if (isEditing && selectedOrder) {
         console.log('Updating order:', selectedOrder.id, formData);
@@ -303,7 +281,7 @@ export default function OrdersPage() {
       }
 
       await fetchOrders();
-      closeModal();
+      closeDrawer();
     } catch (error: any) {
       if (error?.name !== 'CanceledError' && error?.code !== 'ERR_CANCELED') {
         console.error('Error saving order:', error);
@@ -311,58 +289,22 @@ export default function OrdersPage() {
     }
   };
 
-  const openNewOrderModal = () => {
-    setFormData({
-      customer: '',
-      status: 'new',
-      paymentMethod: 'Credit Card',
-      customerTotal: '0',
-      supplierTotal: '0'
-    });
-    setFormErrors({});
+  const openNewOrderDrawer = () => {
     setIsEditing(false);
     setSelectedOrder(null);
-    setIsModalOpen(true);
+    setIsDrawerOpen(true);
   };
 
-  const openEditOrderModal = (order: Order) => {
-    setFormData({
-      customer: order.customer,
-      status: order.status,
-      paymentMethod: order.paymentMethod,
-      customerTotal: order.customerTotal.toString(),
-      supplierTotal: order.supplierTotal.toString()
-    });
-    setFormErrors({});
+  const openEditOrderDrawer = (order: Order) => {
     setIsEditing(true);
     setSelectedOrder(order);
-    setIsModalOpen(true);
+    setIsDrawerOpen(true);
   };
 
-  const closeModal = () => {
-    setIsModalOpen(false);
+  const closeDrawer = () => {
+    setIsDrawerOpen(false);
     setSelectedOrder(null);
     setIsEditing(false);
-    setFormData({
-      customer: '',
-      status: 'new',
-      paymentMethod: 'Credit Card',
-      customerTotal: '0',
-      supplierTotal: '0'
-    });
-    setFormErrors({});
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ 
-      ...prev, 
-      [name]: value 
-    }));
-    
-    if (formErrors[name as keyof OrderFormData]) {
-      setFormErrors(prev => ({ ...prev, [name]: undefined }));
-    }
   };
 
   const handleLocalSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -383,7 +325,7 @@ export default function OrdersPage() {
         
         <div className="flex items-center gap-3">
           <Button
-            onClick={openNewOrderModal}
+            onClick={openNewOrderDrawer}
             icon={Plus}
             className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg"
           >
@@ -399,7 +341,6 @@ export default function OrdersPage() {
               Orders ({totalCount.toLocaleString()})
             </h3>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
-              {/* Local search bar */}
               <div className="relative w-full sm:w-auto">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Search className="w-4 h-4 text-gray-400" />
@@ -475,7 +416,8 @@ export default function OrdersPage() {
                 orders.map((order) => {
                   const statusConfig = getStatusConfig(order.status);
                   return (
-                    <tr key={order.id} className="hover:bg-gray-50 transition-colors duration-150">
+                    <tr key={order.id} className="hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
+                        onClick={() => openEditOrderDrawer(order)}>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="flex-shrink-0">
@@ -552,7 +494,10 @@ export default function OrdersPage() {
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-right">
                         <Button
-                          onClick={() => openEditOrderModal(order)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEditOrderDrawer(order);
+                          }}
                           variant="secondary"
                           size="sm"
                           icon={Eye}
@@ -587,115 +532,20 @@ export default function OrdersPage() {
         </Card>
       )}
 
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center p-4 z-50 pt-20 overflow-y-auto">
-          <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-[calc(100vh-5rem)] overflow-y-auto my-4">
-            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-              <h3 className="text-lg font-semibold text-gray-900">
-                {isEditing ? "Edit Order" : "Create New Order"}
-              </h3>
-              <Button
-                onClick={closeModal}
-                variant="secondary"
-                size="sm"
-                icon={X}
-                iconOnly
-                disabled={submitApi.loading}
-              />
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4">
-              <FormInput
-                label="Customer Name"
-                name="customer"
-                value={formData.customer}
-                onChange={handleInputChange}
-                error={formErrors.customer}
-                required
-                placeholder="Enter customer name"
-              />
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="form-input-group">
-                  <label className="form-label block text-sm font-medium text-gray-700 mb-1">
-                    Status
-                  </label>
-                  <select
-                    name="status"
-                    value={formData.status}
-                    onChange={handleInputChange}
-                    className="form-input w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                  >
-                    <option value="new">New Order</option>
-                    <option value="in-production">In Production</option>
-                    <option value="shipped">Shipped</option>
-                    <option value="delivered">Delivered</option>
-                    <option value="cancelled">Cancelled</option>
-                  </select>
-                </div>
-
-                <div className="form-input-group">
-                  <label className="form-label block text-sm font-medium text-gray-700 mb-1">
-                    Payment Method
-                  </label>
-                  <select
-                    name="paymentMethod"
-                    value={formData.paymentMethod}
-                    onChange={handleInputChange}
-                    className="form-input w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                  >
-                    <option value="Credit Card">Credit Card</option>
-                    <option value="PayPal">PayPal</option>
-                    <option value="Bank Transfer">Bank Transfer</option>
-                    <option value="Check">Check</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FormInput
-                  label="Customer Total"
-                  name="customerTotal"
-                  type="number"
-                  value={formData.customerTotal}
-                  onChange={handleInputChange}
-                  error={formErrors.customerTotal}
-                  required
-                  placeholder="0.00"
-                />
-
-                <FormInput
-                  label="Supplier Total"
-                  name="supplierTotal"
-                  type="number"
-                  value={formData.supplierTotal}
-                  onChange={handleInputChange}
-                  placeholder="0.00"
-                />
-              </div>
-
-              <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-4 border-t border-gray-200">
-                <Button
-                  type="button"
-                  onClick={closeModal}
-                  variant="secondary"
-                  disabled={submitApi.loading}
-                  className="w-full sm:w-auto"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  loading={submitApi.loading}
-                  className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-                >
-                  {isEditing ? "Update Order" : "Create Order"}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <EntityDrawer
+        isOpen={isDrawerOpen}
+        onClose={closeDrawer}
+        title={isEditing ? "Edit Order" : "Create New Order"}
+        size="lg"
+        loading={submitApi.loading}
+      >
+        <OrderForm
+          order={selectedOrder}
+          isEditing={isEditing}
+          onSubmit={handleSubmit}
+          loading={submitApi.loading}
+        />
+      </EntityDrawer>
     </div>
   );
 }

@@ -9,7 +9,7 @@ interface RouteCache {
 class RouteOptimizationManager {
   private static instance: RouteOptimizationManager;
   private routeCache: RouteCache = {};
-  private defaultCacheDuration = 5 * 60 * 1000; // 5 minutes
+  private defaultCacheDuration = 5 * 60 * 1000; 
 
   static getInstance(): RouteOptimizationManager {
     if (!RouteOptimizationManager.instance) {

@@ -9,7 +9,6 @@ interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
-// Memoized background component to prevent unnecessary re-renders
 const DashboardBackground = memo(() => (
   <div className="dashboard-layout-background absolute inset-0 pointer-events-none">
     <div className="absolute inset-0 opacity-[0.02]" style={{
@@ -28,7 +27,6 @@ const DashboardBackground = memo(() => (
 
 DashboardBackground.displayName = 'DashboardBackground';
 
-// Memoized floating elements to prevent unnecessary re-renders
 const FloatingElements = memo(() => (
   <div className="dashboard-layout-floating-elements pointer-events-none">
     <div className="absolute top-20 right-20 w-32 h-32 bg-gradient-to-br from-blue-400/10 to-indigo-400/10 rounded-full animate-pulse"></div>
@@ -39,7 +37,6 @@ const FloatingElements = memo(() => (
 
 FloatingElements.displayName = 'FloatingElements';
 
-// Memoized content wrapper to prevent unnecessary re-renders
 const ContentWrapper = memo(({ children }: { children: React.ReactNode }) => (
   <div className="dashboard-content-container h-full relative min-h-0">
     <div className="absolute inset-0 bg-white/30 rounded-2xl border border-white/40 shadow-sm pointer-events-none"></div>
@@ -52,7 +49,6 @@ const ContentWrapper = memo(({ children }: { children: React.ReactNode }) => (
 
 ContentWrapper.displayName = 'ContentWrapper';
 
-// Main dashboard layout component
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   return (
     <AuthGuard>
@@ -83,5 +79,4 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   );
 };
 
-// Export memoized version to prevent unnecessary re-renders
 export default memo(DashboardLayout);

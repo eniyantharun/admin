@@ -5,15 +5,14 @@ import { Search, Plus, Edit2, Phone, Mail, Globe, X, Building } from 'lucide-rea
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { useApi } from '@/hooks/useApi';
-
-// Import helper components
 import { EntityAvatar } from '@/components/helpers/EntityAvatar';
 import { StatusBadge } from '@/components/helpers/StatusBadge';
 import { ProductStats } from '@/components/helpers/ProductStats';
 import { DateDisplay } from '@/components/helpers/DateDisplay';
 import { EmptyState, LoadingState } from '@/components/helpers/EmptyLoadingStates';
-import { FormInput } from '@/components/helpers/FormInput';
 import { PaginationControls } from '@/components/helpers/PaginationControls';
+import { SupplierForm } from '@/components/forms/SupplierForm';
+import { EntityDrawer } from '@/components/helpers/EntityDrawer';
 
 interface Supplier {
   id: number;
@@ -44,7 +43,6 @@ interface SupplierFormData {
   exclusive: boolean;
 }
 
-// Memoized contact info component
 const ContactInfo = memo(({ supplier }: { supplier: Supplier }) => (
   <>
     {supplier.emailAddress && (
@@ -66,6 +64,7 @@ const ContactInfo = memo(({ supplier }: { supplier: Supplier }) => (
         target="_blank" 
         rel="noopener noreferrer"
         className="truncate max-w-xs hover:underline"
+        onClick={(e) => e.stopPropagation()}
       >
         {supplier.webUrl}
       </a>
@@ -79,41 +78,28 @@ export default function SuppliersPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [localSearchTerm, setLocalSearchTerm] = useState('');
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(20);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
-  const [formData, setFormData] = useState<SupplierFormData>({
-    companyName: '',
-    webUrl: '',
-    emailAddress: '',
-    telephoneNumber: '',
-    enabled: true,
-    exclusive: false
-  });
-  const [formErrors, setFormErrors] = useState<Partial<SupplierFormData>>({});
 
-  // TECHNIQUE 1: Stable API instances using useRef (immediate fix)
-  // This prevents the API hook from being recreated on every render
   const mainApiRef = useRef(useApi({ 
-    cancelOnUnmount: false,  // TECHNIQUE 2: Use improved useApi with cancellation control
+    cancelOnUnmount: false,
     dedupe: true,
-    cacheDuration: 60000 // 1 minute cache for list data
+    cacheDuration: 60000
   }));
   
   const submitApiRef = useRef(useApi({ 
-    cancelOnUnmount: false,  // Don't cancel form submissions
-    dedupe: false // Don't cache mutations
+    cancelOnUnmount: false,
+    dedupe: false
   }));
   
   const mainApi = mainApiRef.current;
   const submitApi = submitApiRef.current;
 
-  // Optimized fetchSuppliers with proper dependency management
   const fetchSuppliers = useCallback(async () => {
-    // Prevent multiple simultaneous requests
     if (!isInitialLoad && mainApi.loading) return;
 
     try {
@@ -122,7 +108,6 @@ export default function SuppliersPage() {
       
       let filteredSuppliers = response.suppliers;
       
-      // Client-side filtering for better UX
       if (localSearchTerm) {
         filteredSuppliers = filteredSuppliers.filter((supplier: Supplier) =>
           supplier.companyName.toLowerCase().includes(localSearchTerm.toLowerCase()) ||
@@ -131,14 +116,12 @@ export default function SuppliersPage() {
         );
       }
       
-      // Client-side pagination
       const startIndex = (currentPage - 1) * rowsPerPage;
       const paginatedSuppliers = filteredSuppliers.slice(startIndex, startIndex + rowsPerPage);
       
       setSuppliers(paginatedSuppliers);
       setTotalCount(filteredSuppliers.length);
     } catch (error: any) {
-      // Improved error handling - only log real errors
       if (error?.name !== 'CanceledError' && error?.code !== 'ERR_CANCELED') {
         console.error('Error fetching suppliers:', error);
       }
@@ -161,24 +144,7 @@ export default function SuppliersPage() {
   const startIndex = (currentPage - 1) * rowsPerPage;
   const endIndex = Math.min(startIndex + rowsPerPage, totalCount);
 
-  const validateForm = useCallback((): boolean => {
-    const errors: Partial<SupplierFormData> = {};
-    
-    if (!formData.companyName.trim()) errors.companyName = 'Company name is required';
-    if (!formData.webUrl.trim()) errors.webUrl = 'Website URL is required';
-    else if (!formData.webUrl.startsWith('http')) {
-      errors.webUrl = 'Website URL must start with http:// or https://';
-    }
-
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  }, [formData]);
-
-  const handleSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateForm()) return;
-
+  const handleSubmit = useCallback(async (formData: SupplierFormData) => {
     try {
       if (isEditing && selectedSupplier) {
         await submitApi.put(`/Admin/SupplierList/UpdateSupplier/${selectedSupplier.id}`, formData);
@@ -186,84 +152,33 @@ export default function SuppliersPage() {
         await submitApi.post('/Admin/SupplierList/CreateSupplier', formData);
       }
 
-      // Refresh the list after successful mutation
       await fetchSuppliers();
-      
-      // Close modal and reset form
-      closeModal();
+      closeDrawer();
     } catch (error: any) {
       if (error?.name !== 'CanceledError' && error?.code !== 'ERR_CANCELED') {
         console.error('Error saving supplier:', error);
       }
     }
-  }, [validateForm, isEditing, selectedSupplier, formData, submitApi.put, submitApi.post, fetchSuppliers]);
+  }, [isEditing, selectedSupplier, submitApi.put, submitApi.post, fetchSuppliers]);
 
-  // Memoized modal handlers to prevent unnecessary re-renders
-  const openNewSupplierModal = useCallback(() => {
-    setFormData({
-      companyName: '',
-      webUrl: '',
-      emailAddress: '',
-      telephoneNumber: '',
-      enabled: true,
-      exclusive: false
-    });
-    setFormErrors({});
+  const openNewSupplierDrawer = useCallback(() => {
     setIsEditing(false);
     setSelectedSupplier(null);
-    setIsModalOpen(true);
+    setIsDrawerOpen(true);
   }, []);
 
-  const openEditSupplierModal = useCallback((supplier: Supplier) => {
-    setFormData({
-      companyName: supplier.companyName,
-      webUrl: supplier.webUrl,
-      emailAddress: supplier.emailAddress || '',
-      telephoneNumber: supplier.telephoneNumber || '',
-      enabled: supplier.enabled,
-      exclusive: supplier.exclusive
-    });
-    setFormErrors({});
+  const openEditSupplierDrawer = useCallback((supplier: Supplier) => {
     setIsEditing(true);
     setSelectedSupplier(supplier);
-    setIsModalOpen(true);
+    setIsDrawerOpen(true);
   }, []);
 
-  const closeModal = useCallback(() => {
-    setIsModalOpen(false);
+  const closeDrawer = useCallback(() => {
+    setIsDrawerOpen(false);
     setSelectedSupplier(null);
     setIsEditing(false);
-    setFormData({
-      companyName: '',
-      webUrl: '',
-      emailAddress: '',
-      telephoneNumber: '',
-      enabled: true,
-      exclusive: false
-    });
-    setFormErrors({});
   }, []);
 
-  // Optimized input handler
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
-    
-    setFormData(prev => ({ 
-      ...prev, 
-      [name]: type === 'checkbox' ? checked : value 
-    }));
-    
-    // Clear field-specific errors on change
-    if (formErrors[name as keyof SupplierFormData]) {
-      setFormErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[name as keyof SupplierFormData];
-        return newErrors;
-      });
-    }
-  }, [formErrors]);
-
-  // Search handlers
   const handleLocalSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setLocalSearchTerm(e.target.value);
   }, []);
@@ -282,7 +197,7 @@ export default function SuppliersPage() {
         
         <div className="flex items-center gap-3">
           <Button
-            onClick={openNewSupplierModal}
+            onClick={openNewSupplierDrawer}
             icon={Plus}
             className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg"
           >
@@ -353,7 +268,8 @@ export default function SuppliersPage() {
                 </tr>
               ) : (
                 suppliers.map((supplier) => (
-                  <tr key={supplier.id} className="hover:bg-gray-50 transition-colors duration-150">
+                  <tr key={supplier.id} className="hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
+                      onClick={() => openEditSupplierDrawer(supplier)}>
                     <td className="px-4 py-2 whitespace-nowrap">
                       <div className="flex items-center">
                         <EntityAvatar name={supplier.companyName} id={supplier.id} type="supplier" />
@@ -388,7 +304,10 @@ export default function SuppliersPage() {
                     </td>
                     <td className="px-4 py-2 whitespace-nowrap text-right">
                       <Button
-                        onClick={() => openEditSupplierModal(supplier)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEditSupplierDrawer(supplier);
+                        }}
                         variant="secondary"
                         size="sm"
                         icon={Edit2}
@@ -421,105 +340,20 @@ export default function SuppliersPage() {
         </Card>
       )}
 
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center p-4 z-50 pt-20 overflow-y-auto">
-          <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-[calc(100vh-5rem)] overflow-y-auto my-4">
-            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">
-                {isEditing ? "Edit Supplier" : "Add New Supplier"}
-              </h3>
-              <Button
-                onClick={closeModal}
-                variant="secondary"
-                size="sm"
-                icon={X}
-                iconOnly
-                disabled={submitApi.loading}
-              />
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4">
-              <FormInput
-                label="Company Name"
-                name="companyName"
-                value={formData.companyName}
-                onChange={handleInputChange}
-                error={formErrors.companyName}
-                required
-                placeholder="Enter company name"
-              />
-
-              <FormInput
-                label="Website URL"
-                name="webUrl"
-                value={formData.webUrl}
-                onChange={handleInputChange}
-                error={formErrors.webUrl}
-                required
-                placeholder="https://example.com"
-                helpText="Include the full URL including https://"
-              />
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FormInput
-                  label="Email Address"
-                  name="emailAddress"
-                  type="email"
-                  value={formData.emailAddress}
-                  onChange={handleInputChange}
-                  placeholder="contact@company.com"
-                />
-                <FormInput
-                  label="Phone Number"
-                  name="telephoneNumber"
-                  type="tel"
-                  value={formData.telephoneNumber}
-                  onChange={handleInputChange}
-                  placeholder="(555) 123-4567"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FormInput
-                  label="Status"
-                  name="enabled"
-                  type="checkbox"
-                  value={formData.enabled}
-                  onChange={handleInputChange}
-                  placeholder="Enable this supplier"
-                />
-                <FormInput
-                  label="Exclusivity"
-                  name="exclusive"
-                  type="checkbox"
-                  value={formData.exclusive}
-                  onChange={handleInputChange}
-                  placeholder="Mark as exclusive supplier"
-                />
-              </div>
-
-              <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-4 border-t border-gray-200">
-                <Button
-                  type="button"
-                  onClick={closeModal}
-                  variant="secondary"
-                  disabled={submitApi.loading}
-                  className="w-full sm:w-auto"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  loading={submitApi.loading}
-                  className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-                >
-                  {isEditing ? "Update Supplier" : "Add Supplier"}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <EntityDrawer
+        isOpen={isDrawerOpen}
+        onClose={closeDrawer}
+        title={isEditing ? "Edit Supplier" : "Add New Supplier"}
+        size="lg"
+        loading={submitApi.loading}
+      >
+        <SupplierForm
+          supplier={selectedSupplier}
+          isEditing={isEditing}
+          onSubmit={handleSubmit}
+          loading={submitApi.loading}
+        />
+      </EntityDrawer>
     </div>
   );
 }

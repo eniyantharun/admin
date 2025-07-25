@@ -1,17 +1,16 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo, memo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, memo, useRef } from 'react';
 import { Search, Plus, Edit2, Phone, Mail, Building, X, User, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { useApi } from '@/hooks/useApi';
-
-// Import helper components
 import { EntityAvatar } from '@/components/helpers/EntityAvatar';
 import { DateDisplay } from '@/components/helpers/DateDisplay';
 import { EmptyState, LoadingState } from '@/components/helpers/EmptyLoadingStates';
-import { FormInput } from '@/components/helpers/FormInput';
 import { PaginationControls } from '@/components/helpers/PaginationControls';
+import { EntityDrawer } from '@/components/helpers/EntityDrawer';
+import { CustomerForm } from '@/components/forms/CustomerForm';
 
 interface Customer {
   id: number;
@@ -29,22 +28,7 @@ interface CustomerFormData {
   email: string;
   phone: string;
   companyName: string;
-}
-
-interface Comment {
-  id: string;
-  text: string;
-  timestamp: string;
-  type: 'manual' | 'auto';
-}
-
-interface Address {
-  id: string;
-  street: string;
-  city: string;
-  state: string;
-  zipCode: string;
-  country: string;
+  enabled: boolean;
 }
 
 interface ApiCustomer {
@@ -62,7 +46,6 @@ interface ApiCustomer {
   createdAt: string;
 }
 
-// Memoized ContactInfo component
 const ContactInfo = memo<{ customer: Customer }>(({ customer }) => (
   <>
     <div className="text-sm text-gray-900 flex items-center gap-1">
@@ -79,54 +62,19 @@ const ContactInfo = memo<{ customer: Customer }>(({ customer }) => (
 ContactInfo.displayName = 'ContactInfo';
 
 export default function CustomersPage() {
-  // State management
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [localSearchTerm, setLocalSearchTerm] = useState('');
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(20);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
-  
-  // Form state
-  const [formData, setFormData] = useState<CustomerFormData>({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    companyName: ''
-  });
-  const [formErrors, setFormErrors] = useState<Partial<CustomerFormData>>({});
-  
-  // Modal-specific state
-  const [newComment, setNewComment] = useState('');
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [addresses, setAddresses] = useState<Address[]>([
-    {
-      id: '1',
-      street: '19680 Tree Stand Terrace',
-      city: 'Loxahatchee',
-      state: 'Florida',
-      zipCode: '33470',
-      country: 'US'
-    }
-  ]);
-  const [showAddressForm, setShowAddressForm] = useState(false);
-  const [newAddress, setNewAddress] = useState<Omit<Address, 'id'>>({
-    street: '',
-    city: '',
-    state: '',
-    zipCode: '',
-    country: ''
-  });
 
-  // Refs for stability
   const mountedRef = useRef(true);
   const fetchTimeoutRef = useRef<NodeJS.Timeout>();
 
-  // API hooks with stable configuration
   const mainApi = useApi({ 
     cancelOnUnmount: true,
     dedupe: true,
@@ -138,7 +86,6 @@ export default function CustomersPage() {
     dedupe: false 
   });
 
-  // Stable transform function
   const transformApiCustomer = useCallback((apiCustomer: ApiCustomer): Customer => {
     return {
       id: apiCustomer.idNum,
@@ -151,19 +98,15 @@ export default function CustomersPage() {
     };
   }, []);
 
-  // Optimized fetchCustomers with proper dependency management
   const fetchCustomers = useCallback(async () => {
-    // Prevent fetch if component unmounted or already loading
     if (!mountedRef.current || (!isInitialLoad && mainApi.loading)) {
       return;
     }
 
-    // Clear any pending timeout
     if (fetchTimeoutRef.current) {
       clearTimeout(fetchTimeoutRef.current);
     }
 
-    // Debounce rapid calls
     fetchTimeoutRef.current = setTimeout(async () => {
       if (!mountedRef.current) return;
 
@@ -192,7 +135,7 @@ export default function CustomersPage() {
           setIsInitialLoad(false);
         }
       }
-    }, 100); // 100ms debounce
+    }, 100);
   }, [
     localSearchTerm, 
     currentPage, 
@@ -203,7 +146,6 @@ export default function CustomersPage() {
     mainApi.loading
   ]);
 
-  // Mount/unmount tracking
   useEffect(() => {
     mountedRef.current = true;
     return () => {
@@ -214,47 +156,23 @@ export default function CustomersPage() {
     };
   }, []);
 
-  // Fetch data effect
   useEffect(() => {
     fetchCustomers();
   }, [fetchCustomers]);
 
-  // Reset page when search changes
   useEffect(() => {
     if (currentPage !== 1) {
       setCurrentPage(1);
     }
   }, [localSearchTerm, currentPage]);
 
-  // Memoized calculations
-  const paginationData = useMemo(() => ({
+  const paginationData = {
     totalPages: Math.ceil(totalCount / rowsPerPage),
     startIndex: (currentPage - 1) * rowsPerPage,
     endIndex: Math.min((currentPage - 1) * rowsPerPage + rowsPerPage, totalCount)
-  }), [totalCount, rowsPerPage, currentPage]);
+  };
 
-  // Form validation
-  const validateForm = useCallback((): boolean => {
-    const errors: Partial<CustomerFormData> = {};
-    
-    if (!formData.firstName.trim()) errors.firstName = 'First name is required';
-    if (!formData.lastName.trim()) errors.lastName = 'Last name is required';
-    if (!formData.email.trim()) {
-      errors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      errors.email = 'Email is invalid';
-    }
-
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  }, [formData]);
-
-  // Form submission
-  const handleSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateForm()) return;
-
+  const handleSubmit = useCallback(async (formData: CustomerFormData) => {
     try {
       if (isEditing && selectedCustomer) {
         await submitApi.put(`/Admin/CustomerEditor/UpdateCustomer/${selectedCustomer.id}`, {
@@ -280,57 +198,31 @@ export default function CustomersPage() {
       }
 
       await fetchCustomers();
-      closeModal();
+      closeDrawer();
     } catch (error: any) {
       if (error?.name !== 'CanceledError' && error?.code !== 'ERR_CANCELED') {
         console.error('Error saving customer:', error);
       }
     }
-  }, [validateForm, isEditing, selectedCustomer, formData, submitApi.put, submitApi.post, fetchCustomers]);
+  }, [isEditing, selectedCustomer, submitApi.put, submitApi.post, fetchCustomers]);
 
-  // Modal handlers
-  const openNewCustomerModal = useCallback(() => {
-    setFormData({ firstName: '', lastName: '', email: '', phone: '', companyName: '' });
-    setFormErrors({});
+  const openNewCustomerDrawer = useCallback(() => {
     setIsEditing(false);
     setSelectedCustomer(null);
-    setIsModalOpen(true);
+    setIsDrawerOpen(true);
   }, []);
 
-  const openEditCustomerModal = useCallback((customer: Customer) => {
-    setFormData({
-      firstName: customer.firstName,
-      lastName: customer.lastName,
-      email: customer.email,
-      phone: customer.phone,
-      companyName: customer.companyName
-    });
-    setFormErrors({});
+  const openEditCustomerDrawer = useCallback((customer: Customer) => {
     setIsEditing(true);
     setSelectedCustomer(customer);
-    setIsModalOpen(true);
+    setIsDrawerOpen(true);
   }, []);
 
-  const closeModal = useCallback(() => {
-    setIsModalOpen(false);
+  const closeDrawer = useCallback(() => {
+    setIsDrawerOpen(false);
     setSelectedCustomer(null);
     setIsEditing(false);
-    setFormData({ firstName: '', lastName: '', email: '', phone: '', companyName: '' });
-    setFormErrors({});
-    setNewComment('');
-    setShowAddressForm(false);
-    setNewAddress({ street: '', city: '', state: '', zipCode: '', country: '' });
   }, []);
-
-  // Input handlers
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    
-    if (formErrors[name as keyof CustomerFormData]) {
-      setFormErrors(prev => ({ ...prev, [name]: undefined }));
-    }
-  }, [formErrors]);
 
   const handleLocalSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setLocalSearchTerm(e.target.value);
@@ -340,88 +232,35 @@ export default function CustomersPage() {
     setLocalSearchTerm('');
   }, []);
 
-  // Comment handlers
-  const handleCommentSubmit = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newComment.trim()) return;
-
-    const comment: Comment = {
-      id: Date.now().toString(),
-      text: newComment,
-      timestamp: new Date().toLocaleDateString() + '\n' + new Date().toLocaleTimeString(),
-      type: 'manual'
-    };
-
-    setComments(prev => [comment, ...prev]);
-    setNewComment('');
-  }, [newComment]);
-
-  const addAutoComment = useCallback((text: string) => {
-    const comment: Comment = {
-      id: Date.now().toString(),
-      text,
-      timestamp: new Date().toLocaleDateString() + '\n' + new Date().toLocaleTimeString(),
-      type: 'auto'
-    };
-    setComments(prev => [comment, ...prev]);
-  }, []);
-
-  // Address handlers
-  const handleAddressSubmit = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newAddress.street.trim() || !newAddress.city.trim()) return;
-
-    const address: Address = {
-      id: Date.now().toString(),
-      ...newAddress
-    };
-
-    setAddresses(prev => [...prev, address]);
-    setNewAddress({ street: '', city: '', state: '', zipCode: '', country: '' });
-    setShowAddressForm(false);
-  }, [newAddress]);
-
-  const handleAddressInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setNewAddress(prev => ({ ...prev, [name]: value }));
-  }, []);
-
-  // Email actions
-  const sendResetPasswordEmail = useCallback(async () => {
-    if (!selectedCustomer) return;
-    
+  const sendResetPasswordEmail = useCallback(async (email: string) => {
     try {
       await mainApi.post('/Admin/CustomerEditor/SendResetPasswordEmail', {
-        email: selectedCustomer.email,
+        email: email,
         website: 'PromotionalProductInc'
       });
-      alert(`Reset password email sent to ${selectedCustomer.email}`);
-      addAutoComment(`Sent reset password email to ${selectedCustomer.email}`);
+      alert(`Reset password email sent to ${email}`);
     } catch (error: any) {
       if (error?.name !== 'CanceledError' && error?.code !== 'ERR_CANCELED') {
         console.error('Error sending reset password email:', error);
         alert('Failed to send reset password email');
       }
     }
-  }, [selectedCustomer, mainApi.post, addAutoComment]);
+  }, [mainApi.post]);
 
-  const sendNewAccountEmail = useCallback(async () => {
-    if (!selectedCustomer) return;
-    
+  const sendNewAccountEmail = useCallback(async (email: string) => {
     try {
       await mainApi.post('/Admin/CustomerEditor/SendNewAccountEmail', {
-        email: selectedCustomer.email,
+        email: email,
         website: 'PromotionalProductInc'
       });
-      alert(`New account email sent to ${selectedCustomer.email}`);
-      addAutoComment(`Sent new account email to ${selectedCustomer.email}`);
+      alert(`New account email sent to ${email}`);
     } catch (error: any) {
       if (error?.name !== 'CanceledError' && error?.code !== 'ERR_CANCELED') {
         console.error('Error sending new account email:', error);
         alert('Failed to send new account email');
       }
     }
-  }, [selectedCustomer, mainApi.post, addAutoComment]);
+  }, [mainApi.post]);
 
   return (
     <div className="customers-page space-y-6">
@@ -433,7 +272,7 @@ export default function CustomersPage() {
         
         <div className="flex items-center gap-3">
           <Button
-            onClick={openNewCustomerModal}
+            onClick={openNewCustomerDrawer}
             icon={Plus}
             className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg"
           >
@@ -449,7 +288,6 @@ export default function CustomersPage() {
               Customer List ({totalCount.toLocaleString()})
             </h3>
             
-            {/* Local search bar */}
             <div className="relative w-full sm:w-auto">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Search className="w-4 h-4 text-gray-400" />
@@ -503,7 +341,8 @@ export default function CustomersPage() {
                 </tr>
               ) : (
                 customers.map((customer) => (
-                  <tr key={customer.id} className="hover:bg-gray-50 transition-colors duration-150">
+                  <tr key={customer.id} className="hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
+                      onClick={() => openEditCustomerDrawer(customer)}>
                     <td className="px-4 py-2 whitespace-nowrap">
                       <div className="flex items-center">
                         <EntityAvatar name={`${customer.firstName} ${customer.lastName}`} id={customer.id} type="customer" />
@@ -529,7 +368,10 @@ export default function CustomersPage() {
                     </td>
                     <td className="px-4 py-2 whitespace-nowrap text-right">
                       <Button
-                        onClick={() => openEditCustomerModal(customer)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEditCustomerDrawer(customer);
+                        }}
                         variant="secondary"
                         size="sm"
                         icon={Edit2}
@@ -562,270 +404,22 @@ export default function CustomersPage() {
         </Card>
       )}
 
-      {/* Modal content remains the same but wrapped with proper handlers */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center p-4 z-50 pt-20 overflow-y-auto">
-          <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl lg:max-w-4xl max-h-[calc(100vh-5rem)] overflow-y-auto my-4">
-            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">
-                {isEditing ? "Edit Customer" : "Add New Customer"}
-              </h3>
-              <Button
-                onClick={closeModal}
-                variant="secondary"
-                size="sm"
-                icon={X}
-                iconOnly
-                disabled={submitApi.loading}
-              />
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FormInput
-                  label="First Name"
-                  name="firstName"
-                  value={formData.firstName}
-                  onChange={handleInputChange}
-                  error={formErrors.firstName}
-                  required
-                  placeholder="First Name"
-                />
-                <FormInput
-                  label="Last Name"
-                  name="lastName"
-                  value={formData.lastName}
-                  onChange={handleInputChange}
-                  error={formErrors.lastName}
-                  required
-                  placeholder="Last Name"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FormInput
-                  label="Email Address"
-                  name="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  error={formErrors.email}
-                  required
-                  placeholder="email@example.com"
-                />
-                <FormInput
-                  label="Phone Number"
-                  name="phone"
-                  type="tel"
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                  placeholder="(555) 123-4567"
-                />
-              </div>
-
-              <FormInput
-                label="Company Name"
-                name="companyName"
-                value={formData.companyName}
-                onChange={handleInputChange}
-                placeholder="Company Name (Optional)"
-              />
-
-              <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-4 border-t border-gray-200">
-                <Button
-                  type="button"
-                  onClick={closeModal}
-                  variant="secondary"
-                  disabled={submitApi.loading}
-                  className="w-full sm:w-auto"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  loading={submitApi.loading}
-                  className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-                >
-                  {isEditing ? "Update Customer" : "Add Customer"}
-                </Button>
-              </div>
-            </form>
-
-            {/* Additional sections for editing mode */}
-            {isEditing && selectedCustomer && (
-              <div className="border-t border-gray-200">
-                <div className="p-4 sm:p-6 border-b border-gray-200 bg-gray-50">
-                  <div className="flex flex-col sm:flex-row flex-wrap gap-3 mb-4">
-                    <Button onClick={sendResetPasswordEmail} variant="secondary" size="sm">
-                      SEND RESET PASSWORD EMAIL
-                    </Button>
-                    <Button onClick={sendNewAccountEmail} variant="secondary" size="sm">
-                      SEND NEW ACCOUNT EMAIL
-                    </Button>
-                  </div>
-                  <div className="text-sm text-gray-600">
-                    <span className="font-medium">Send test email to:</span><br />
-                    <span className="text-gray-800 break-all">{selectedCustomer.email}</span>
-                  </div>
-                </div>
-
-                <div className="p-4 sm:p-6 border-b border-gray-200">
-                  <h4 className="text-sm font-medium text-gray-700 mb-4">Comment</h4>
-                  <form onSubmit={handleCommentSubmit} className="space-y-3">
-                    <div className="relative">
-                      <textarea
-                        value={newComment}
-                        onChange={(e) => setNewComment(e.target.value)}
-                        placeholder="Comment"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 resize-none"
-                        rows={4}
-                        maxLength={1000}
-                      />
-                      <div className="flex justify-between items-center mt-1">
-                        <span className="text-xs text-gray-500">Max. 1000 characters</span>
-                        <span className="text-xs text-gray-500">{newComment.length} / 1000</span>
-                      </div>
-                    </div>
-                    <div className="flex justify-end">
-                      <Button type="submit" disabled={!newComment.trim()} variant="secondary" size="sm">
-                        SUBMIT
-                      </Button>
-                    </div>
-                  </form>
-
-                  <div className="mt-6">
-                    <h5 className="text-sm font-medium text-gray-900 mb-3">Comments History</h5>
-                    <div className="space-y-3 max-h-48 overflow-y-auto">
-                      {comments.map((comment) => (
-                        <div key={comment.id} className="bg-white p-3 rounded-lg border border-gray-200">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <span className={`inline-block px-2 py-1 rounded text-xs font-medium mb-2 ${
-                                comment.type === "auto" ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-800"
-                              }`}>
-                                {comment.type === "auto" ? "AUTO" : "MANUAL"}
-                              </span>
-                              <p className="text-sm text-gray-900">{comment.text}</p>
-                            </div>
-                          </div>
-                          <div className="text-xs text-gray-500 mt-2 whitespace-pre-line">
-                            {comment.timestamp}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-4 sm:p-6">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-                    <h4 className="text-sm font-medium text-gray-700">Addresses</h4>
-                    <Button
-                      onClick={() => setShowAddressForm(!showAddressForm)}
-                      size="sm"
-                      className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-                    >
-                      NEW ADDRESS
-                    </Button>
-                  </div>
-
-                  <div className="space-y-3 mb-4">
-                    {addresses.map((address) => (
-                      <div key={address.id} className="bg-white p-4 rounded-lg border border-gray-200 flex flex-col sm:flex-row items-start justify-between gap-4">
-                        <div className="flex-1">
-                          <div className="font-medium text-gray-900">
-                            {selectedCustomer.companyName || "No Company"}
-                          </div>
-                          <div className="text-sm text-gray-600 mt-1">
-                            {address.street}<br />
-                            {address.city}, {address.state} {address.zipCode} ({address.country})
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Button variant="secondary" size="sm" icon={Edit2} iconOnly />
-                          <Button variant="danger" size="sm" icon={X} iconOnly />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {showAddressForm && (
-                    <Card className="bg-gray-50 p-4">
-                      <h5 className="text-sm font-medium text-gray-900 mb-3">Add New Address</h5>
-                      <form onSubmit={handleAddressSubmit} className="space-y-3">
-                        <input
-                          type="text"
-                          name="street"
-                          value={newAddress.street}
-                          onChange={handleAddressInputChange}
-                          placeholder="Street Address"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                          required
-                        />
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <input
-                            type="text"
-                            name="city"
-                            value={newAddress.city}
-                            onChange={handleAddressInputChange}
-                            placeholder="City"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                            required
-                          />
-                          <input
-                            type="text"
-                            name="state"
-                            value={newAddress.state}
-                            onChange={handleAddressInputChange}
-                            placeholder="State"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                          />
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <input
-                            type="text"
-                            name="zipCode"
-                            value={newAddress.zipCode}
-                            onChange={handleAddressInputChange}
-                            placeholder="ZIP Code"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                          />
-                          <input
-                            type="text"
-                            name="country"
-                            value={newAddress.country}
-                            onChange={handleAddressInputChange}
-                            placeholder="Country"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                          />
-                        </div>
-                        <div className="flex flex-col sm:flex-row items-center gap-3">
-                          <Button
-                            type="submit"
-                            size="sm"
-                            className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-                          >
-                            Add Address
-                          </Button>
-                          <Button
-                            type="button"
-                            onClick={() => setShowAddressForm(false)}
-                            variant="secondary"
-                            size="sm"
-                            className="w-full sm:w-auto"
-                          >
-                            Cancel
-                          </Button>
-                        </div>
-                      </form>
-                    </Card>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      <EntityDrawer
+        isOpen={isDrawerOpen}
+        onClose={closeDrawer}
+        title={isEditing ? "Edit Customer" : "Add New Customer"}
+        size="lg"
+        loading={submitApi.loading}
+      >
+        <CustomerForm
+          customer={selectedCustomer}
+          isEditing={isEditing}
+          onSubmit={handleSubmit}
+          onSendResetPassword={sendResetPasswordEmail}
+          onSendNewAccount={sendNewAccountEmail}
+          loading={submitApi.loading}
+        />
+      </EntityDrawer>
     </div>
   );
 }

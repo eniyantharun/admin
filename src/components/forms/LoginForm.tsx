@@ -34,10 +34,8 @@ export const LoginPageForm: React.FC<LoginPageFormProps> = ({ redirectTo = '/das
         password: formData.password,
       });
 
-      // Set authentication token
       authUtils.setToken(response.token, new Date(response.expires));
       
-      // Update Redux state
       dispatch(setAuthFromStorage({
         token: response.token,
         user: response.user || { 
@@ -49,7 +47,6 @@ export const LoginPageForm: React.FC<LoginPageFormProps> = ({ redirectTo = '/das
       
       router.push(redirectTo);
     } catch (err: any) {
-      // Error is handled by useApi hook
       console.error('Login error:', err);
     }
   };

@@ -6,12 +6,12 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { useApi } from '@/hooks/useApi';
 
-// Import helper components
 import { StatusBadge } from '@/components/helpers/StatusBadge';
 import { DateDisplay } from '@/components/helpers/DateDisplay';
 import { EmptyState, LoadingState } from '@/components/helpers/EmptyLoadingStates';
-import { FormInput } from '@/components/helpers/FormInput';
 import { PaginationControls } from '@/components/helpers/PaginationControls';
+import { EntityDrawer } from '@/components/helpers/EntityDrawer';
+import { QuoteForm } from '@/components/forms/QuoteForm';
 
 interface Quote {
   id: number;
@@ -182,21 +182,13 @@ export default function QuotesPage() {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [localSearchTerm, setLocalSearchTerm] = useState('');
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(20);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [formData, setFormData] = useState<QuoteFormData>({
-    customer: '',
-    customerEmail: '',
-    status: 'new-quote',
-    customerTotal: '0',
-    inHandDate: ''
-  });
-  const [formErrors, setFormErrors] = useState<Partial<QuoteFormData>>({});
 
   const { get, post, put, loading } = useApi();
   const submitApi = useApi();
@@ -247,27 +239,7 @@ export default function QuotesPage() {
   const startIndex = (currentPage - 1) * rowsPerPage;
   const endIndex = Math.min(startIndex + rowsPerPage, totalCount);
 
-  const validateForm = (): boolean => {
-    const errors: Partial<QuoteFormData> = {};
-    
-    if (!formData.customer.trim()) errors.customer = 'Customer is required';
-    if (!formData.customerEmail.trim()) {
-      errors.customerEmail = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.customerEmail)) {
-      errors.customerEmail = 'Email is invalid';
-    }
-    const customerTotal = parseFloat(formData.customerTotal);
-    if (isNaN(customerTotal) || customerTotal <= 0) errors.customerTotal = 'Customer total must be greater than 0';
-
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateForm()) return;
-
+  const handleSubmit = async (formData: QuoteFormData) => {
     try {
       if (isEditing && selectedQuote) {
         console.log('Updating quote:', selectedQuote.id, formData);
@@ -276,7 +248,7 @@ export default function QuotesPage() {
       }
 
       await fetchQuotes();
-      closeModal();
+      closeDrawer();
     } catch (error: any) {
       if (error?.name !== 'CanceledError' && error?.code !== 'ERR_CANCELED') {
         console.error('Error saving quote:', error);
@@ -284,58 +256,22 @@ export default function QuotesPage() {
     }
   };
 
-  const openNewQuoteModal = () => {
-    setFormData({
-      customer: '',
-      customerEmail: '',
-      status: 'new-quote',
-      customerTotal: '0',
-      inHandDate: ''
-    });
-    setFormErrors({});
+  const openNewQuoteDrawer = () => {
     setIsEditing(false);
     setSelectedQuote(null);
-    setIsModalOpen(true);
+    setIsDrawerOpen(true);
   };
 
-  const openEditQuoteModal = (quote: Quote) => {
-    setFormData({
-      customer: quote.customer,
-      customerEmail: quote.customerEmail,
-      status: quote.status,
-      customerTotal: quote.customerTotal.toString(),
-      inHandDate: quote.inHandDate || ''
-    });
-    setFormErrors({});
+  const openEditQuoteDrawer = (quote: Quote) => {
     setIsEditing(true);
     setSelectedQuote(quote);
-    setIsModalOpen(true);
+    setIsDrawerOpen(true);
   };
 
-  const closeModal = () => {
-    setIsModalOpen(false);
+  const closeDrawer = () => {
+    setIsDrawerOpen(false);
     setSelectedQuote(null);
     setIsEditing(false);
-    setFormData({
-      customer: '',
-      customerEmail: '',
-      status: 'new-quote',
-      customerTotal: '0',
-      inHandDate: ''
-    });
-    setFormErrors({});
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ 
-      ...prev, 
-      [name]: value 
-    }));
-    
-    if (formErrors[name as keyof QuoteFormData]) {
-      setFormErrors(prev => ({ ...prev, [name]: undefined }));
-    }
   };
 
   const handleLocalSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -356,7 +292,7 @@ export default function QuotesPage() {
         
         <div className="flex items-center gap-3">
           <Button
-            onClick={openNewQuoteModal}
+            onClick={openNewQuoteDrawer}
             icon={Plus}
             className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-lg"
           >
@@ -372,7 +308,6 @@ export default function QuotesPage() {
               Quotes ({totalCount.toLocaleString()})
             </h3>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
-              {/* Local search bar */}
               <div className="relative w-full sm:w-auto">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Search className="w-4 h-4 text-gray-400" />
@@ -444,7 +379,8 @@ export default function QuotesPage() {
                   const statusConfig = getStatusConfig(quote.status);
                   const StatusIcon = statusConfig.icon;
                   return (
-                    <tr key={quote.id} className="hover:bg-gray-50 transition-colors duration-150">
+                    <tr key={quote.id} className="hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
+                        onClick={() => openEditQuoteDrawer(quote)}>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="flex-shrink-0">
@@ -495,7 +431,10 @@ export default function QuotesPage() {
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-right">
                         <Button
-                          onClick={() => openEditQuoteModal(quote)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEditQuoteDrawer(quote);
+                          }}
                           variant="secondary"
                           size="sm"
                           icon={Eye}
@@ -530,107 +469,20 @@ export default function QuotesPage() {
         </Card>
       )}
 
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center p-4 z-50 pt-20 overflow-y-auto">
-          <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-[calc(100vh-5rem)] overflow-y-auto my-4">
-            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-indigo-50">
-              <h3 className="text-lg font-semibold text-gray-900">
-                {isEditing ? "Edit Quote" : "Create New Quote"}
-              </h3>
-              <Button
-                onClick={closeModal}
-                variant="secondary"
-                size="sm"
-                icon={X}
-                iconOnly
-                disabled={submitApi.loading}
-              />
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FormInput
-                  label="Customer Name"
-                  name="customer"
-                  value={formData.customer}
-                  onChange={handleInputChange}
-                  error={formErrors.customer}
-                  required
-                  placeholder="Enter customer name"
-                />
-
-                <FormInput
-                  label="Customer Email"
-                  name="customerEmail"
-                  type="email"
-                  value={formData.customerEmail}
-                  onChange={handleInputChange}
-                  error={formErrors.customerEmail}
-                  required
-                  placeholder="customer@example.com"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="form-input-group">
-                  <label className="form-label block text-sm font-medium text-gray-700 mb-1">
-                    Status
-                  </label>
-                  <select
-                    name="status"
-                    value={formData.status}
-                    onChange={handleInputChange}
-                    className="form-input w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
-                  >
-                    <option value="new-quote">New Quote</option>
-                    <option value="quote-sent-to-customer">Quote Sent to Customer</option>
-                    <option value="quote-converted-to-order">Quote Converted to Order</option>
-                  </select>
-                </div>
-
-                <FormInput
-                  label="Customer Total"
-                  name="customerTotal"
-                  type="number"
-                  value={formData.customerTotal}
-                  onChange={handleInputChange}
-                  error={formErrors.customerTotal}
-                  required
-                  placeholder="0.00"
-                />
-              </div>
-
-              <FormInput
-                label="In-Hand Date"
-                name="inHandDate"
-                type="date"
-                value={formData.inHandDate}
-                onChange={handleInputChange}
-                helpText="Expected delivery date (optional)"
-              />
-
-              <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-4 border-t border-gray-200">
-                <Button
-                  type="button"
-                  onClick={closeModal}
-                  variant="secondary"
-                  disabled={submitApi.loading}
-                  className="w-full sm:w-auto"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  loading={submitApi.loading}
-                  className="w-full sm:w-auto bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
-                >
-                  {isEditing ? "Update Quote" : "Create Quote"}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <EntityDrawer
+        isOpen={isDrawerOpen}
+        onClose={closeDrawer}
+        title={isEditing ? "Edit Quote" : "Create New Quote"}
+        size="lg"
+        loading={submitApi.loading}
+      >
+        <QuoteForm
+          quote={selectedQuote}
+          isEditing={isEditing}
+          onSubmit={handleSubmit}
+          loading={submitApi.loading}
+        />
+      </EntityDrawer>
     </div>
   );
 }

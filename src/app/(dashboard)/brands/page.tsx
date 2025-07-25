@@ -5,13 +5,12 @@ import { Search, Plus, Edit2, Eye, X, Award, Building, ExternalLink, Calendar, P
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { useApi } from '@/hooks/useApi';
-
-// Import helper components
 import { StatusBadge } from '@/components/helpers/StatusBadge';
 import { DateDisplay } from '@/components/helpers/DateDisplay';
 import { EmptyState, LoadingState } from '@/components/helpers/EmptyLoadingStates';
-import { FormInput } from '@/components/helpers/FormInput';
 import { PaginationControls } from '@/components/helpers/PaginationControls';
+import { EntityDrawer } from '@/components/helpers/EntityDrawer';
+import { BrandForm } from '@/components/forms/BrandForm';
 
 interface Brand {
   id: number;
@@ -33,7 +32,6 @@ interface BrandFormData {
   enabled: boolean;
 }
 
-// Mock data with actual brand logos from web sources
 const mockBrands: Brand[] =[
   {
     id: 1,
@@ -129,21 +127,13 @@ export default function BrandsPage() {
   const [brands, setBrands] = useState<Brand[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [localSearchTerm, setLocalSearchTerm] = useState('');
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedBrand, setSelectedBrand] = useState<Brand | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(12);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [formData, setFormData] = useState<BrandFormData>({
-    name: '',
-    imageUrl: '',
-    websiteUrl: '',
-    description: '',
-    enabled: true
-  });
-  const [formErrors, setFormErrors] = useState<Partial<BrandFormData>>({});
 
   const { get, post, put, loading } = useApi();
   const submitApi = useApi();
@@ -189,23 +179,7 @@ export default function BrandsPage() {
   const startIndex = (currentPage - 1) * rowsPerPage;
   const endIndex = Math.min(startIndex + rowsPerPage, totalCount);
 
-  const validateForm = (): boolean => {
-    const errors: Partial<BrandFormData> = {};
-    
-    if (!formData.name.trim()) errors.name = 'Brand name is required';
-    if (formData.websiteUrl && !formData.websiteUrl.startsWith('http')) {
-      errors.websiteUrl = 'Website URL must start with http:// or https://';
-    }
-
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateForm()) return;
-
+  const handleSubmit = async (formData: BrandFormData) => {
     try {
       if (isEditing && selectedBrand) {
         console.log('Updating brand:', selectedBrand.id, formData);
@@ -214,7 +188,7 @@ export default function BrandsPage() {
       }
 
       await fetchBrands();
-      closeModal();
+      closeDrawer();
     } catch (error: any) {
       if (error?.name !== 'CanceledError' && error?.code !== 'ERR_CANCELED') {
         console.error('Error saving brand:', error);
@@ -222,60 +196,22 @@ export default function BrandsPage() {
     }
   };
 
-  const openNewBrandModal = () => {
-    setFormData({
-      name: '',
-      imageUrl: '',
-      websiteUrl: '',
-      description: '',
-      enabled: true
-    });
-    setFormErrors({});
+  const openNewBrandDrawer = () => {
     setIsEditing(false);
     setSelectedBrand(null);
-    setIsModalOpen(true);
+    setIsDrawerOpen(true);
   };
 
-  const openEditBrandModal = (brand: Brand) => {
-    setFormData({
-      name: brand.name,
-      imageUrl: brand.imageUrl || '',
-      websiteUrl: brand.websiteUrl || '',
-      description: brand.description || '',
-      enabled: brand.enabled
-    });
-    setFormErrors({});
+  const openEditBrandDrawer = (brand: Brand) => {
     setIsEditing(true);
     setSelectedBrand(brand);
-    setIsModalOpen(true);
+    setIsDrawerOpen(true);
   };
 
-  const closeModal = () => {
-    setIsModalOpen(false);
+  const closeDrawer = () => {
+    setIsDrawerOpen(false);
     setSelectedBrand(null);
     setIsEditing(false);
-    setFormData({
-      name: '',
-      imageUrl: '',
-      websiteUrl: '',
-      description: '',
-      enabled: true
-    });
-    setFormErrors({});
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value, type } = e.target;
-    const checked = (e.target as HTMLInputElement).checked;
-    
-    setFormData(prev => ({ 
-      ...prev, 
-      [name]: type === 'checkbox' ? checked : value 
-    }));
-    
-    if (formErrors[name as keyof BrandFormData]) {
-      setFormErrors(prev => ({ ...prev, [name]: undefined }));
-    }
   };
 
   const handleLocalSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -291,168 +227,180 @@ export default function BrandsPage() {
     
     if (viewMode === 'list') {
       return (
-        <Card className="brand-list-item group hover:shadow-lg transition-all duration-300 border hover:border-blue-200">
-          <div className="flex items-center p-4 gap-4">
-            <div className="flex-shrink-0">
-              <div className="relative">
-                <div className="brand-image-container bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
-                  <div className="flex items-center justify-center h-12 w-16">
-                    {!imageError && brand.imageUrl ? (
-                      <img 
-                        src={brand.imageUrl} 
-                        alt={brand.name}
-                        className="max-h-10 max-w-full object-contain"
-                        onError={() => setImageError(true)}
-                      />
-                    ) : (
-                      <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-600 rounded-lg flex items-center justify-center">
-                        <Award className="w-5 h-5 text-white" />
-                      </div>
-                    )}
+        <div className="brand-list-item group cursor-pointer" onClick={() => openEditBrandDrawer(brand)}>
+          <Card className="hover:shadow-lg transition-all duration-300 border hover:border-blue-200">
+            <div className="flex items-center p-4 gap-4">
+              <div className="flex-shrink-0">
+                <div className="relative">
+                  <div className="brand-image-container bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                    <div className="flex items-center justify-center h-12 w-16">
+                      {!imageError && brand.imageUrl ? (
+                        <img 
+                          src={brand.imageUrl} 
+                          alt={brand.name}
+                          className="max-h-10 max-w-full object-contain"
+                          onError={() => setImageError(true)}
+                        />
+                      ) : (
+                        <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-600 rounded-lg flex items-center justify-center">
+                          <Award className="w-5 h-5 text-white" />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="absolute -top-2 -right-2">
+                    <StatusBadge enabled={brand.enabled} variant="compact" />
                   </div>
                 </div>
-                <div className="absolute -top-2 -right-2">
-                  <StatusBadge enabled={brand.enabled} variant="compact" />
+              </div>
+              
+              <div className="flex-1 min-w-0">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 min-w-0 mr-4">
+                    <h3 className="font-bold text-gray-900 text-xl mb-1 group-hover:text-blue-600 transition-colors">
+                      {brand.name}
+                    </h3>
+                    <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
+                      <div className="flex items-center gap-1">
+                        <Package className="w-4 h-4 text-blue-500" />
+                        <span className="font-medium">{brand.productCount} products</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Calendar className="w-4 h-4 text-gray-400" />
+                        <DateDisplay date={brand.updatedAt} format="relative" showIcon={false} />
+                      </div>
+                      {brand.websiteUrl && (
+                        <a 
+                          href={brand.websiteUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 text-blue-600 hover:text-blue-800 transition-colors"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                          <span className="text-sm">Visit Website</span>
+                        </a>
+                      )}
+                    </div>
+                    <p className="text-gray-600 text-sm line-clamp-2 max-w-2xl">
+                      {brand.description || 'No description available'}
+                    </p>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <Button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openEditBrandDrawer(brand);
+                      }}
+                      variant="secondary"
+                      size="sm"
+                      icon={Edit2}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      icon={Eye}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      View Products
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
+          </Card>
+        </div>
+      );
+    }
+    
+    return (
+      <div className="brand-card group cursor-pointer" onClick={() => openEditBrandDrawer(brand)}>
+        <Card className="hover:shadow-xl transition-all duration-300 overflow-hidden border-2 hover:border-blue-200 bg-gradient-to-br from-white to-gray-50">
+          <div className="relative">
+            <div className="absolute top-3 right-3 z-10">
+              <StatusBadge enabled={brand.enabled} variant="compact" />
+            </div>
             
-            <div className="flex-1 min-w-0">
-              <div className="flex items-start justify-between">
-                <div className="flex-1 min-w-0 mr-4">
-                  <h3 className="font-bold text-gray-900 text-xl mb-1 group-hover:text-blue-600 transition-colors">
-                    {brand.name}
-                  </h3>
-                  <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
-                    <div className="flex items-center gap-1">
-                      <Package className="w-4 h-4 text-blue-500" />
-                      <span className="font-medium">{brand.productCount} products</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Calendar className="w-4 h-4 text-gray-400" />
-                      <DateDisplay date={brand.updatedAt} format="relative" showIcon={false} />
-                    </div>
-                    {brand.websiteUrl && (
-                      <a 
-                        href={brand.websiteUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1 text-blue-600 hover:text-blue-800 transition-colors"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                        <span className="text-sm">Visit Website</span>
-                      </a>
-                    )}
+            <div className="brand-image-container bg-white relative overflow-hidden h-32 border-b border-gray-100">
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-50 to-indigo-50 opacity-30"></div>
+              <div className="relative z-10 w-full h-full flex items-center justify-center p-4">
+                {!imageError && brand.imageUrl ? (
+                  <img 
+                    src={brand.imageUrl} 
+                    alt={brand.name}
+                    className="max-h-full max-w-full object-contain filter drop-shadow-sm"
+                    onError={() => setImageError(true)}
+                  />
+                ) : (
+                  <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg">
+                    <Award className="w-8 h-8 text-white" />
                   </div>
-                  <p className="text-gray-600 text-sm line-clamp-2 max-w-2xl">
-                    {brand.description || 'No description available'}
-                  </p>
+                )}
+              </div>
+            </div>
+            
+            <div className="p-4">
+              <div className="mb-3">
+                <h3 className="font-bold text-gray-900 text-lg mb-1 group-hover:text-blue-600 transition-colors">
+                  {brand.name}
+                </h3>
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Package className="w-4 h-4 text-blue-500" />
+                  <span className="font-medium">{brand.productCount} products</span>
+                </div>
+              </div>
+              
+              <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+                {brand.description || 'No description available'}
+              </p>
+              
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {brand.websiteUrl && (
+                    <a 
+                      href={brand.websiteUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800 transition-colors"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  )}
+                  <DateDisplay date={brand.updatedAt} format="relative" showIcon={false} />
                 </div>
                 
-                <div className="flex items-center gap-2 flex-shrink-0">
+                <div className="flex items-center gap-1">
                   <Button
-                    onClick={() => openEditBrandModal(brand)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openEditBrandDrawer(brand);
+                    }}
                     variant="secondary"
                     size="sm"
                     icon={Edit2}
+                    iconOnly
                     className="opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    Edit
-                  </Button>
+                    title="Edit brand"
+                  />
                   <Button
                     variant="secondary"
                     size="sm"
                     icon={Eye}
+                    iconOnly
                     className="opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    View Products
-                  </Button>
+                    title="View products"
+                  />
                 </div>
               </div>
             </div>
           </div>
         </Card>
-      );
-    }
-    
-    return (
-      <Card className="brand-card group hover:shadow-xl transition-all duration-300 overflow-hidden border-2 hover:border-blue-200 bg-gradient-to-br from-white to-gray-50">
-        <div className="relative">
-          <div className="absolute top-3 right-3 z-10">
-            <StatusBadge enabled={brand.enabled} variant="compact" />
-          </div>
-          
-          <div className="brand-image-container bg-white relative overflow-hidden h-32 border-b border-gray-100">
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-50 to-indigo-50 opacity-30"></div>
-            <div className="relative z-10 w-full h-full flex items-center justify-center p-4">
-              {!imageError && brand.imageUrl ? (
-                <img 
-                  src={brand.imageUrl} 
-                  alt={brand.name}
-                  className="max-h-full max-w-full object-contain filter drop-shadow-sm"
-                  onError={() => setImageError(true)}
-                />
-              ) : (
-                <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <Award className="w-8 h-8 text-white" />
-                </div>
-              )}
-            </div>
-          </div>
-          
-          <div className="p-4">
-            <div className="mb-3">
-              <h3 className="font-bold text-gray-900 text-lg mb-1 group-hover:text-blue-600 transition-colors">
-                {brand.name}
-              </h3>
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <Package className="w-4 h-4 text-blue-500" />
-                <span className="font-medium">{brand.productCount} products</span>
-              </div>
-            </div>
-            
-            <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-              {brand.description || 'No description available'}
-            </p>
-            
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                {brand.websiteUrl && (
-                  <a 
-                    href={brand.websiteUrl} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:text-blue-800 transition-colors"
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                  </a>
-                )}
-                <DateDisplay date={brand.updatedAt} format="relative" showIcon={false} />
-              </div>
-              
-              <div className="flex items-center gap-1">
-                <Button
-                  onClick={() => openEditBrandModal(brand)}
-                  variant="secondary"
-                  size="sm"
-                  icon={Edit2}
-                  iconOnly
-                  className="opacity-0 group-hover:opacity-100 transition-opacity"
-                  title="Edit brand"
-                />
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  icon={Eye}
-                  iconOnly
-                  className="opacity-0 group-hover:opacity-100 transition-opacity"
-                  title="View products"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      </Card>
+      </div>
     );
   };
 
@@ -466,9 +414,9 @@ export default function BrandsPage() {
         
         <div className="flex items-center gap-3">
           <Button
-            onClick={openNewBrandModal}
+            onClick={openNewBrandDrawer}
             icon={Plus}
-            className="bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 shadow-lg"
+            className="shadow-lg"
           >
             Add Brand
           </Button>
@@ -482,7 +430,6 @@ export default function BrandsPage() {
               {totalCount} {totalCount === 1 ? 'Brand' : 'Brands'}
             </h3>
             
-            {/* Local search bar */}
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Search className="w-4 h-4 text-gray-400" />
@@ -575,98 +522,20 @@ export default function BrandsPage() {
         </Card>
       )}
 
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center p-4 z-50 pt-20 overflow-y-auto">
-          <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-[calc(100vh-5rem)] overflow-y-auto my-4">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-orange-50 to-red-50">
-              <h3 className="text-lg font-semibold text-gray-900">
-                {isEditing ? "Edit Brand" : "Add New Brand"}
-              </h3>
-              <Button
-                onClick={closeModal}
-                variant="secondary"
-                size="sm"
-                icon={X}
-                iconOnly
-                disabled={submitApi.loading}
-              />
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <FormInput
-                label="Brand Name"
-                name="name"
-                value={formData.name}
-                onChange={handleInputChange}
-                error={formErrors.name}
-                required
-                placeholder="Enter brand name"
-              />
-
-              <FormInput
-                label="Brand Logo URL"
-                name="imageUrl"
-                value={formData.imageUrl}
-                onChange={handleInputChange}
-                placeholder="https://example.com/brand-logo.png"
-                helpText="URL to the brand logo image (optional)"
-              />
-
-              <FormInput
-                label="Website URL"
-                name="websiteUrl"
-                value={formData.websiteUrl}
-                onChange={handleInputChange}
-                error={formErrors.websiteUrl}
-                placeholder="https://brandwebsite.com"
-                helpText="Official brand website (optional)"
-              />
-
-              <div className="form-input-group">
-                <label className="form-label block text-sm font-medium text-gray-700 mb-1">
-                  Description
-                </label>
-                <textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  className="form-input w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-200 resize-none"
-                  placeholder="Brief description of the brand and its products"
-                  rows={3}
-                />
-              </div>
-
-              <FormInput
-                label="Status"
-                name="enabled"
-                type="checkbox"
-                value={formData.enabled}
-                onChange={handleInputChange}
-                placeholder="Enable this brand for product listings"
-              />
-
-              <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-4 border-t border-gray-200">
-                <Button
-                  type="button"
-                  onClick={closeModal}
-                  variant="secondary"
-                  disabled={submitApi.loading}
-                  className="w-full sm:w-auto"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  loading={submitApi.loading}
-                  className="w-full sm:w-auto bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700"
-                >
-                  {isEditing ? "Update Brand" : "Add Brand"}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <EntityDrawer
+        isOpen={isDrawerOpen}
+        onClose={closeDrawer}
+        title={isEditing ? "Edit Brand" : "Add New Brand"}
+        size="lg"
+        loading={submitApi.loading}
+      >
+        <BrandForm
+          brand={selectedBrand}
+          isEditing={isEditing}
+          onSubmit={handleSubmit}
+          loading={submitApi.loading}
+        />
+      </EntityDrawer>
     </div>
   );
 }

@@ -28,11 +28,8 @@ const LoginPage: NextPage<LoginPageProps> = async ({ searchParams }) => {
 
   return (
     <div className="login-page-main min-h-screen flex flex-col">
-      {/* Main Content */}
       <div className="login-page-content flex-1 flex flex-col lg:flex-row">
-        {/* Left Panel - 70% on desktop, full width on mobile */}
         <div className="login-page-left flex-none lg:flex-[7] h-64 lg:h-auto bg-gradient-to-br from-slate-400 via-blue-900 to-indigo-900 relative overflow-hidden">
-          {/* Animated Background Pattern */}
           <div className="login-page-bg-pattern absolute inset-0 opacity-20">
             <div className="login-page-bg-circle-1 absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_20%_50%,rgba(255,255,255,0.4),transparent_50%)] animate-pulse"></div>
             <div className="login-page-bg-circle-2 absolute top-0 right-0 w-full h-full bg-[radial-gradient(circle_at_80%_20%,rgba(255,255,255,0.4),transparent_50%)] animate-pulse [animation-delay:1s]"></div>
@@ -40,7 +37,6 @@ const LoginPage: NextPage<LoginPageProps> = async ({ searchParams }) => {
           </div>
           
           <div className="login-page-brand-section relative z-10 flex flex-col justify-center items-center h-full p-4 lg:p-8">
-            {/* Logo Section */}
             <div className="login-page-brand-content text-center mb-6 lg:mb-12">
               <div className="login-page-logo-wrapper flex items-center justify-center mb-3 lg:mb-6">
                 <a
@@ -62,9 +58,7 @@ const LoginPage: NextPage<LoginPageProps> = async ({ searchParams }) => {
               <p className="login-page-company-subtitle text-sm lg:text-xl text-orange-100">Admin Portal</p>
             </div>
 
-            {/* Vector Icons Display */}
             <div className="login-page-icons-container w-full max-w-2xl">
-              {/* Desktop: Circular arrangement */}
               <div className="login-page-icons-desktop hidden lg:block relative">
                 <div className="login-page-icons-circle relative w-80 h-80 mx-auto">
                   {adminIcons.map((item, index) => {
@@ -93,7 +87,6 @@ const LoginPage: NextPage<LoginPageProps> = async ({ searchParams }) => {
                     );
                   })}
                   
-                  {/* Center decoration */}
                   <div className="login-page-center-decoration absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
                     <div className="login-page-center-circle w-16 h-16 bg-white/5 rounded-full border border-white/10 flex items-center justify-center">
                       <div className="login-page-center-pulse w-8 h-8 bg-white/10 rounded-full animate-pulse"></div>
@@ -102,7 +95,6 @@ const LoginPage: NextPage<LoginPageProps> = async ({ searchParams }) => {
                 </div>
               </div>
 
-              {/* Mobile: Grid arrangement */}
               <div className="login-page-icons-mobile lg:hidden grid grid-cols-6 gap-3 justify-items-center max-w-sm mx-auto">
                 {adminIcons.slice(0, 12).map((item, index) => (
                   <div
@@ -116,7 +108,6 @@ const LoginPage: NextPage<LoginPageProps> = async ({ searchParams }) => {
               </div>
             </div>
 
-            {/* Feature Tags - Hidden on mobile */}
             <div className="login-page-features hidden lg:block mt-8 text-center">
               <div className="login-page-features-list flex flex-wrap justify-center gap-3 text-orange-100">
                 <span className="login-page-feature-tag bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full text-sm border border-white/20">Product Management</span>
@@ -127,7 +118,6 @@ const LoginPage: NextPage<LoginPageProps> = async ({ searchParams }) => {
           </div>
         </div>
 
-        {/* Right Panel - 30% on desktop, full width on mobile */}
         <div className="login-page-right flex-1 lg:flex-[3] bg-gray-50 flex items-center justify-center p-4 lg:p-8">
           <div className="login-page-form-container w-full max-w-md shadow-2xl border-0 bg-white/95 backdrop-blur-sm rounded-lg overflow-hidden">
             <div className="login-page-form-header text-center pb-6 lg:pb-8 pt-6 lg:pt-8 px-4 lg:px-6">

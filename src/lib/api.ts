@@ -3,9 +3,8 @@ import Cookies from 'js-cookie';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL!;
 
-// Simple in-memory cache for GET requests only
 const requestCache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
+const CACHE_DURATION = 2 * 60 * 1000; 
 
 const generateCacheKey = (url: string, params?: any): string => {
   const paramString = params ? JSON.stringify(params) : '';
@@ -20,7 +19,6 @@ const apiClient = axios.create({
   timeout: 15000,
 });
 
-// Request interceptor to add authentication token
 apiClient.interceptors.request.use(
   (config) => {
     const token = Cookies.get('auth_token');
@@ -32,13 +30,11 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor to handle authentication errors
 apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
     if (error.response?.status === 401) {
       Cookies.remove('auth_token');
-      // Only redirect if not already on login page
       if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
         window.location.href = '/login';
       }
@@ -51,7 +47,6 @@ export const api = {
   get: async <T = any>(url: string, config?: AxiosRequestConfig): Promise<T> => {
     const cacheKey = generateCacheKey(url, config?.params);
     
-    // Check cache for non-auth URLs
     if (!url.includes('auth') && !url.includes('login')) {
       const cached = requestCache.get(cacheKey);
       if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
@@ -62,7 +57,6 @@ export const api = {
     try {
       const response = await apiClient.get<T>(url, config);
       
-      // Cache successful responses (excluding auth endpoints)
       if (!url.includes('auth') && !url.includes('login')) {
         requestCache.set(cacheKey, {
           data: response.data,
@@ -81,7 +75,6 @@ export const api = {
     try {
       const response = await apiClient.post<T>(url, data, config);
       
-      // Clear related cache entries on successful mutations
       if (!url.includes('auth') && !url.includes('login')) {
         api.clearCacheByPattern(url);
       }
@@ -97,7 +90,6 @@ export const api = {
     try {
       const response = await apiClient.put<T>(url, data, config);
       
-      // Clear related cache entries on successful mutations
       if (!url.includes('auth') && !url.includes('login')) {
         api.clearCacheByPattern(url);
       }
@@ -113,7 +105,6 @@ export const api = {
     try {
       const response = await apiClient.delete<T>(url, config);
       
-      // Clear related cache entries on successful mutations
       if (!url.includes('auth') && !url.includes('login')) {
         api.clearCacheByPattern(url);
       }
@@ -125,7 +116,6 @@ export const api = {
     }
   },
   
-  // Utility methods for cache management
   clearCache: (): void => {
     requestCache.clear();
   },
@@ -147,7 +137,6 @@ export const api = {
   }
 };
 
-// API endpoint collections for better organization
 export const apiEndpoints = {
   auth: {
     login: '/Admin/Login/Login',
@@ -193,7 +182,6 @@ export const apiEndpoints = {
   }
 };
 
-// Specialized API service classes for complex operations
 export class CustomerService {
   static async getCustomers(params: {
     website: string;
@@ -258,7 +246,4 @@ export class SupplierService {
   }
 }
 
-
-
-// Export the main api object as default
 export default api;
