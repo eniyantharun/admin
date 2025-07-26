@@ -1,24 +1,40 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Plus, Eye, Calendar, DollarSign, User, FileText, Mail, X, CheckCircle, Clock, Send } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
-import { useApi } from '@/hooks/useApi';
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  Search,
+  Plus,
+  Eye,
+  Calendar,
+  DollarSign,
+  User,
+  FileText,
+  Mail,
+  X,
+  CheckCircle,
+  Clock,
+  Send,
+} from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { useApi } from "@/hooks/useApi";
 
-import { StatusBadge } from '@/components/helpers/StatusBadge';
-import { DateDisplay } from '@/components/helpers/DateDisplay';
-import { EmptyState, LoadingState } from '@/components/helpers/EmptyLoadingStates';
-import { PaginationControls } from '@/components/helpers/PaginationControls';
-import { EntityDrawer } from '@/components/helpers/EntityDrawer';
-import { QuoteForm } from '@/components/forms/QuoteForm';
+import { StatusBadge } from "@/components/helpers/StatusBadge";
+import { DateDisplay } from "@/components/helpers/DateDisplay";
+import {
+  EmptyState,
+  LoadingState,
+} from "@/components/helpers/EmptyLoadingStates";
+import { PaginationControls } from "@/components/helpers/PaginationControls";
+import { EntityDrawer } from "@/components/helpers/EntityDrawer";
+import { QuoteForm } from "@/components/forms/QuoteForm";
 
 interface Quote {
   id: number;
   quoteNumber: string;
   customer: string;
   customerEmail: string;
-  status: 'new-quote' | 'quote-sent-to-customer' | 'quote-converted-to-order';
+  status: "new-quote" | "quote-sent-to-customer" | "quote-converted-to-order";
   dateTime: string;
   inHandDate: string | null;
   customerTotal: number;
@@ -35,145 +51,148 @@ interface QuoteFormData {
 const mockQuotes: Quote[] = [
   {
     id: 10679,
-    quoteNumber: 'QUO-10679',
-    customer: 'Cynthia Bogucki',
-    customerEmail: 'cynthia.bogucki@example.com',
-    status: 'new-quote',
-    dateTime: '7/18/2025 2:15:42 PM',
-    inHandDate: '7/29/2025',
-    customerTotal: 678.74
+    quoteNumber: "QUO-10679",
+    customer: "Cynthia Bogucki",
+    customerEmail: "cynthia.bogucki@example.com",
+    status: "new-quote",
+    dateTime: "7/18/2025 2:15:42 PM",
+    inHandDate: "7/29/2025",
+    customerTotal: 678.74,
   },
   {
     id: 10678,
-    quoteNumber: 'QUO-10678',
-    customer: 'Kathy Dennis',
-    customerEmail: 'kathy.dennis@example.com',
-    status: 'new-quote',
-    dateTime: '7/18/2025 1:21:12 PM',
-    inHandDate: '7/24/2025',
-    customerTotal: 748.28
+    quoteNumber: "QUO-10678",
+    customer: "Kathy Dennis",
+    customerEmail: "kathy.dennis@example.com",
+    status: "new-quote",
+    dateTime: "7/18/2025 1:21:12 PM",
+    inHandDate: "7/24/2025",
+    customerTotal: 748.28,
   },
   {
     id: 10677,
-    quoteNumber: 'QUO-10677',
-    customer: 'Jake Mahon',
-    customerEmail: 'jake.mahon@example.com',
-    status: 'quote-sent-to-customer',
-    dateTime: '7/15/2025 6:49:46 PM',
-    inHandDate: '8/24/2025',
-    customerTotal: 925.13
+    quoteNumber: "QUO-10677",
+    customer: "Jake Mahon",
+    customerEmail: "jake.mahon@example.com",
+    status: "quote-sent-to-customer",
+    dateTime: "7/15/2025 6:49:46 PM",
+    inHandDate: "8/24/2025",
+    customerTotal: 925.13,
   },
   {
     id: 10676,
-    quoteNumber: 'QUO-10676',
-    customer: 'Christina Johnson',
-    customerEmail: 'christina.johnson@example.com',
-    status: 'quote-sent-to-customer',
-    dateTime: '7/15/2025 8:07:15 AM',
-    inHandDate: '8/3/2025',
-    customerTotal: 451.18
+    quoteNumber: "QUO-10676",
+    customer: "Christina Johnson",
+    customerEmail: "christina.johnson@example.com",
+    status: "quote-sent-to-customer",
+    dateTime: "7/15/2025 8:07:15 AM",
+    inHandDate: "8/3/2025",
+    customerTotal: 451.18,
   },
   {
     id: 10675,
-    quoteNumber: 'QUO-10675',
-    customer: 'Nic Hunter',
-    customerEmail: 'nic.hunter@example.com',
-    status: 'quote-converted-to-order',
-    dateTime: '7/14/2025 11:48:49 AM',
-    inHandDate: '7/30/2025',
-    customerTotal: 556.00
+    quoteNumber: "QUO-10675",
+    customer: "Nic Hunter",
+    customerEmail: "nic.hunter@example.com",
+    status: "quote-converted-to-order",
+    dateTime: "7/14/2025 11:48:49 AM",
+    inHandDate: "7/30/2025",
+    customerTotal: 556.0,
   },
   {
     id: 10674,
-    quoteNumber: 'QUO-10674',
-    customer: 'Rosalie Poulin',
-    customerEmail: 'rosalie.poulin@example.com',
-    status: 'quote-sent-to-customer',
-    dateTime: '7/11/2025 11:09:41 AM',
+    quoteNumber: "QUO-10674",
+    customer: "Rosalie Poulin",
+    customerEmail: "rosalie.poulin@example.com",
+    status: "quote-sent-to-customer",
+    dateTime: "7/11/2025 11:09:41 AM",
     inHandDate: null,
-    customerTotal: 2580.00
+    customerTotal: 2580.0,
   },
   {
     id: 10672,
-    quoteNumber: 'QUO-10672',
-    customer: 'Kaitlin Zull',
-    customerEmail: 'kaitlin.zull@example.com',
-    status: 'quote-sent-to-customer',
-    dateTime: '7/10/2025 1:21:10 PM',
-    inHandDate: '8/28/2025',
-    customerTotal: 598.00
+    quoteNumber: "QUO-10672",
+    customer: "Kaitlin Zull",
+    customerEmail: "kaitlin.zull@example.com",
+    status: "quote-sent-to-customer",
+    dateTime: "7/10/2025 1:21:10 PM",
+    inHandDate: "8/28/2025",
+    customerTotal: 598.0,
   },
   {
     id: 10671,
-    quoteNumber: 'QUO-10671',
-    customer: 'Natalia Valerin Jimenez',
-    customerEmail: 'natalia.jimenez@example.com',
-    status: 'quote-sent-to-customer',
-    dateTime: '7/9/2025 3:44:42 PM',
+    quoteNumber: "QUO-10671",
+    customer: "Natalia Valerin Jimenez",
+    customerEmail: "natalia.jimenez@example.com",
+    status: "quote-sent-to-customer",
+    dateTime: "7/9/2025 3:44:42 PM",
     inHandDate: null,
-    customerTotal: 1350.00
+    customerTotal: 1350.0,
   },
   {
     id: 10670,
-    quoteNumber: 'QUO-10670',
-    customer: 'Taylor Bullock',
-    customerEmail: 'taylor.bullock@example.com',
-    status: 'quote-sent-to-customer',
-    dateTime: '7/9/2025 11:07:58 AM',
+    quoteNumber: "QUO-10670",
+    customer: "Taylor Bullock",
+    customerEmail: "taylor.bullock@example.com",
+    status: "quote-sent-to-customer",
+    dateTime: "7/9/2025 11:07:58 AM",
     inHandDate: null,
-    customerTotal: 745.00
+    customerTotal: 745.0,
   },
   {
     id: 10669,
-    quoteNumber: 'QUO-10669',
-    customer: 'Thomas Washburn',
-    customerEmail: 'thomas.washburn@example.com',
-    status: 'quote-converted-to-order',
-    dateTime: '7/9/2025 9:47:36 AM',
+    quoteNumber: "QUO-10669",
+    customer: "Thomas Washburn",
+    customerEmail: "thomas.washburn@example.com",
+    status: "quote-converted-to-order",
+    dateTime: "7/9/2025 9:47:36 AM",
     inHandDate: null,
-    customerTotal: 1435.00
+    customerTotal: 1435.0,
   },
   {
     id: 10667,
-    quoteNumber: 'QUO-10667',
-    customer: 'Nick Ganz',
-    customerEmail: 'nick.ganz@example.com',
-    status: 'quote-converted-to-order',
-    dateTime: '7/8/2025 9:49:11 PM',
-    inHandDate: '8/23/2025',
-    customerTotal: 302.90
-  }
+    quoteNumber: "QUO-10667",
+    customer: "Nick Ganz",
+    customerEmail: "nick.ganz@example.com",
+    status: "quote-converted-to-order",
+    dateTime: "7/8/2025 9:49:11 PM",
+    inHandDate: "8/23/2025",
+    customerTotal: 302.9,
+  },
 ];
 
-const getStatusConfig = (status: Quote['status']) => {
+const getStatusConfig = (status: Quote["status"]) => {
   switch (status) {
-    case 'new-quote':
-      return { 
-        enabled: true, 
-        label: { enabled: 'New Quote', disabled: 'New Quote' },
+    case "new-quote":
+      return {
+        enabled: true,
+        label: { enabled: "New Quote", disabled: "New Quote" },
         icon: FileText,
-        color: 'text-blue-600 bg-blue-100'
+        color: "text-blue-600 bg-blue-100",
       };
-    case 'quote-sent-to-customer':
-      return { 
-        enabled: true, 
-        label: { enabled: 'Quote Sent', disabled: 'Quote Sent' },
+    case "quote-sent-to-customer":
+      return {
+        enabled: true,
+        label: { enabled: "Quote Sent", disabled: "Quote Sent" },
         icon: Send,
-        color: 'text-orange-600 bg-orange-100'
+        color: "text-orange-600 bg-orange-100",
       };
-    case 'quote-converted-to-order':
-      return { 
-        enabled: true, 
-        label: { enabled: 'Converted to Order', disabled: 'Converted to Order' },
+    case "quote-converted-to-order":
+      return {
+        enabled: true,
+        label: {
+          enabled: "Converted to Order",
+          disabled: "Converted to Order",
+        },
         icon: CheckCircle,
-        color: 'text-green-600 bg-green-100'
+        color: "text-green-600 bg-green-100",
       };
     default:
-      return { 
-        enabled: true, 
-        label: { enabled: 'Unknown', disabled: 'Unknown' },
+      return {
+        enabled: true,
+        label: { enabled: "Unknown", disabled: "Unknown" },
         icon: Clock,
-        color: 'text-gray-600 bg-gray-100'
+        color: "text-gray-600 bg-gray-100",
       };
   }
 };
@@ -181,14 +200,14 @@ const getStatusConfig = (status: Quote['status']) => {
 export default function QuotesPage() {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [totalCount, setTotalCount] = useState(0);
-  const [localSearchTerm, setLocalSearchTerm] = useState('');
+  const [localSearchTerm, setLocalSearchTerm] = useState("");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(20);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const { get, post, put, loading } = useApi();
   const submitApi = useApi();
@@ -198,32 +217,51 @@ export default function QuotesPage() {
 
     try {
       let filteredQuotes = [...mockQuotes];
-      
+
       if (localSearchTerm) {
-        filteredQuotes = filteredQuotes.filter((quote: Quote) =>
-          quote.quoteNumber.toLowerCase().includes(localSearchTerm.toLowerCase()) ||
-          quote.customer.toLowerCase().includes(localSearchTerm.toLowerCase()) ||
-          quote.customerEmail.toLowerCase().includes(localSearchTerm.toLowerCase())
+        filteredQuotes = filteredQuotes.filter(
+          (quote: Quote) =>
+            quote.quoteNumber
+              .toLowerCase()
+              .includes(localSearchTerm.toLowerCase()) ||
+            quote.customer
+              .toLowerCase()
+              .includes(localSearchTerm.toLowerCase()) ||
+            quote.customerEmail
+              .toLowerCase()
+              .includes(localSearchTerm.toLowerCase())
         );
       }
 
-      if (statusFilter !== 'all') {
-        filteredQuotes = filteredQuotes.filter((quote: Quote) => quote.status === statusFilter);
+      if (statusFilter !== "all") {
+        filteredQuotes = filteredQuotes.filter(
+          (quote: Quote) => quote.status === statusFilter
+        );
       }
-      
+
       const startIndex = (currentPage - 1) * rowsPerPage;
-      const paginatedQuotes = filteredQuotes.slice(startIndex, startIndex + rowsPerPage);
-      
+      const paginatedQuotes = filteredQuotes.slice(
+        startIndex,
+        startIndex + rowsPerPage
+      );
+
       setQuotes(paginatedQuotes);
       setTotalCount(filteredQuotes.length);
     } catch (error: any) {
-      if (error?.name !== 'CanceledError' && error?.code !== 'ERR_CANCELED') {
-        console.error('Error fetching quotes:', error);
+      if (error?.name !== "CanceledError" && error?.code !== "ERR_CANCELED") {
+        console.error("Error fetching quotes:", error);
       }
     } finally {
       setIsInitialLoad(false);
     }
-  }, [localSearchTerm, statusFilter, currentPage, rowsPerPage, loading, isInitialLoad]);
+  }, [
+    localSearchTerm,
+    statusFilter,
+    currentPage,
+    rowsPerPage,
+    loading,
+    isInitialLoad,
+  ]);
 
   useEffect(() => {
     fetchQuotes();
@@ -242,16 +280,16 @@ export default function QuotesPage() {
   const handleSubmit = async (formData: QuoteFormData) => {
     try {
       if (isEditing && selectedQuote) {
-        console.log('Updating quote:', selectedQuote.id, formData);
+        console.log("Updating quote:", selectedQuote.id, formData);
       } else {
-        console.log('Creating quote:', formData);
+        console.log("Creating quote:", formData);
       }
 
       await fetchQuotes();
       closeDrawer();
     } catch (error: any) {
-      if (error?.name !== 'CanceledError' && error?.code !== 'ERR_CANCELED') {
-        console.error('Error saving quote:', error);
+      if (error?.name !== "CanceledError" && error?.code !== "ERR_CANCELED") {
+        console.error("Error saving quote:", error);
       }
     }
   };
@@ -279,28 +317,11 @@ export default function QuotesPage() {
   };
 
   const clearLocalSearch = () => {
-    setLocalSearchTerm('');
+    setLocalSearchTerm("");
   };
 
   return (
     <div className="quotes-page space-y-6">
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Quotes</h1>
-          <p className="text-gray-600">Manage your quote pipeline</p>
-        </div>
-        
-        <div className="flex items-center gap-3">
-          <Button
-            onClick={openNewQuoteDrawer}
-            icon={Plus}
-            className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-lg"
-          >
-            Add Quote
-          </Button>
-        </div>
-      </div>
-
       <Card className="overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -328,7 +349,7 @@ export default function QuotesPage() {
                   </button>
                 )}
               </div>
-              
+
               <div className="flex items-center gap-2">
                 <select
                   value={statusFilter}
@@ -337,10 +358,22 @@ export default function QuotesPage() {
                 >
                   <option value="all">All Quotes</option>
                   <option value="new-quote">New Quotes</option>
-                  <option value="quote-sent-to-customer">Sent to Customer</option>
-                  <option value="quote-converted-to-order">Converted to Order</option>
+                  <option value="quote-sent-to-customer">
+                    Sent to Customer
+                  </option>
+                  <option value="quote-converted-to-order">
+                    Converted to Order
+                  </option>
                 </select>
               </div>
+
+              <Button
+                onClick={openNewQuoteDrawer}
+                icon={Plus}
+                className=" shadow-lg"
+              >
+                Add Quote
+              </Button>
             </div>
           </div>
         </div>
@@ -348,12 +381,24 @@ export default function QuotesPage() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quote</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date & Time</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">In-Hand Date</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer Total</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Quote
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Customer
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Date & Time
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  In-Hand Date
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Customer Total
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -370,7 +415,7 @@ export default function QuotesPage() {
                       icon={FileText}
                       title="No quotes found"
                       description="Get started by creating your first quote."
-                      hasSearch={!!localSearchTerm || statusFilter !== 'all'}
+                      hasSearch={!!localSearchTerm || statusFilter !== "all"}
                     />
                   </td>
                 </tr>
@@ -379,8 +424,11 @@ export default function QuotesPage() {
                   const statusConfig = getStatusConfig(quote.status);
                   const StatusIcon = statusConfig.icon;
                   return (
-                    <tr key={quote.id} className="hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
-                        onClick={() => openEditQuoteDrawer(quote)}>
+                    <tr
+                      key={quote.id}
+                      className="hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
+                      onClick={() => openEditQuoteDrawer(quote)}
+                    >
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="flex-shrink-0">
@@ -395,7 +443,9 @@ export default function QuotesPage() {
                             <div className="text-xs text-gray-500">
                               ID: {quote.id}
                             </div>
-                            <div className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${statusConfig.color}`}>
+                            <div
+                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${statusConfig.color}`}
+                            >
                               <StatusIcon className="w-3 h-3 mr-1" />
                               {statusConfig.label.enabled}
                             </div>
@@ -420,13 +470,13 @@ export default function QuotesPage() {
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
-                          {quote.inHandDate || 'N/A'}
+                          {quote.inHandDate || "N/A"}
                         </div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div className="text-sm font-medium text-green-600 flex items-center gap-1">
-                          <DollarSign className="w-4 h-4" />
-                          ${quote.customerTotal.toFixed(2)}
+                          <DollarSign className="w-4 h-4" />$
+                          {quote.customerTotal.toFixed(2)}
                         </div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-right">
@@ -473,7 +523,7 @@ export default function QuotesPage() {
         isOpen={isDrawerOpen}
         onClose={closeDrawer}
         title={isEditing ? "Edit Quote" : "Create New Quote"}
-        size="lg"
+        size="xl"
         loading={submitApi.loading}
       >
         <QuoteForm

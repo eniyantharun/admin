@@ -1,18 +1,30 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useCallback, memo, useRef } from 'react';
-import { Search, Plus, Edit2, Phone, Mail, Globe, X, Building } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
-import { useApi } from '@/hooks/useApi';
-import { EntityAvatar } from '@/components/helpers/EntityAvatar';
-import { StatusBadge } from '@/components/helpers/StatusBadge';
-import { ProductStats } from '@/components/helpers/ProductStats';
-import { DateDisplay } from '@/components/helpers/DateDisplay';
-import { EmptyState, LoadingState } from '@/components/helpers/EmptyLoadingStates';
-import { PaginationControls } from '@/components/helpers/PaginationControls';
-import { SupplierForm } from '@/components/forms/SupplierForm';
-import { EntityDrawer } from '@/components/helpers/EntityDrawer';
+import React, { useState, useEffect, useCallback, memo, useRef } from "react";
+import {
+  Search,
+  Plus,
+  Edit2,
+  Phone,
+  Mail,
+  Globe,
+  X,
+  Building,
+} from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { useApi } from "@/hooks/useApi";
+import { EntityAvatar } from "@/components/helpers/EntityAvatar";
+import { StatusBadge } from "@/components/helpers/StatusBadge";
+import { ProductStats } from "@/components/helpers/ProductStats";
+import { DateDisplay } from "@/components/helpers/DateDisplay";
+import {
+  EmptyState,
+  LoadingState,
+} from "@/components/helpers/EmptyLoadingStates";
+import { PaginationControls } from "@/components/helpers/PaginationControls";
+import { SupplierForm } from "@/components/forms/SupplierForm";
+import { EntityDrawer } from "@/components/helpers/EntityDrawer";
 
 interface Supplier {
   id: number;
@@ -59,9 +71,9 @@ const ContactInfo = memo(({ supplier }: { supplier: Supplier }) => (
     )}
     <div className="text-xs text-blue-600 flex items-center gap-1 mt-1">
       <Globe className="w-3 h-3 text-blue-400" />
-      <a 
-        href={supplier.webUrl} 
-        target="_blank" 
+      <a
+        href={supplier.webUrl}
+        target="_blank"
         rel="noopener noreferrer"
         className="truncate max-w-xs hover:underline"
         onClick={(e) => e.stopPropagation()}
@@ -72,30 +84,36 @@ const ContactInfo = memo(({ supplier }: { supplier: Supplier }) => (
   </>
 ));
 
-ContactInfo.displayName = 'ContactInfo';
+ContactInfo.displayName = "ContactInfo";
 
 export default function SuppliersPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [totalCount, setTotalCount] = useState(0);
-  const [localSearchTerm, setLocalSearchTerm] = useState('');
+  const [localSearchTerm, setLocalSearchTerm] = useState("");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
+  const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(
+    null
+  );
   const [isEditing, setIsEditing] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(20);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-  const mainApiRef = useRef(useApi({ 
-    cancelOnUnmount: false,
-    dedupe: true,
-    cacheDuration: 60000
-  }));
-  
-  const submitApiRef = useRef(useApi({ 
-    cancelOnUnmount: false,
-    dedupe: false
-  }));
-  
+  const mainApiRef = useRef(
+    useApi({
+      cancelOnUnmount: false,
+      dedupe: true,
+      cacheDuration: 60000,
+    })
+  );
+
+  const submitApiRef = useRef(
+    useApi({
+      cancelOnUnmount: false,
+      dedupe: false,
+    })
+  );
+
   const mainApi = mainApiRef.current;
   const submitApi = submitApiRef.current;
 
@@ -103,27 +121,41 @@ export default function SuppliersPage() {
     if (!isInitialLoad && mainApi.loading) return;
 
     try {
-      const response = await mainApi.get(`/Admin/SupplierList/GetSuppliersList`);
+      const response = await mainApi.get(
+        `/Admin/SupplierList/GetSuppliersList`
+      );
       if (!response?.suppliers) return;
-      
+
       let filteredSuppliers = response.suppliers;
-      
+
       if (localSearchTerm) {
-        filteredSuppliers = filteredSuppliers.filter((supplier: Supplier) =>
-          supplier.companyName.toLowerCase().includes(localSearchTerm.toLowerCase()) ||
-          (supplier.emailAddress && supplier.emailAddress.toLowerCase().includes(localSearchTerm.toLowerCase())) ||
-          (supplier.webUrl && supplier.webUrl.toLowerCase().includes(localSearchTerm.toLowerCase()))
+        filteredSuppliers = filteredSuppliers.filter(
+          (supplier: Supplier) =>
+            supplier.companyName
+              .toLowerCase()
+              .includes(localSearchTerm.toLowerCase()) ||
+            (supplier.emailAddress &&
+              supplier.emailAddress
+                .toLowerCase()
+                .includes(localSearchTerm.toLowerCase())) ||
+            (supplier.webUrl &&
+              supplier.webUrl
+                .toLowerCase()
+                .includes(localSearchTerm.toLowerCase()))
         );
       }
-      
+
       const startIndex = (currentPage - 1) * rowsPerPage;
-      const paginatedSuppliers = filteredSuppliers.slice(startIndex, startIndex + rowsPerPage);
-      
+      const paginatedSuppliers = filteredSuppliers.slice(
+        startIndex,
+        startIndex + rowsPerPage
+      );
+
       setSuppliers(paginatedSuppliers);
       setTotalCount(filteredSuppliers.length);
     } catch (error: any) {
-      if (error?.name !== 'CanceledError' && error?.code !== 'ERR_CANCELED') {
-        console.error('Error fetching suppliers:', error);
+      if (error?.name !== "CanceledError" && error?.code !== "ERR_CANCELED") {
+        console.error("Error fetching suppliers:", error);
       }
     } finally {
       setIsInitialLoad(false);
@@ -144,22 +176,28 @@ export default function SuppliersPage() {
   const startIndex = (currentPage - 1) * rowsPerPage;
   const endIndex = Math.min(startIndex + rowsPerPage, totalCount);
 
-  const handleSubmit = useCallback(async (formData: SupplierFormData) => {
-    try {
-      if (isEditing && selectedSupplier) {
-        await submitApi.put(`/Admin/SupplierList/UpdateSupplier/${selectedSupplier.id}`, formData);
-      } else {
-        await submitApi.post('/Admin/SupplierList/CreateSupplier', formData);
-      }
+  const handleSubmit = useCallback(
+    async (formData: SupplierFormData) => {
+      try {
+        if (isEditing && selectedSupplier) {
+          await submitApi.put(
+            `/Admin/SupplierList/UpdateSupplier/${selectedSupplier.id}`,
+            formData
+          );
+        } else {
+          await submitApi.post("/Admin/SupplierList/CreateSupplier", formData);
+        }
 
-      await fetchSuppliers();
-      closeDrawer();
-    } catch (error: any) {
-      if (error?.name !== 'CanceledError' && error?.code !== 'ERR_CANCELED') {
-        console.error('Error saving supplier:', error);
+        await fetchSuppliers();
+        closeDrawer();
+      } catch (error: any) {
+        if (error?.name !== "CanceledError" && error?.code !== "ERR_CANCELED") {
+          console.error("Error saving supplier:", error);
+        }
       }
-    }
-  }, [isEditing, selectedSupplier, submitApi.put, submitApi.post, fetchSuppliers]);
+    },
+    [isEditing, selectedSupplier, submitApi.put, submitApi.post, fetchSuppliers]
+  );
 
   const openNewSupplierDrawer = useCallback(() => {
     setIsEditing(false);
@@ -179,40 +217,26 @@ export default function SuppliersPage() {
     setIsEditing(false);
   }, []);
 
-  const handleLocalSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setLocalSearchTerm(e.target.value);
-  }, []);
+  const handleLocalSearchChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setLocalSearchTerm(e.target.value);
+    },
+    []
+  );
 
   const clearLocalSearch = useCallback(() => {
-    setLocalSearchTerm('');
+    setLocalSearchTerm("");
   }, []);
 
   return (
     <div className="suppliers-page space-y-6">
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Suppliers</h1>
-          <p className="text-gray-600">Manage your supplier database</p>
-        </div>
-        
-        <div className="flex items-center gap-3">
-          <Button
-            onClick={openNewSupplierDrawer}
-            icon={Plus}
-            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg"
-          >
-            Add Supplier
-          </Button>
-        </div>
-      </div>
-
       <Card className="overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <h3 className="text-lg font-semibold text-gray-900">
               Supplier List ({totalCount.toLocaleString()})
             </h3>
-            
+
             <div className="relative w-full sm:w-auto">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Search className="w-4 h-4 text-gray-400" />
@@ -233,19 +257,39 @@ export default function SuppliersPage() {
                 </button>
               )}
             </div>
+
+            <Button
+              onClick={openNewSupplierDrawer}
+              icon={Plus}
+              className=" shadow-lg"
+            >
+              Add Supplier
+            </Button>
           </div>
         </div>
-        
+
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Products</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Updated</th>
-                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Supplier
+                </th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Contact
+                </th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Products
+                </th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Updated
+                </th>
+                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -268,17 +312,25 @@ export default function SuppliersPage() {
                 </tr>
               ) : (
                 suppliers.map((supplier) => (
-                  <tr key={supplier.id} className="hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
-                      onClick={() => openEditSupplierDrawer(supplier)}>
+                  <tr
+                    key={supplier.id}
+                    className="hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
+                    onClick={() => openEditSupplierDrawer(supplier)}
+                  >
                     <td className="px-4 py-2 whitespace-nowrap">
                       <div className="flex items-center">
-                        <EntityAvatar name={supplier.companyName} id={supplier.id} type="supplier" />
+                        <EntityAvatar
+                          name={supplier.companyName}
+                          id={supplier.id}
+                          type="supplier"
+                        />
                         <div className="ml-3">
                           <div className="text-sm font-medium text-gray-900">
                             {supplier.companyName}
                           </div>
                           <div className="text-xs text-gray-500">
-                            ID: {supplier.id} {supplier.exclusive && (
+                            ID: {supplier.id}{" "}
+                            {supplier.exclusive && (
                               <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
                                 Exclusive
                               </span>
@@ -291,7 +343,7 @@ export default function SuppliersPage() {
                       <ContactInfo supplier={supplier} />
                     </td>
                     <td className="px-4 py-2 whitespace-nowrap">
-                      <ProductStats 
+                      <ProductStats
                         totalProducts={supplier.productCount}
                         enabledProducts={supplier.visibilityStats?.Enabled || 0}
                       />
@@ -344,7 +396,7 @@ export default function SuppliersPage() {
         isOpen={isDrawerOpen}
         onClose={closeDrawer}
         title={isEditing ? "Edit Supplier" : "Add New Supplier"}
-        size="lg"
+        size="xl"
         loading={submitApi.loading}
       >
         <SupplierForm

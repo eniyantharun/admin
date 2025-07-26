@@ -1,16 +1,29 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useCallback, memo, useRef } from 'react';
-import { Search, Plus, Edit2, Phone, Mail, Building, X, User, Calendar } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
-import { useApi } from '@/hooks/useApi';
-import { EntityAvatar } from '@/components/helpers/EntityAvatar';
-import { DateDisplay } from '@/components/helpers/DateDisplay';
-import { EmptyState, LoadingState } from '@/components/helpers/EmptyLoadingStates';
-import { PaginationControls } from '@/components/helpers/PaginationControls';
-import { EntityDrawer } from '@/components/helpers/EntityDrawer';
-import { CustomerForm } from '@/components/forms/CustomerForm';
+import React, { useState, useEffect, useCallback, memo, useRef } from "react";
+import {
+  Search,
+  Plus,
+  Edit2,
+  Phone,
+  Mail,
+  Building,
+  X,
+  User,
+  Calendar,
+} from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { useApi } from "@/hooks/useApi";
+import { EntityAvatar } from "@/components/helpers/EntityAvatar";
+import { DateDisplay } from "@/components/helpers/DateDisplay";
+import {
+  EmptyState,
+  LoadingState,
+} from "@/components/helpers/EmptyLoadingStates";
+import { PaginationControls } from "@/components/helpers/PaginationControls";
+import { EntityDrawer } from "@/components/helpers/EntityDrawer";
+import { CustomerForm } from "@/components/forms/CustomerForm";
 
 interface Customer {
   id: number;
@@ -54,19 +67,21 @@ const ContactInfo = memo<{ customer: Customer }>(({ customer }) => (
     </div>
     <div className="text-xs text-gray-500 flex items-center gap-1 mt-1">
       <Phone className="w-3 h-3 text-gray-400" />
-      <span>{customer.phone || 'No phone'}</span>
+      <span>{customer.phone || "No phone"}</span>
     </div>
   </>
 ));
 
-ContactInfo.displayName = 'ContactInfo';
+ContactInfo.displayName = "ContactInfo";
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [totalCount, setTotalCount] = useState(0);
-  const [localSearchTerm, setLocalSearchTerm] = useState('');
+  const [localSearchTerm, setLocalSearchTerm] = useState("");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
+    null
+  );
   const [isEditing, setIsEditing] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(20);
@@ -75,28 +90,31 @@ export default function CustomersPage() {
   const mountedRef = useRef(true);
   const fetchTimeoutRef = useRef<NodeJS.Timeout>();
 
-  const mainApi = useApi({ 
+  const mainApi = useApi({
     cancelOnUnmount: true,
     dedupe: true,
-    cacheDuration: 60000 
-  });
-  
-  const submitApi = useApi({ 
-    cancelOnUnmount: false,
-    dedupe: false 
+    cacheDuration: 60000,
   });
 
-  const transformApiCustomer = useCallback((apiCustomer: ApiCustomer): Customer => {
-    return {
-      id: apiCustomer.idNum,
-      firstName: apiCustomer.form.firstName || '',
-      lastName: apiCustomer.form.lastName || '',
-      email: apiCustomer.form.email || '',
-      phone: apiCustomer.form.phoneNumber || '',
-      companyName: apiCustomer.form.companyName || '',
-      joinedDate: new Date(apiCustomer.createdAt).toLocaleString()
-    };
-  }, []);
+  const submitApi = useApi({
+    cancelOnUnmount: false,
+    dedupe: false,
+  });
+
+  const transformApiCustomer = useCallback(
+    (apiCustomer: ApiCustomer): Customer => {
+      return {
+        id: apiCustomer.idNum,
+        firstName: apiCustomer.form.firstName || "",
+        lastName: apiCustomer.form.lastName || "",
+        email: apiCustomer.form.email || "",
+        phone: apiCustomer.form.phoneNumber || "",
+        companyName: apiCustomer.form.companyName || "",
+        joinedDate: new Date(apiCustomer.createdAt).toLocaleString(),
+      };
+    },
+    []
+  );
 
   const fetchCustomers = useCallback(async () => {
     if (!mountedRef.current || (!isInitialLoad && mainApi.loading)) {
@@ -112,23 +130,26 @@ export default function CustomersPage() {
 
       try {
         const queryParams = new URLSearchParams({
-          website: 'PromotionalProductInc',
+          website: "PromotionalProductInc",
           search: localSearchTerm,
           count: rowsPerPage.toString(),
-          index: ((currentPage - 1) * rowsPerPage).toString()
+          index: ((currentPage - 1) * rowsPerPage).toString(),
         });
 
-        const response = await mainApi.get(`/Admin/CustomerEditor/GetCustomersList?${queryParams}`);
-        
+        const response = await mainApi.get(
+          `/Admin/CustomerEditor/GetCustomersList?${queryParams}`
+        );
+
         if (!mountedRef.current || !response?.customers) return;
-        
-        const transformedCustomers = response.customers.map(transformApiCustomer);
-        
+
+        const transformedCustomers =
+          response.customers.map(transformApiCustomer);
+
         setCustomers(transformedCustomers);
         setTotalCount(response.count);
       } catch (error: any) {
-        if (error?.name !== 'CanceledError' && error?.code !== 'ERR_CANCELED') {
-          console.error('Error fetching customers:', error);
+        if (error?.name !== "CanceledError" && error?.code !== "ERR_CANCELED") {
+          console.error("Error fetching customers:", error);
         }
       } finally {
         if (mountedRef.current) {
@@ -137,13 +158,13 @@ export default function CustomersPage() {
       }
     }, 100);
   }, [
-    localSearchTerm, 
-    currentPage, 
-    rowsPerPage, 
-    mainApi.get, 
-    transformApiCustomer, 
-    isInitialLoad, 
-    mainApi.loading
+    localSearchTerm,
+    currentPage,
+    rowsPerPage,
+    mainApi.get,
+    transformApiCustomer,
+    isInitialLoad,
+    mainApi.loading,
   ]);
 
   useEffect(() => {
@@ -169,42 +190,51 @@ export default function CustomersPage() {
   const paginationData = {
     totalPages: Math.ceil(totalCount / rowsPerPage),
     startIndex: (currentPage - 1) * rowsPerPage,
-    endIndex: Math.min((currentPage - 1) * rowsPerPage + rowsPerPage, totalCount)
+    endIndex: Math.min(
+      (currentPage - 1) * rowsPerPage + rowsPerPage,
+      totalCount
+    ),
   };
 
-  const handleSubmit = useCallback(async (formData: CustomerFormData) => {
-    try {
-      if (isEditing && selectedCustomer) {
-        await submitApi.put(`/Admin/CustomerEditor/UpdateCustomer/${selectedCustomer.id}`, {
-          form: {
-            firstName: formData.firstName,
-            lastName: formData.lastName,
-            email: formData.email,
-            phoneNumber: formData.phone,
-            companyName: formData.companyName || null
-          }
-        });
-      } else {
-        await submitApi.post('/Admin/CustomerEditor/CreateCustomer', {
-          website: 'PromotionalProductInc',
-          form: {
-            firstName: formData.firstName,
-            lastName: formData.lastName,
-            email: formData.email,
-            phoneNumber: formData.phone,
-            companyName: formData.companyName || null
-          }
-        });
-      }
+  const handleSubmit = useCallback(
+    async (formData: CustomerFormData) => {
+      try {
+        if (isEditing && selectedCustomer) {
+          await submitApi.put(
+            `/Admin/CustomerEditor/UpdateCustomer/${selectedCustomer.id}`,
+            {
+              form: {
+                firstName: formData.firstName,
+                lastName: formData.lastName,
+                email: formData.email,
+                phoneNumber: formData.phone,
+                companyName: formData.companyName || null,
+              },
+            }
+          );
+        } else {
+          await submitApi.post("/Admin/CustomerEditor/CreateCustomer", {
+            website: "PromotionalProductInc",
+            form: {
+              firstName: formData.firstName,
+              lastName: formData.lastName,
+              email: formData.email,
+              phoneNumber: formData.phone,
+              companyName: formData.companyName || null,
+            },
+          });
+        }
 
-      await fetchCustomers();
-      closeDrawer();
-    } catch (error: any) {
-      if (error?.name !== 'CanceledError' && error?.code !== 'ERR_CANCELED') {
-        console.error('Error saving customer:', error);
+        await fetchCustomers();
+        closeDrawer();
+      } catch (error: any) {
+        if (error?.name !== "CanceledError" && error?.code !== "ERR_CANCELED") {
+          console.error("Error saving customer:", error);
+        }
       }
-    }
-  }, [isEditing, selectedCustomer, submitApi.put, submitApi.post, fetchCustomers]);
+    },
+    [isEditing, selectedCustomer, submitApi.put, submitApi.post, fetchCustomers]
+  );
 
   const openNewCustomerDrawer = useCallback(() => {
     setIsEditing(false);
@@ -224,89 +254,90 @@ export default function CustomersPage() {
     setIsEditing(false);
   }, []);
 
-  const handleLocalSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setLocalSearchTerm(e.target.value);
-  }, []);
+  const handleLocalSearchChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setLocalSearchTerm(e.target.value);
+    },
+    []
+  );
 
   const clearLocalSearch = useCallback(() => {
-    setLocalSearchTerm('');
+    setLocalSearchTerm("");
   }, []);
 
-  const sendResetPasswordEmail = useCallback(async (email: string) => {
-    try {
-      await mainApi.post('/Admin/CustomerEditor/SendResetPasswordEmail', {
-        email: email,
-        website: 'PromotionalProductInc'
-      });
-      alert(`Reset password email sent to ${email}`);
-    } catch (error: any) {
-      if (error?.name !== 'CanceledError' && error?.code !== 'ERR_CANCELED') {
-        console.error('Error sending reset password email:', error);
-        alert('Failed to send reset password email');
+  const sendResetPasswordEmail = useCallback(
+    async (email: string) => {
+      try {
+        await mainApi.post("/Admin/CustomerEditor/SendResetPasswordEmail", {
+          email: email,
+          website: "PromotionalProductInc",
+        });
+        alert(`Reset password email sent to ${email}`);
+      } catch (error: any) {
+        if (error?.name !== "CanceledError" && error?.code !== "ERR_CANCELED") {
+          console.error("Error sending reset password email:", error);
+          alert("Failed to send reset password email");
+        }
       }
-    }
-  }, [mainApi.post]);
+    },
+    [mainApi.post]
+  );
 
-  const sendNewAccountEmail = useCallback(async (email: string) => {
-    try {
-      await mainApi.post('/Admin/CustomerEditor/SendNewAccountEmail', {
-        email: email,
-        website: 'PromotionalProductInc'
-      });
-      alert(`New account email sent to ${email}`);
-    } catch (error: any) {
-      if (error?.name !== 'CanceledError' && error?.code !== 'ERR_CANCELED') {
-        console.error('Error sending new account email:', error);
-        alert('Failed to send new account email');
+  const sendNewAccountEmail = useCallback(
+    async (email: string) => {
+      try {
+        await mainApi.post("/Admin/CustomerEditor/SendNewAccountEmail", {
+          email: email,
+          website: "PromotionalProductInc",
+        });
+        alert(`New account email sent to ${email}`);
+      } catch (error: any) {
+        if (error?.name !== "CanceledError" && error?.code !== "ERR_CANCELED") {
+          console.error("Error sending new account email:", error);
+          alert("Failed to send new account email");
+        }
       }
-    }
-  }, [mainApi.post]);
+    },
+    [mainApi.post]
+  );
 
   return (
     <div className="customers-page space-y-6">
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Customers</h1>
-          <p className="text-gray-600">Manage your customer database</p>
-        </div>
-        
-        <div className="flex items-center gap-3">
-          <Button
-            onClick={openNewCustomerDrawer}
-            icon={Plus}
-            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg"
-          >
-            Add Customer
-          </Button>
-        </div>
-      </div>
-
       <Card className="overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row items-start  justify-between gap-4">
             <h3 className="text-lg font-semibold text-gray-900">
               Customer List ({totalCount.toLocaleString()})
             </h3>
-            
-            <div className="relative w-full sm:w-auto">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="w-4 h-4 text-gray-400" />
+
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Search className="w-4 h-4 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search customers..."
+                  value={localSearchTerm}
+                  onChange={handleLocalSearchChange}
+                  className="w-full sm:w-64 pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                />
+                {localSearchTerm && (
+                  <button
+                    onClick={clearLocalSearch}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  >
+                    <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+                  </button>
+                )}
               </div>
-              <input
-                type="text"
-                placeholder="Search customers..."
-                value={localSearchTerm}
-                onChange={handleLocalSearchChange}
-                className="w-full sm:w-64 pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-              />
-              {localSearchTerm && (
-                <button
-                  onClick={clearLocalSearch}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                >
-                  <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
-                </button>
-              )}
+              <Button
+                onClick={openNewCustomerDrawer}
+                icon={Plus}
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg whitespace-nowrap"
+              >
+                Add Customer
+              </Button>
             </div>
           </div>
         </div>
@@ -314,11 +345,21 @@ export default function CustomersPage() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
-                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Customer
+                </th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Contact
+                </th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Company
+                </th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Joined
+                </th>
+                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -341,16 +382,25 @@ export default function CustomersPage() {
                 </tr>
               ) : (
                 customers.map((customer) => (
-                  <tr key={customer.id} className="hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
-                      onClick={() => openEditCustomerDrawer(customer)}>
+                  <tr
+                    key={customer.id}
+                    className="hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
+                    onClick={() => openEditCustomerDrawer(customer)}
+                  >
                     <td className="px-4 py-2 whitespace-nowrap">
                       <div className="flex items-center">
-                        <EntityAvatar name={`${customer.firstName} ${customer.lastName}`} id={customer.id} type="customer" />
+                        <EntityAvatar
+                          name={`${customer.firstName} ${customer.lastName}`}
+                          id={customer.id}
+                          type="customer"
+                        />
                         <div className="ml-3">
                           <div className="text-sm font-medium text-gray-900">
                             {customer.firstName} {customer.lastName}
                           </div>
-                          <div className="text-xs text-gray-500">ID: {customer.id}</div>
+                          <div className="text-xs text-gray-500">
+                            ID: {customer.id}
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -360,7 +410,9 @@ export default function CustomersPage() {
                     <td className="px-4 py-2 whitespace-nowrap">
                       <div className="text-sm text-gray-900 flex items-center gap-1">
                         <Building className="w-4 h-4 text-gray-400" />
-                        <span className="truncate max-w-xs">{customer.companyName || "No company"}</span>
+                        <span className="truncate max-w-xs">
+                          {customer.companyName || "No company"}
+                        </span>
                       </div>
                     </td>
                     <td className="px-4 py-2 whitespace-nowrap">
@@ -408,7 +460,7 @@ export default function CustomersPage() {
         isOpen={isDrawerOpen}
         onClose={closeDrawer}
         title={isEditing ? "Edit Customer" : "Add New Customer"}
-        size="lg"
+        size="xl"
         loading={submitApi.loading}
       >
         <CustomerForm
