@@ -178,14 +178,14 @@ export default function CustomersPage() {
 
   useEffect(() => {
     fetchCustomers();
-  }, [fetchCustomers]);
+  }, [localSearchTerm, currentPage, rowsPerPage]);
 
   useEffect(() => {
     if (currentPage !== 1) {
       setCurrentPage(1);
     }
-  }, [localSearchTerm, currentPage]);
-
+  }, [localSearchTerm]);
+  
   const paginationData = {
     totalPages: Math.ceil(totalCount / rowsPerPage),
     startIndex: (currentPage - 1) * rowsPerPage,
