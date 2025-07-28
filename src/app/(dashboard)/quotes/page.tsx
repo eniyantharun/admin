@@ -349,7 +349,6 @@ export default function QuotesPage() {
                   </button>
                 )}
               </div>
-
               <div className="flex items-center gap-2">
                 <select
                   value={statusFilter}

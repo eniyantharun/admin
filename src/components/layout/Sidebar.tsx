@@ -21,6 +21,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Building2,
+  Menu,
 } from 'lucide-react';
 
 const navigation = [
@@ -49,6 +50,18 @@ export const Sidebar: React.FC = () => {
 
   return (
     <>
+      {!sidebarOpen && (
+        <Button
+          onClick={handleToggleSidebar}
+          variant="secondary"
+          size="sm"
+          icon={Menu}
+          iconOnly
+          className="fixed top-20 left-4 z-50 lg:hidden bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white border-none shadow-xl"
+          title="Open menu"
+        />
+      )}
+
       {sidebarOpen && (
         <div
           className="dashboard-sidebar-overlay fixed inset-0 bg-black/50 z-40 lg:hidden transition-all duration-300"
@@ -85,7 +98,7 @@ export const Sidebar: React.FC = () => {
                   size="sm"
                   icon={ChevronLeft}
                   iconOnly
-                  className="dashboard-sidebar-collapse-btn ml-2 hidden lg:flex bg-white/10 border-white/20 text-white hover:bg-white/20 shadow-lg"
+                  className="dashboard-sidebar-collapse-btn ml-2 bg-white/10 border-white/20 text-white hover:bg-white/20 shadow-lg"
                   title="Collapse sidebar"
                 />
               </>

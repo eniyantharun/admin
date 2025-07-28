@@ -236,7 +236,6 @@ export default function SuppliersPage() {
             <h3 className="text-lg font-semibold text-gray-900">
               Supplier List ({totalCount.toLocaleString()})
             </h3>
-
             <div className="relative w-full sm:w-auto">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Search className="w-4 h-4 text-gray-400" />
@@ -267,7 +266,6 @@ export default function SuppliersPage() {
             </Button>
           </div>
         </div>
-
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">

@@ -161,10 +161,9 @@ export default function CustomersPage() {
     localSearchTerm,
     currentPage,
     rowsPerPage,
-    mainApi.get,
+    mainApi,
     transformApiCustomer,
     isInitialLoad,
-    mainApi.loading,
   ]);
 
   useEffect(() => {
@@ -233,7 +232,7 @@ export default function CustomersPage() {
         }
       }
     },
-    [isEditing, selectedCustomer, submitApi.put, submitApi.post, fetchCustomers]
+    [isEditing, selectedCustomer, submitApi, fetchCustomers]
   );
 
   const openNewCustomerDrawer = useCallback(() => {
@@ -280,7 +279,7 @@ export default function CustomersPage() {
         }
       }
     },
-    [mainApi.post]
+    [mainApi]
   );
 
   const sendNewAccountEmail = useCallback(
@@ -298,7 +297,7 @@ export default function CustomersPage() {
         }
       }
     },
-    [mainApi.post]
+    [mainApi]
   );
 
   return (
