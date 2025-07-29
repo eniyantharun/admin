@@ -181,8 +181,11 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
 
     let processedValue = value;
 
+    // Auto-format phone number as user types
     if (name === "phone") {
       processedValue = googleMapsUtils.formatPhoneNumber(value);
+      // Update the input field immediately with formatted value
+      e.target.value = processedValue;
     }
 
     setFormData((prev) => ({
@@ -274,15 +277,6 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
             value={formData.firstName}
             onChange={handleInputChange}
             error={formErrors.firstName}
-            required
-            placeholder="First Name"
-          />
-          <FormInput
-            label="Last Name"
-            name="lastName"
-            value={formData.lastName}
-            onChange={handleInputChange}
-            error={formErrors.lastName}
             required
             placeholder="Last Name"
           />

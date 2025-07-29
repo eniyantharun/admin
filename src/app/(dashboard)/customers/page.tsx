@@ -26,6 +26,7 @@ import { PaginationControls } from "@/components/helpers/PaginationControls";
 import { EntityDrawer } from "@/components/helpers/EntityDrawer";
 import { CustomerForm } from "@/components/forms/CustomerForm";
 import { Customer, CustomerFormData, ApiCustomer } from "@/types/customer";
+import { googleMapsUtils } from "@/lib/googleMaps";
 
 const ContactInfo = memo<{ customer: Customer }>(({ customer }) => (
   <>
@@ -35,7 +36,7 @@ const ContactInfo = memo<{ customer: Customer }>(({ customer }) => (
     </div>
     <div className="text-xs text-gray-500 flex items-center gap-1 mt-1">
       <Phone className="w-3 h-3 text-gray-400" />
-      <span>{customer.phone || "No phone"}</span>
+      <span>{customer.phone ? googleMapsUtils.formatPhoneNumber(customer.phone) : "No phone"}</span>
     </div>
   </>
 ));
@@ -77,7 +78,7 @@ export default function CustomersPage() {
         firstName: apiCustomer.form.firstName || "",
         lastName: apiCustomer.form.lastName || "",
         email: apiCustomer.form.email || "",
-        phone: apiCustomer.form.phoneNumber || "",
+        phone: apiCustomer.form.phoneNumber ? googleMapsUtils.formatPhoneNumber(apiCustomer.form.phoneNumber) : "",
         website: apiCustomer.website || "PromotionalProductInc",
         companyName: apiCustomer.form.companyName || "",
         isBlocked: false,
