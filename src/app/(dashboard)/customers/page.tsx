@@ -182,7 +182,6 @@ export default function CustomersPage() {
     async (formData: CustomerFormData) => {
       try {
         if (isEditing && selectedCustomer) {
-          // Fixed UpdateCustomer API call - using the correct endpoint and payload structure
           const updatePayload = {
             customerId: selectedCustomer.id,
             firstName: formData.firstName,
@@ -191,13 +190,13 @@ export default function CustomersPage() {
             phone: formData.phone,
             companyName: formData.companyName,
             isBusinessCustomer: formData.isBusinessCustomer,
-            isBlocked: selectedCustomer.isBlocked, // Preserve current blocked status
+            isBlocked: selectedCustomer.isBlocked,
             website: formData.website
           };
 
           console.log('Updating customer with payload:', updatePayload);
           
-          const response = await submitApi.post('/Admin/CustomerEditor/UpdateCustomer', updatePayload);
+          const response = await submitApi.put('/Admin/CustomerEditor/UpdateCustomer', updatePayload);
           
           console.log('Update customer response:', response);
           
