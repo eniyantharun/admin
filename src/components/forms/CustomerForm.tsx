@@ -1,13 +1,27 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Mail, Phone, User, MapPin, Building } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
-import { FormInput } from '@/components/helpers/FormInput';
-import { AddressForm } from '@/components/forms/AddressForm';
-import { CustomerActions } from '@/components/helpers/CustomerActions';
-import { useApi } from '@/hooks/useApi';
-import { Customer, CustomerFormData, CustomerAddress, CustomerAddressFormData, CustomerOrder } from '@/types/customer';
-import { googleMapsUtils } from '@/lib/googleMaps';
+import React, { useState, useEffect } from "react";
+import {
+  Plus,
+  Trash2,
+  Mail,
+  Phone,
+  User,
+  MapPin,
+  Building,
+} from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { FormInput } from "@/components/helpers/FormInput";
+import { AddressForm } from "@/components/forms/AddressForm";
+import { CustomerActions } from "@/components/helpers/CustomerActions";
+import { useApi } from "@/hooks/useApi";
+import {
+  Customer,
+  CustomerFormData,
+  CustomerAddress,
+  CustomerAddressFormData,
+  CustomerOrder,
+} from "@/types/customer";
+import { googleMapsUtils } from "@/lib/googleMaps";
 
 interface CustomerFormProps {
   customer?: Customer | null;
@@ -26,23 +40,25 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
   onSendResetPassword,
   onSendNewAccount,
   onCustomerUpdated,
-  loading = false
+  loading = false,
 }) => {
   const [formData, setFormData] = useState<CustomerFormData>({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    website: 'promotionalproductinc.com',
-    companyName: '',
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    website: "promotionalproductinc.com",
+    companyName: "",
     isBusinessCustomer: false,
-    addresses: []
+    addresses: [],
   });
   const [formErrors, setFormErrors] = useState<Partial<CustomerFormData>>({});
   const [addresses, setAddresses] = useState<CustomerAddress[]>([]);
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
   const [showAddressForm, setShowAddressForm] = useState(false);
-  const [editingAddressIndex, setEditingAddressIndex] = useState<number | null>(null);
+  const [editingAddressIndex, setEditingAddressIndex] = useState<number | null>(
+    null
+  );
   const [currentCustomer, setCurrentCustomer] = useState<Customer | null>(null);
 
   const addressApi = useApi({
@@ -67,25 +83,25 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
         lastName: customer.lastName,
         email: customer.email,
         phone: customer.phone,
-        website: customer.website || 'promotionalproductinc.com',
+        website: customer.website || "promotionalproductinc.com",
         companyName: customer.companyName,
         isBusinessCustomer: customer.isBusinessCustomer,
-        addresses: []
+        addresses: [],
       });
-      
+
       if (isEditing) {
         fetchCustomerDetails(customer.id);
       }
     } else {
       setFormData({
-        firstName: '',
-        lastName: '',
-        email: '',
-        phone: '',
-        website: 'promotionalproductinc.com',
-        companyName: '',
+        firstName: "",
+        lastName: "",
+        email: "",
+        phone: "",
+        website: "promotionalproductinc.com",
+        companyName: "",
         isBusinessCustomer: false,
-        addresses: []
+        addresses: [],
       });
       setAddresses([]);
       setOrders([]);
@@ -95,51 +111,55 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
 
   const fetchCustomerDetails = async (customerId: string) => {
     try {
-      console.log('Fetching customer details for:', customerId);
-      const response = await customerDetailApi.get(`/Admin/CustomerEditor/GetCustomerById?customerId=${customerId}`);
-      
+      console.log("Fetching customer details for:", customerId);
+      const response = await customerDetailApi.get(
+        `/Admin/CustomerEditor/GetCustomerById?customerId=${customerId}`
+      );
+
       if (response?.customer) {
-        console.log('Customer details response:', response);
+        console.log("Customer details response:", response);
         setCurrentCustomer({
           ...customer!,
-          isBlocked: response.customer.isBlocked || false
+          isBlocked: response.customer.isBlocked || false,
         });
         setAddresses(response.addresses || []);
-        
+
         // Fetch orders separately
         fetchCustomerOrders(customerId);
       }
     } catch (error) {
-      console.error('Error fetching customer details:', error);
+      console.error("Error fetching customer details:", error);
     }
   };
 
   const fetchCustomerOrders = async (customerId: string) => {
     try {
-      console.log('Fetching orders for customer:', customerId);
-      const response = await ordersApi.get(`/Admin/CustomerEditor/GetCustomerOrders?CustomerId=${customerId}`);
-      
+      console.log("Fetching orders for customer:", customerId);
+      const response = await ordersApi.get(
+        `/Admin/CustomerEditor/GetCustomerOrders?CustomerId=${customerId}`
+      );
+
       if (response?.data?.orders) {
-        console.log('Orders response:', response);
+        console.log("Orders response:", response);
         setOrders(response.data.orders);
       }
     } catch (error) {
-      console.error('Error fetching orders:', error);
+      console.error("Error fetching orders:", error);
     }
   };
 
   const validateForm = (): boolean => {
     const errors: Partial<CustomerFormData> = {};
-    
-    if (!formData.firstName.trim()) errors.firstName = 'First name is required';
-    if (!formData.lastName.trim()) errors.lastName = 'Last name is required';
+
+    if (!formData.firstName.trim()) errors.firstName = "First name is required";
+    if (!formData.lastName.trim()) errors.lastName = "Last name is required";
     if (!formData.email.trim()) {
-      errors.email = 'Email is required';
+      errors.email = "Email is required";
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      errors.email = 'Email is invalid';
+      errors.email = "Email is invalid";
     }
-    if (!formData.phone.trim()) errors.phone = 'Phone number is required';
-    if (!formData.website.trim()) errors.website = 'Website is required';
+    if (!formData.phone.trim()) errors.phone = "Phone number is required";
+    if (!formData.website.trim()) errors.website = "Website is required";
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -150,29 +170,28 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
     if (validateForm()) {
       try {
         await onSubmit(formData);
-        
       } catch (error) {
-        console.error('Error in form submission:', error);
+        console.error("Error in form submission:", error);
       }
     }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
-    
+
     let processedValue = value;
-    
-    if (name === 'phone') {
+
+    if (name === "phone") {
       processedValue = googleMapsUtils.formatPhoneNumber(value);
     }
-    
-    setFormData(prev => ({ 
-      ...prev, 
-      [name]: type === 'checkbox' ? checked : processedValue 
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : processedValue,
     }));
-    
+
     if (formErrors[name as keyof CustomerFormData]) {
-      setFormErrors(prev => ({ ...prev, [name]: undefined }));
+      setFormErrors((prev) => ({ ...prev, [name]: undefined }));
     }
   };
 
@@ -182,29 +201,33 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
     try {
       if (editingAddressIndex !== null) {
         const addressToUpdate = addresses[editingAddressIndex];
-        console.log('Updating address:', addressToUpdate.id, addressData);
-        await addressApi.post('/Admin/CustomerEditor/UpdateCustomerAddress', {
+        console.log("Updating address:", addressToUpdate.id, addressData);
+        await addressApi.post("/Admin/CustomerEditor/UpdateCustomerAddress", {
           id: addressToUpdate.id,
-          ...addressData
+          ...addressData,
         });
       } else {
-        console.log('Adding new address for customer:', currentCustomer.id, addressData);
-        await addressApi.post('/Admin/CustomerEditor/AddCustomerAddress', {
+        console.log(
+          "Adding new address for customer:",
+          currentCustomer.id,
+          addressData
+        );
+        await addressApi.post("/Admin/CustomerEditor/AddCustomerAddress", {
           customerId: currentCustomer.id,
-          ...addressData
+          ...addressData,
         });
       }
-      
+
       await fetchCustomerDetails(currentCustomer.id);
       setShowAddressForm(false);
       setEditingAddressIndex(null);
-      
+
       // Call the parent callback to refresh the main list
       if (onCustomerUpdated) {
         onCustomerUpdated();
       }
     } catch (error) {
-      console.error('Error saving address:', error);
+      console.error("Error saving address:", error);
     }
   };
 
@@ -212,17 +235,23 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
     if (!currentCustomer) return;
 
     try {
-      console.log('Deleting address:', addressId, 'for customer:', currentCustomer.id);
-      await addressApi.delete(`/Admin/CustomerEditor/DeleteCustomersAddress?addressId=${addressId}&customerId=${currentCustomer.id}`);
-      
+      console.log(
+        "Deleting address:",
+        addressId,
+        "for customer:",
+        currentCustomer.id
+      );
+      await addressApi.delete(
+        `/Admin/CustomerEditor/DeleteCustomersAddress?addressId=${addressId}&customerId=${currentCustomer.id}`
+      );
+
       await fetchCustomerDetails(currentCustomer.id);
-      
-      // Call the parent callback to refresh the main list
+
       if (onCustomerUpdated) {
         onCustomerUpdated();
       }
     } catch (error) {
-      console.error('Error deleting address:', error);
+      console.error("Error deleting address:", error);
     }
   };
 
@@ -258,56 +287,61 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
             placeholder="Last Name"
           />
         </div>
-
-        <FormInput
-          label="Email Address"
-          name="email"
-          type="email"
-          value={formData.email}
-          onChange={handleInputChange}
-          error={formErrors.email}
-          required
-          placeholder="email@example.com"
-        />
-
-        <FormInput
-          label="Phone Number"
-          name="phone"
-          type="tel"
-          value={formData.phone}
-          onChange={handleInputChange}
-          error={formErrors.phone}
-          required
-          placeholder="Phone number"
-          
-        />
-
-        <FormInput
-          label="Website"
-          name="website"
-          value={formData.website}
-          onChange={handleInputChange}
-          error={formErrors.website}
-          required
-          placeholder="promotionalproductinc.com"
-        />
-
-        <div className="space-y-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormInput
-            label="Company Name"
-            name="companyName"
-            value={formData.companyName}
+            label="Email Address"
+            name="email"
+            type="email"
+            value={formData.email}
             onChange={handleInputChange}
-            placeholder="Company Name (Optional)"
+            error={formErrors.email}
+            required
+            placeholder="email@example.com"
           />
-          
+
+          <FormInput
+            label="Phone Number"
+            name="phone"
+            type="tel"
+            value={formData.phone}
+            onChange={handleInputChange}
+            error={formErrors.phone}
+            required
+            placeholder="Phone number"
+          />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <FormInput
+            label="Website"
+            name="website"
+            value={formData.website}
+            onChange={handleInputChange}
+            error={formErrors.website}
+            required
+            placeholder="promotionalproductinc.com"
+          />
+
+          <div className="space-y-2">
+            <FormInput
+              label="Company Name"
+              name="companyName"
+              value={formData.companyName}
+              onChange={handleInputChange}
+              placeholder="Company Name (Optional)"
+            />
+          </div>
           {!formData.companyName && (
             <FormInput
               label=""
               name="isBusinessCustomer"
               type="checkbox"
               value={!formData.isBusinessCustomer}
-              onChange={(e) => setFormData(prev => ({ ...prev, isBusinessCustomer: !e.target.checked }))}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  isBusinessCustomer: !e.target.checked,
+                }))
+              }
               placeholder="I am not purchasing for a business"
             />
           )}
@@ -315,8 +349,10 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
 
         {!isEditing && (
           <div className="border-t pt-4">
-            <h4 className="text-sm font-medium text-gray-700 mb-4">Add Addresses (Optional)</h4>
-            
+            <h4 className="text-sm font-medium text-gray-700 mb-4">
+              Add Addresses (Optional)
+            </h4>
+
             {formData.addresses.map((address, index) => (
               <Card key={index} className="p-4 mb-3">
                 <div className="flex items-start justify-between">
@@ -334,17 +370,19 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
                     <div className="text-sm text-gray-900">
                       <p>{address.name}</p>
                       <p className="text-gray-600 mt-1">
-                        {address.street}<br />
-                        {address.city}, {address.state} {address.zipCode} ({address.country})
+                        {address.street}
+                        <br />
+                        {address.city}, {address.state} {address.zipCode} (
+                        {address.country})
                       </p>
                     </div>
                   </div>
                   <Button
                     type="button"
                     onClick={() => {
-                      setFormData(prev => ({
+                      setFormData((prev) => ({
                         ...prev,
-                        addresses: prev.addresses.filter((_, i) => i !== index)
+                        addresses: prev.addresses.filter((_, i) => i !== index),
                       }));
                     }}
                     variant="danger"
@@ -369,12 +407,14 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
 
             {showAddressForm && (
               <Card className="p-4 mt-4 bg-gray-50">
-                <h5 className="text-sm font-medium text-gray-900 mb-3">Add New Address</h5>
+                <h5 className="text-sm font-medium text-gray-900 mb-3">
+                  Add New Address
+                </h5>
                 <AddressForm
                   onSubmit={(addressData) => {
-                    setFormData(prev => ({
+                    setFormData((prev) => ({
                       ...prev,
-                      addresses: [...prev.addresses, addressData]
+                      addresses: [...prev.addresses, addressData],
                     }));
                     setShowAddressForm(false);
                   }}
@@ -396,20 +436,22 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
 
       {isEditing && currentCustomer && (
         <div className="border-t border-gray-200 p-6 bg-gray-50">
-          <h4 className="text-sm font-medium text-gray-700 mb-4">Email Actions</h4>
+          <h4 className="text-sm font-medium text-gray-700 mb-4">
+            Email Actions
+          </h4>
           <div className="flex flex-rpw gap-3">
-            <Button 
-              onClick={() => onSendResetPassword?.(currentCustomer.email)} 
-              variant="secondary" 
+            <Button
+              onClick={() => onSendResetPassword?.(currentCustomer.email)}
+              variant="secondary"
               size="sm"
               icon={Mail}
               className="justify-start"
             >
               Send Reset Password Email
             </Button>
-            <Button 
-              onClick={() => onSendNewAccount?.(currentCustomer.email)} 
-              variant="secondary" 
+            <Button
+              onClick={() => onSendNewAccount?.(currentCustomer.email)}
+              variant="secondary"
               size="sm"
               icon={Mail}
               className="justify-start"
@@ -468,8 +510,10 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
                       <div className="text-sm text-gray-900">
                         <p className="font-medium">{address.name}</p>
                         <p className="text-gray-600 mt-1">
-                          {address.street}<br />
-                          {address.city}, {address.state} {address.zipCode} ({address.country})
+                          {address.street}
+                          <br />
+                          {address.city}, {address.state} {address.zipCode} (
+                          {address.country})
                         </p>
                       </div>
                     </div>
@@ -502,20 +546,26 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
           {showAddressForm && (
             <Card className="p-4 bg-gray-50">
               <h5 className="text-sm font-medium text-gray-900 mb-3">
-                {editingAddressIndex !== null ? 'Edit Address' : 'Add New Address'}
+                {editingAddressIndex !== null
+                  ? "Edit Address"
+                  : "Add New Address"}
               </h5>
               <AddressForm
-                address={editingAddressIndex !== null ? {
-                  type: addresses[editingAddressIndex].type,
-                  label: addresses[editingAddressIndex].label,
-                  name: addresses[editingAddressIndex].name,
-                  street: addresses[editingAddressIndex].street,
-                  city: addresses[editingAddressIndex].city,
-                  state: addresses[editingAddressIndex].state,
-                  zipCode: addresses[editingAddressIndex].zipCode,
-                  country: addresses[editingAddressIndex].country,
-                  isPrimary: addresses[editingAddressIndex].isPrimary
-                } : undefined}
+                address={
+                  editingAddressIndex !== null
+                    ? {
+                        type: addresses[editingAddressIndex].type,
+                        label: addresses[editingAddressIndex].label,
+                        name: addresses[editingAddressIndex].name,
+                        street: addresses[editingAddressIndex].street,
+                        city: addresses[editingAddressIndex].city,
+                        state: addresses[editingAddressIndex].state,
+                        zipCode: addresses[editingAddressIndex].zipCode,
+                        country: addresses[editingAddressIndex].country,
+                        isPrimary: addresses[editingAddressIndex].isPrimary,
+                      }
+                    : undefined
+                }
                 onSubmit={handleAddressSubmit}
                 onCancel={() => {
                   setShowAddressForm(false);
@@ -530,14 +580,18 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
 
       {isEditing && currentCustomer && (
         <div className="border-t border-gray-200 p-6">
-          <h4 className="text-sm font-medium text-gray-700 mb-4">Customer Orders</h4>
-          
+          <h4 className="text-sm font-medium text-gray-700 mb-4">
+            Customer Orders
+          </h4>
+
           {ordersApi.loading ? (
             <div className="text-center py-4">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
             </div>
           ) : orders.length === 0 ? (
-            <p className="text-gray-500 text-sm">No orders found for this customer.</p>
+            <p className="text-gray-500 text-sm">
+              No orders found for this customer.
+            </p>
           ) : (
             <div className="space-y-3 max-h-64 overflow-y-auto">
               {orders.map((order, index) => (
@@ -551,9 +605,13 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
                           </span>
                         )}
                         {order.status && (
-                          <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
-                            order.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                          }`}>
+                          <span
+                            className={`inline-block px-2 py-1 rounded text-xs font-medium ${
+                              order.status === "completed"
+                                ? "bg-green-100 text-green-800"
+                                : "bg-gray-100 text-gray-800"
+                            }`}
+                          >
                             {order.status}
                           </span>
                         )}

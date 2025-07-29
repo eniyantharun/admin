@@ -22,14 +22,14 @@ export const loadGoogleMaps = (): Promise<typeof google> => {
 
     const loader = new Loader({
       apiKey: GOOGLE_MAPS_API_KEY,
-      version: 'weekly',
-      libraries: ['places', 'geometry']
+      version: 'beta', // Use beta or alpha version for PlaceAutocompleteElement
+      libraries: ['places']
     });
 
     loader.load().then(() => {
       googleMapsLoaded = true;
       resolve(window.google);
-    }).catch((error:any) => {
+    }).catch((error: any) => {
       googleMapsPromise = null;
       reject(error);
     });
