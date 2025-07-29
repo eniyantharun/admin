@@ -50,31 +50,41 @@ export const AddressForm: React.FC<AddressFormProps> = ({
     }
   };
 
-  const handlePlaceSelect = useCallback((place: google.maps.places.PlaceResult) => {
-    if (!place.address_components) return;
+  const handlePlaceSelect = useCallback(async (place: google.maps.places.Place) => {
+    try {
+      // Fetch the address components if not already available
+      await place.fetchFields({
+        fields: ['addressComponents', 'formattedAddress']
+      });
 
-    const getComponent = (types: string[]) => {
-      const component = place.address_components?.find(comp => 
-        types.some(type => comp.types.includes(type))
-      );
-      return component?.long_name || '';
-    };
+      if (!place.addressComponents) return;
 
-    const streetNumber = getComponent(['street_number']);
-    const route = getComponent(['route']);
-    const street = streetNumber && route ? `${streetNumber} ${route}` : (streetNumber || route);
+      const getComponent = (types: string[]) => {
+        const component = place.addressComponents?.find(comp => 
+          types.some(type => comp.types.includes(type))
+        );
+        return component?.longText || '';
+      };
 
-    setFormData(prev => ({
-      ...prev,
-      street: street || prev.street,
-      city: getComponent(['locality', 'sublocality']) || prev.city,
-      state: getComponent(['administrative_area_level_1']) || prev.state,
-      zipCode: getComponent(['postal_code']) || prev.zipCode,
-      country: getComponent(['country']) === 'United States' ? 'US' : getComponent(['country']) || prev.country
-    }));
+      const streetNumber = getComponent(['street_number']);
+      const route = getComponent(['route']);
+      const street = streetNumber && route ? `${streetNumber} ${route}` : (streetNumber || route);
 
-    setVerificationStatus('verified');
-    setVerifiedAddress(place.formatted_address || '');
+      setFormData(prev => ({
+        ...prev,
+        street: street || prev.street,
+        city: getComponent(['locality', 'sublocality']) || prev.city,
+        state: getComponent(['administrative_area_level_1']) || prev.state,
+        zipCode: getComponent(['postal_code']) || prev.zipCode,
+        country: getComponent(['country']) === 'United States' ? 'US' : getComponent(['country']) || prev.country
+      }));
+
+      setVerificationStatus('verified');
+      setVerifiedAddress(place.formattedAddress || '');
+    } catch (error) {
+      console.error('Error processing place selection:', error);
+      setVerificationStatus('failed');
+    }
   }, []);
 
   const handleAddressChange = useCallback((value: string) => {
