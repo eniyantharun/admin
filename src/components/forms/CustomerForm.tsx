@@ -278,6 +278,15 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
             onChange={handleInputChange}
             error={formErrors.firstName}
             required
+            placeholder="First Name"
+          />
+          <FormInput
+            label="Last Name"
+            name="lastName"
+            value={formData.lastName}
+            onChange={handleInputChange}
+            error={formErrors.lastName}
+            required
             placeholder="Last Name"
           />
         </div>
