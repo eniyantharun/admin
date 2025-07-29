@@ -148,7 +148,12 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (validateForm()) {
-      await onSubmit(formData);
+      try {
+        await onSubmit(formData);
+        
+      } catch (error) {
+        console.error('Error in form submission:', error);
+      }
     }
   };
 
@@ -193,6 +198,11 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
       await fetchCustomerDetails(currentCustomer.id);
       setShowAddressForm(false);
       setEditingAddressIndex(null);
+      
+      // Call the parent callback to refresh the main list
+      if (onCustomerUpdated) {
+        onCustomerUpdated();
+      }
     } catch (error) {
       console.error('Error saving address:', error);
     }
@@ -206,14 +216,19 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
       await addressApi.delete(`/Admin/CustomerEditor/DeleteCustomersAddress?addressId=${addressId}&customerId=${currentCustomer.id}`);
       
       await fetchCustomerDetails(currentCustomer.id);
+      
+      // Call the parent callback to refresh the main list
+      if (onCustomerUpdated) {
+        onCustomerUpdated();
+      }
     } catch (error) {
       console.error('Error deleting address:', error);
     }
   };
 
-  const handleCustomerUpdated = () => {
+  const handleCustomerUpdated = async () => {
     if (currentCustomer) {
-      fetchCustomerDetails(currentCustomer.id);
+      await fetchCustomerDetails(currentCustomer.id);
     }
     if (onCustomerUpdated) {
       onCustomerUpdated();
@@ -222,7 +237,6 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Main Form */}
       <form onSubmit={handleSubmit} className="p-6 space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormInput
@@ -374,17 +388,16 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
         <Button
           type="submit"
           loading={loading}
-          className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+          className=" bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
         >
           {isEditing ? "Update Customer" : "Create Customer"}
         </Button>
       </form>
 
-      {/* Email Actions Section - Only for editing */}
       {isEditing && currentCustomer && (
         <div className="border-t border-gray-200 p-6 bg-gray-50">
           <h4 className="text-sm font-medium text-gray-700 mb-4">Email Actions</h4>
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-rpw gap-3">
             <Button 
               onClick={() => onSendResetPassword?.(currentCustomer.email)} 
               variant="secondary" 
@@ -410,10 +423,9 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
         </div>
       )}
 
-      {/* Addresses Section - Only for editing */}
       {isEditing && currentCustomer && (
         <div className="border-t border-gray-200 p-6">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between ">
             <h4 className="text-sm font-medium text-gray-700">Addresses</h4>
             <Button
               onClick={() => {
@@ -516,7 +528,6 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
         </div>
       )}
 
-      {/* Orders Section - Only for editing */}
       {isEditing && currentCustomer && (
         <div className="border-t border-gray-200 p-6">
           <h4 className="text-sm font-medium text-gray-700 mb-4">Customer Orders</h4>
@@ -562,7 +573,6 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
         </div>
       )}
 
-      {/* Customer Actions Section - Only for editing */}
       {isEditing && currentCustomer && (
         <div className="border-t border-gray-200 p-6">
           <CustomerActions

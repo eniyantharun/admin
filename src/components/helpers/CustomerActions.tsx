@@ -44,6 +44,7 @@ export const CustomerActions: React.FC<CustomerActionsProps> = ({
         // Update local customer state immediately
         customer.isBlocked = response.data.isBlocked;
         
+        // Call the callback to refresh both the drawer and main list
         onCustomerUpdated();
       }
     } catch (error: any) {
@@ -67,8 +68,13 @@ export const CustomerActions: React.FC<CustomerActionsProps> = ({
 
       if (response && response.success) {
         console.log('Delete successful:', response.message);
+        
+        // Call the callback to refresh the main list and close the drawer
         onCustomerUpdated();
         setShowDeleteConfirm(false);
+        
+        // Show success message
+        alert('Customer deleted successfully');
       }
     } catch (error: any) {
       console.error('Error deleting customer:', error);
@@ -86,7 +92,6 @@ export const CustomerActions: React.FC<CustomerActionsProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Customer Status Section */}
       <Card className="p-4 bg-blue-50 border-blue-200">
         <h4 className="text-sm font-medium text-blue-800 mb-3">Customer Status</h4>
         
@@ -116,7 +121,6 @@ export const CustomerActions: React.FC<CustomerActionsProps> = ({
         </div>
       </Card>
 
-      {/* Danger Zone Section */}
       <Card className="p-4 bg-red-50 border-red-200">
         <h4 className="text-sm font-medium text-red-800 mb-3">Danger Zone</h4>
         
@@ -139,7 +143,6 @@ export const CustomerActions: React.FC<CustomerActionsProps> = ({
         </div>
       </Card>
 
-      {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
         <Card className="p-4 bg-red-50 border-red-300">
           <div className="flex items-start gap-3">

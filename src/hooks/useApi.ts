@@ -219,6 +219,29 @@ export const useApi = (options: UseApiOptions = {}) => {
     }
   }, []);
 
+  // Clear cache method to force refresh
+  const clearCache = useCallback(() => {
+    requestCache.clear();
+    // Also clear the main API cache
+    if (api.clearCache) {
+      api.clearCache();
+    }
+  }, []);
+
+  // Clear cache by pattern for related endpoints
+  const clearCacheByPattern = useCallback((pattern: string) => {
+    const keys = Array.from(requestCache.keys());
+    keys.forEach(key => {
+      if (key.includes(pattern)) {
+        requestCache.delete(key);
+      }
+    });
+    // Also clear the main API cache by pattern
+    if (api.clearCacheByPattern) {
+      api.clearCacheByPattern(pattern);
+    }
+  }, []);
+
   return useMemo(() => ({
     loading,
     error,
@@ -229,129 +252,7 @@ export const useApi = (options: UseApiOptions = {}) => {
     clearError,
     reset,
     cancel,
-  }), [loading, error, get, post, put, del, clearError, reset, cancel]);
-};
-
-export const useApiQuery = <T = any>(
-  url: string | null, 
-  options?: UseApiOptions & { enabled?: boolean; refreshInterval?: number }
-) => {
-  const [data, setData] = useState<T | null>(null);
-  const { get, loading, error, clearError, cancel } = useApi(options);
-  const { enabled = true, refreshInterval } = options || {};
-  const refreshIntervalRef = useRef<NodeJS.Timeout>();
-
-  const fetchData = useCallback(async () => {
-    if (!url || !enabled) return;
-
-    try {
-      const result = await get<T>(url);
-      setData(result);
-    } catch (err) {
-    }
-  }, [url, enabled, get]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  useEffect(() => {
-    if (refreshInterval && enabled && url) {
-      refreshIntervalRef.current = setInterval(fetchData, refreshInterval);
-      return () => {
-        if (refreshIntervalRef.current) {
-          clearInterval(refreshIntervalRef.current);
-        }
-      };
-    }
-  }, [refreshInterval, enabled, url, fetchData]);
-
-  useEffect(() => {
-    return () => {
-      cancel();
-      if (refreshIntervalRef.current) {
-        clearInterval(refreshIntervalRef.current);
-      }
-    };
-  }, [cancel]);
-
-  const refetch = useCallback(() => {
-    clearError();
-    fetchData();
-  }, [clearError, fetchData]);
-
-  return useMemo(() => ({
-    data,
-    loading,
-    error,
-    refetch,
-    clearError,
-  }), [data, loading, error, refetch, clearError]);
-};
-
-export const useApiMutation = <T = any>(options?: UseApiOptions & {
-  optimisticUpdate?: (data: any) => void;
-  rollback?: () => void;
-}) => {
-  const [data, setData] = useState<T | null>(null);
-  const api = useApi(options);
-  const { optimisticUpdate, rollback } = options || {};
-
-  const mutate = useCallback(async (
-    method: 'post' | 'put' | 'delete',
-    url: string,
-    requestData?: any,
-    requestOptions?: UseApiOptions
-  ): Promise<T | null> => {
-    if (optimisticUpdate && requestData) {
-      optimisticUpdate(requestData);
-    }
-
-    try {
-      let result: T | null = null;
-      
-      switch (method) {
-        case 'post':
-          result = await api.post<T>(url, requestData, requestOptions);
-          break;
-        case 'put':
-          result = await api.put<T>(url, requestData, requestOptions);
-          break;
-        case 'delete':
-          result = await api.delete<T>(url, requestOptions);
-          break;
-      }
-      
-      setData(result);
-      return result;
-    } catch (error) {
-      if (rollback) {
-        rollback();
-      }
-      throw error;
-    }
-  }, [api, optimisticUpdate, rollback]);
-
-  const post = useCallback((url: string, data?: any, requestOptions?: UseApiOptions) => {
-    return mutate('post', url, data, requestOptions);
-  }, [mutate]);
-
-  const put = useCallback((url: string, data?: any, requestOptions?: UseApiOptions) => {
-    return mutate('put', url, data, requestOptions);
-  }, [mutate]);
-
-  const del = useCallback((url: string, requestOptions?: UseApiOptions) => {
-    return mutate('delete', url, undefined, requestOptions);
-  }, [mutate]);
-
-  return useMemo(() => ({
-    data,
-    loading: api.loading,
-    error: api.error,
-    post,
-    put,
-    delete: del,
-    clearError: api.clearError,
-    reset: api.reset,
-  }), [api.loading, api.error, api.clearError, api.reset, data, post, put, del]);
+    clearCache,
+    clearCacheByPattern,
+  }), [loading, error, get, post, put, del, clearError, reset, cancel, clearCache, clearCacheByPattern]);
 };

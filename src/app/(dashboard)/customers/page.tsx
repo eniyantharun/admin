@@ -1,4 +1,4 @@
-"use client";
+"use client"
 
 import React, { useState, useEffect, useCallback, memo, useRef } from "react";
 import {
@@ -222,7 +222,13 @@ export default function CustomersPage() {
           }
         }
 
+        // Clear the API cache to ensure fresh data
+        mainApi.clearCache && mainApi.clearCache();
+        
+        // Refresh the customer list
         await fetchCustomers();
+        
+        // Close the drawer
         closeDrawer();
       } catch (error: any) {
         if (error?.name !== "CanceledError" && error?.code !== "ERR_CANCELED") {
@@ -234,7 +240,7 @@ export default function CustomersPage() {
         }
       }
     },
-    [isEditing, selectedCustomer, fetchCustomers, submitApi]
+    [isEditing, selectedCustomer, fetchCustomers, submitApi, mainApi]
   );
 
   const openNewCustomerDrawer = useCallback(() => {
@@ -301,6 +307,17 @@ export default function CustomersPage() {
     },
     [submitApi]
   );
+
+  // This function will be called whenever the customer is updated from within the drawer
+  const handleCustomerUpdated = useCallback(async () => {
+    console.log('Customer updated, refreshing list...');
+    // Clear cache to ensure fresh data
+    if (mainApi.clearCache) {
+      mainApi.clearCache();
+    }
+    // Refresh the customer list
+    await fetchCustomers();
+  }, [fetchCustomers, mainApi]);
 
   return (
     <div className="customers-page space-y-6">
@@ -517,7 +534,7 @@ export default function CustomersPage() {
           onSubmit={handleSubmit}
           onSendResetPassword={sendResetPasswordEmail}
           onSendNewAccount={sendNewAccountEmail}
-          onCustomerUpdated={fetchCustomers}
+          onCustomerUpdated={handleCustomerUpdated}
           loading={submitApi.loading}
         />
       </EntityDrawer>
