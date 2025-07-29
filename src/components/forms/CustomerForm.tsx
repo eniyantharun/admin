@@ -181,10 +181,8 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
 
     let processedValue = value;
 
-    // Auto-format phone number as user types
     if (name === "phone") {
       processedValue = googleMapsUtils.formatPhoneNumber(value);
-      // Update the input field immediately with formatted value
       e.target.value = processedValue;
     }
 
@@ -225,7 +223,6 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
       setShowAddressForm(false);
       setEditingAddressIndex(null);
 
-      // Call the parent callback to refresh the main list
       if (onCustomerUpdated) {
         onCustomerUpdated();
       }
@@ -310,7 +307,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
             onChange={handleInputChange}
             error={formErrors.phone}
             required
-            placeholder="Phone number"
+            placeholder="(123) 456-7890"
           />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -350,83 +347,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
           )}
         </div>
 
-        {!isEditing && (
-          <div className="border-t pt-4">
-            <h4 className="text-sm font-medium text-gray-700 mb-4">
-              Add Addresses (Optional)
-            </h4>
-
-            {formData.addresses.map((address, index) => (
-              <Card key={index} className="p-4 mb-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-medium">
-                        {address.type} - {address.label}
-                      </span>
-                      {address.isPrimary && (
-                        <span className="inline-block px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-medium">
-                          Primary
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-sm text-gray-900">
-                      <p>{address.name}</p>
-                      <p className="text-gray-600 mt-1">
-                        {address.street}
-                        <br />
-                        {address.city}, {address.state} {address.zipCode} (
-                        {address.country})
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      setFormData((prev) => ({
-                        ...prev,
-                        addresses: prev.addresses.filter((_, i) => i !== index),
-                      }));
-                    }}
-                    variant="danger"
-                    size="sm"
-                    icon={Trash2}
-                    iconOnly
-                  />
-                </div>
-              </Card>
-            ))}
-
-            <Button
-              type="button"
-              onClick={() => setShowAddressForm(true)}
-              variant="secondary"
-              size="sm"
-              icon={Plus}
-              className="w-full"
-            >
-              Add Address
-            </Button>
-
-            {showAddressForm && (
-              <Card className="p-4 mt-4 bg-gray-50">
-                <h5 className="text-sm font-medium text-gray-900 mb-3">
-                  Add New Address
-                </h5>
-                <AddressForm
-                  onSubmit={(addressData) => {
-                    setFormData((prev) => ({
-                      ...prev,
-                      addresses: [...prev.addresses, addressData],
-                    }));
-                    setShowAddressForm(false);
-                  }}
-                  onCancel={() => setShowAddressForm(false)}
-                />
-              </Card>
-            )}
-          </div>
-        )}
+        
 
         <Button
           type="submit"
