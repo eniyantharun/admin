@@ -87,6 +87,7 @@ export interface CustomerDetailResponse {
       averageOrderValue: number;
     };
     recentOrders: CustomerOrder[];
+    isBlocked: boolean; 
   };
   addresses: CustomerAddress[];
 }
@@ -121,4 +122,31 @@ export interface GoogleMapsAddress {
 export interface GoogleMapsResponse {
   results: GoogleMapsAddress[];
   status: string;
+}
+
+export interface UpdateCustomerRequest {
+  customerId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  companyName: string;
+  isBusinessCustomer: boolean;
+  isBlocked: boolean;
+  website: string;
+}
+
+export interface ToggleCustomerStatusRequest {
+  id: string;
+  isBlocked: boolean;
+}
+
+export interface ToggleCustomerStatusResponse {
+  success: boolean;
+  message: string;
+  data: {
+    id: string;
+    isBlocked: boolean;
+    updatedAt: string;
+  };
 }

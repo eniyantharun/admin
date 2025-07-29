@@ -182,7 +182,8 @@ export default function CustomersPage() {
     async (formData: CustomerFormData) => {
       try {
         if (isEditing && selectedCustomer) {
-          await submitApi.post('/Admin/CustomerEditor/UpdateCustomer', {
+          // Fixed UpdateCustomer API call - using the correct endpoint and payload structure
+          const updatePayload = {
             customerId: selectedCustomer.id,
             firstName: formData.firstName,
             lastName: formData.lastName,
@@ -190,9 +191,16 @@ export default function CustomersPage() {
             phone: formData.phone,
             companyName: formData.companyName,
             isBusinessCustomer: formData.isBusinessCustomer,
-            isBlocked: selectedCustomer.isBlocked,
+            isBlocked: selectedCustomer.isBlocked, // Preserve current blocked status
             website: formData.website
-          });
+          };
+
+          console.log('Updating customer with payload:', updatePayload);
+          
+          const response = await submitApi.post('/Admin/CustomerEditor/UpdateCustomer', updatePayload);
+          
+          console.log('Update customer response:', response);
+          
         } else {
           const response = await submitApi.post('/Admin/CustomerEditor/CreateCustomer', {
             firstName: formData.firstName,
@@ -220,6 +228,10 @@ export default function CustomersPage() {
       } catch (error: any) {
         if (error?.name !== "CanceledError" && error?.code !== "ERR_CANCELED") {
           console.error("Error saving customer:", error);
+          // Handle 403 error specifically
+          if (error?.response?.status === 403) {
+            console.error("403 Forbidden error - check authentication and permissions");
+          }
         }
       }
     },

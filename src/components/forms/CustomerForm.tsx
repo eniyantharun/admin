@@ -43,8 +43,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [editingAddressIndex, setEditingAddressIndex] = useState<number | null>(null);
-  const [loadingAddresses, setLoadingAddresses] = useState(false);
-  const [loadingOrders, setLoadingOrders] = useState(false);
+  const [currentCustomer, setCurrentCustomer] = useState<Customer | null>(null);
 
   const addressApi = useApi({
     cancelOnUnmount: false,
@@ -56,7 +55,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
     dedupe: false,
   });
 
-  const statusApi = useApi({
+  const customerDetailApi = useApi({
     cancelOnUnmount: false,
     dedupe: false,
   });
@@ -75,8 +74,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
       });
       
       if (isEditing) {
-        fetchCustomerAddresses(customer.id);
-        fetchCustomerOrders(customer.id);
+        fetchCustomerDetails(customer.id);
       }
     } else {
       setFormData({
@@ -91,40 +89,42 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
       });
       setAddresses([]);
       setOrders([]);
+      setCurrentCustomer(null);
     }
   }, [customer, isEditing]);
 
-  const fetchCustomerAddresses = async (customerId: string) => {
-    setLoadingAddresses(true);
+  const fetchCustomerDetails = async (customerId: string) => {
     try {
-      console.log('Fetching addresses for customer:', customerId);
-      const response = await addressApi.get(`/Admin/CustomerEditor/GetCustomerById?customerId=${customerId}`);
+      console.log('Fetching customer details for:', customerId);
+      const response = await customerDetailApi.get(`/Admin/CustomerEditor/GetCustomerById?customerId=${customerId}`);
       
-      if (response) {
-        console.log('Addresses response:', response);
+      if (response?.customer) {
+        console.log('Customer details response:', response);
+        setCurrentCustomer({
+          ...customer!,
+          isBlocked: response.customer.isBlocked || false
+        });
         setAddresses(response.addresses || []);
+        
+        // Fetch orders separately
+        fetchCustomerOrders(customerId);
       }
     } catch (error) {
-      console.error('Error fetching addresses:', error);
-    } finally {
-      setLoadingAddresses(false);
+      console.error('Error fetching customer details:', error);
     }
   };
 
   const fetchCustomerOrders = async (customerId: string) => {
-    setLoadingOrders(true);
     try {
       console.log('Fetching orders for customer:', customerId);
       const response = await ordersApi.get(`/Admin/CustomerEditor/GetCustomerOrders?CustomerId=${customerId}`);
       
-      if (response) {
+      if (response?.data?.orders) {
         console.log('Orders response:', response);
-        setOrders(response.data?.orders || []);
+        setOrders(response.data.orders);
       }
     } catch (error) {
       console.error('Error fetching orders:', error);
-    } finally {
-      setLoadingOrders(false);
     }
   };
 
@@ -172,7 +172,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
   };
 
   const handleAddressSubmit = async (addressData: CustomerAddressFormData) => {
-    if (!customer) return;
+    if (!currentCustomer) return;
 
     try {
       if (editingAddressIndex !== null) {
@@ -183,14 +183,14 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
           ...addressData
         });
       } else {
-        console.log('Adding new address for customer:', customer.id, addressData);
+        console.log('Adding new address for customer:', currentCustomer.id, addressData);
         await addressApi.post('/Admin/CustomerEditor/AddCustomerAddress', {
-          customerId: customer.id,
+          customerId: currentCustomer.id,
           ...addressData
         });
       }
       
-      await fetchCustomerAddresses(customer.id);
+      await fetchCustomerDetails(currentCustomer.id);
       setShowAddressForm(false);
       setEditingAddressIndex(null);
     } catch (error) {
@@ -199,49 +199,31 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
   };
 
   const handleDeleteAddress = async (addressId: string) => {
-    if (!customer) return;
+    if (!currentCustomer) return;
 
     try {
-      console.log('Deleting address:', addressId, 'for customer:', customer.id);
-      await addressApi.delete(`/Admin/CustomerEditor/DeleteCustomersAddress?addressId=${addressId}&customerId=${customer.id}`);
+      console.log('Deleting address:', addressId, 'for customer:', currentCustomer.id);
+      await addressApi.delete(`/Admin/CustomerEditor/DeleteCustomersAddress?addressId=${addressId}&customerId=${currentCustomer.id}`);
       
-      await fetchCustomerAddresses(customer.id);
+      await fetchCustomerDetails(currentCustomer.id);
     } catch (error) {
       console.error('Error deleting address:', error);
     }
   };
 
-  const handleToggleCustomerStatus = async () => {
-    if (!customer) return;
-
-    try {
-      const newBlockedStatus = !customer.isBlocked;
-      console.log('Toggling customer status:', customer.id, 'from', customer.isBlocked, 'to', newBlockedStatus);
-      
-      const response = await statusApi.post('/Admin/CustomerEditor/ToggleCustomerStatus', {
-        id: customer.id,
-        isBlocked: newBlockedStatus
-      });
-      
-      if (response && response.success) {
-        console.log('Toggle successful:', response.message);
-        console.log('New status:', response.data.isBlocked);
-        
-        // Update local customer state immediately
-        customer.isBlocked = response.data.isBlocked;
-        
-        if (onCustomerUpdated) {
-          onCustomerUpdated();
-        }
-      }
-    } catch (error) {
-      console.error('Error toggling customer status:', error);
+  const handleCustomerUpdated = () => {
+    if (currentCustomer) {
+      fetchCustomerDetails(currentCustomer.id);
+    }
+    if (onCustomerUpdated) {
+      onCustomerUpdated();
     }
   };
 
   return (
     <div className="space-y-6">
-      <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4">
+      {/* Main Form */}
+      <form onSubmit={handleSubmit} className="p-6 space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormInput
             label="First Name"
@@ -398,34 +380,13 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
         </Button>
       </form>
 
-      {isEditing && customer && (
-        <div className="border-t border-gray-200 p-4 sm:p-6 bg-gray-50">
-          <div className="flex items-center justify-between mb-4">
-            <h4 className="text-sm font-medium text-gray-700">Customer Status</h4>
-            <Button
-              onClick={handleToggleCustomerStatus}
-              variant={customer.isBlocked ? "success" : "danger"}
-              size="sm"
-              icon={customer.isBlocked ? User : User}
-              loading={statusApi.loading}
-            >
-              {customer.isBlocked ? "Enable Customer" : "Disable Customer"}
-            </Button>
-          </div>
-          <div className="text-sm text-gray-600">
-            Status: <span className={`font-medium ${customer.isBlocked ? 'text-red-600' : 'text-green-600'}`}>
-              {customer.isBlocked ? 'Disabled' : 'Active'}
-            </span>
-          </div>
-        </div>
-      )}
-
-      {isEditing && customer && (
-        <div className="border-t border-gray-200 p-4 sm:p-6 bg-gray-50">
+      {/* Email Actions Section - Only for editing */}
+      {isEditing && currentCustomer && (
+        <div className="border-t border-gray-200 p-6 bg-gray-50">
           <h4 className="text-sm font-medium text-gray-700 mb-4">Email Actions</h4>
           <div className="flex flex-col gap-3">
             <Button 
-              onClick={() => onSendResetPassword?.(customer.email)} 
+              onClick={() => onSendResetPassword?.(currentCustomer.email)} 
               variant="secondary" 
               size="sm"
               icon={Mail}
@@ -434,7 +395,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
               Send Reset Password Email
             </Button>
             <Button 
-              onClick={() => onSendNewAccount?.(customer.email)} 
+              onClick={() => onSendNewAccount?.(currentCustomer.email)} 
               variant="secondary" 
               size="sm"
               icon={Mail}
@@ -444,13 +405,14 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
             </Button>
           </div>
           <p className="text-xs text-gray-500 mt-2">
-            Email will be sent to: {customer.email}
+            Email will be sent to: {currentCustomer.email}
           </p>
         </div>
       )}
 
-      {isEditing && customer && (
-        <div className="border-t border-gray-200 p-4 sm:p-6">
+      {/* Addresses Section - Only for editing */}
+      {isEditing && currentCustomer && (
+        <div className="border-t border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
             <h4 className="text-sm font-medium text-gray-700">Addresses</h4>
             <Button
@@ -466,7 +428,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
             </Button>
           </div>
 
-          {loadingAddresses ? (
+          {customerDetailApi.loading ? (
             <div className="text-center py-4">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
             </div>
@@ -492,7 +454,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
                         )}
                       </div>
                       <div className="text-sm text-gray-900">
-                        <p>{address.name}</p>
+                        <p className="font-medium">{address.name}</p>
                         <p className="text-gray-600 mt-1">
                           {address.street}<br />
                           {address.city}, {address.state} {address.zipCode} ({address.country})
@@ -554,11 +516,12 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
         </div>
       )}
 
-      {isEditing && customer && (
-        <div className="border-t border-gray-200 p-4 sm:p-6">
+      {/* Orders Section - Only for editing */}
+      {isEditing && currentCustomer && (
+        <div className="border-t border-gray-200 p-6">
           <h4 className="text-sm font-medium text-gray-700 mb-4">Customer Orders</h4>
           
-          {loadingOrders ? (
+          {ordersApi.loading ? (
             <div className="text-center py-4">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
             </div>
@@ -599,11 +562,12 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
         </div>
       )}
 
-      {isEditing && customer && onCustomerUpdated && (
-        <div className="border-t border-gray-200 p-4 sm:p-6">
+      {/* Customer Actions Section - Only for editing */}
+      {isEditing && currentCustomer && (
+        <div className="border-t border-gray-200 p-6">
           <CustomerActions
-            customer={customer}
-            onCustomerUpdated={onCustomerUpdated}
+            customer={currentCustomer}
+            onCustomerUpdated={handleCustomerUpdated}
           />
         </div>
       )}
