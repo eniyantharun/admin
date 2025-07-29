@@ -28,12 +28,24 @@ export const CustomerActions: React.FC<CustomerActionsProps> = ({
 
   const handleToggleStatus = async () => {
     try {
-      await statusApi.post('/Admin/CustomerEditor/ToggleCustomerStatus', {
+      const newBlockedStatus = !customer.isBlocked;
+      console.log('Toggling customer status:', customer.id, 'from', customer.isBlocked, 'to', newBlockedStatus);
+      
+      const response = await statusApi.post('/Admin/CustomerEditor/ToggleCustomerStatus', {
         id: customer.id,
-        isBlocked: !customer.isBlocked
+        isBlocked: newBlockedStatus
       });
 
-      onCustomerUpdated();
+      if (response && response.success) {
+        console.log('Toggle successful:', response.message);
+        console.log('New status from API:', response.data.isBlocked);
+        console.log('Updated at:', response.data.updatedAt);
+        
+        // Update local customer state immediately
+        customer.isBlocked = response.data.isBlocked;
+        
+        onCustomerUpdated();
+      }
     } catch (error) {
       console.error('Error toggling customer status:', error);
     }
@@ -41,9 +53,8 @@ export const CustomerActions: React.FC<CustomerActionsProps> = ({
 
   const handleDeleteCustomer = async () => {
     try {
-      await deleteApi.delete('/Admin/CustomerEditor/DeleteCustomers', {
-        customerId: customer.id
-      });
+      console.log('Deleting customer:', customer.id);
+      await deleteApi.delete(`/Admin/CustomerEditor/DeleteCustomers?customerId=${customer.id}`);
 
       onCustomerUpdated();
       setShowDeleteConfirm(false);

@@ -22,8 +22,17 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config) => {
     const token = Cookies.get('auth_token');
+    console.log('API Request Details:', {
+      url: config.url,
+      method: config.method?.toUpperCase(),
+      token: token ? 'Present' : 'Missing',
+      baseURL: config.baseURL
+    });
+    
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    } else {
+      console.warn('No auth token found in cookies');
     }
     return config;
   },
@@ -31,14 +40,35 @@ apiClient.interceptors.request.use(
 );
 
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log('API Response:', {
+      url: response.config.url,
+      status: response.status,
+      method: response.config.method?.toUpperCase()
+    });
+    return response;
+  },
   (error: AxiosError) => {
+    console.error('API Error:', {
+      url: error.config?.url,
+      method: error.config?.method?.toUpperCase(),
+      status: error.response?.status,
+      message: error.message,
+      headers: error.config?.headers
+    });
+
     if (error.response?.status === 401) {
+      console.log('401 Unauthorized - redirecting to login');
       Cookies.remove('auth_token');
       if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
         window.location.href = '/login';
       }
     }
+    
+    if (error.response?.status === 403) {
+      console.error('403 Forbidden - check user permissions and token validity');
+    }
+    
     return Promise.reject(error);
   }
 );

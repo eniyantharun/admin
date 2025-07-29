@@ -97,11 +97,11 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
   const fetchCustomerAddresses = async (customerId: string) => {
     setLoadingAddresses(true);
     try {
-      const response = await addressApi.post('/Admin/CustomerEditor/GetCustomerById', { 
-        customerId 
-      });
+      console.log('Fetching addresses for customer:', customerId);
+      const response = await addressApi.get(`/Admin/CustomerEditor/GetCustomerById?customerId=${customerId}`);
       
       if (response) {
+        console.log('Addresses response:', response);
         setAddresses(response.addresses || []);
       }
     } catch (error) {
@@ -114,11 +114,11 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
   const fetchCustomerOrders = async (customerId: string) => {
     setLoadingOrders(true);
     try {
-      const response = await ordersApi.post('/Admin/CustomerEditor/GetCustomerOrders', { 
-        customerId 
-      });
+      console.log('Fetching orders for customer:', customerId);
+      const response = await ordersApi.get(`/Admin/CustomerEditor/GetCustomerOrders?CustomerId=${customerId}`);
       
       if (response) {
+        console.log('Orders response:', response);
         setOrders(response.data?.orders || []);
       }
     } catch (error) {
@@ -177,11 +177,13 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
     try {
       if (editingAddressIndex !== null) {
         const addressToUpdate = addresses[editingAddressIndex];
+        console.log('Updating address:', addressToUpdate.id, addressData);
         await addressApi.post('/Admin/CustomerEditor/UpdateCustomerAddress', {
           id: addressToUpdate.id,
           ...addressData
         });
       } else {
+        console.log('Adding new address for customer:', customer.id, addressData);
         await addressApi.post('/Admin/CustomerEditor/AddCustomerAddress', {
           customerId: customer.id,
           ...addressData
@@ -200,10 +202,8 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
     if (!customer) return;
 
     try {
-      await addressApi.delete('/Admin/CustomerEditor/DeleteCustomersAddress', {
-        addressId,
-        customerId: customer.id
-      });
+      console.log('Deleting address:', addressId, 'for customer:', customer.id);
+      await addressApi.delete(`/Admin/CustomerEditor/DeleteCustomersAddress?addressId=${addressId}&customerId=${customer.id}`);
       
       await fetchCustomerAddresses(customer.id);
     } catch (error) {
@@ -215,13 +215,24 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
     if (!customer) return;
 
     try {
-      await statusApi.post('/Admin/CustomerEditor/ToggleCustomerStatus', {
+      const newBlockedStatus = !customer.isBlocked;
+      console.log('Toggling customer status:', customer.id, 'from', customer.isBlocked, 'to', newBlockedStatus);
+      
+      const response = await statusApi.post('/Admin/CustomerEditor/ToggleCustomerStatus', {
         id: customer.id,
-        isBlocked: !customer.isBlocked
+        isBlocked: newBlockedStatus
       });
       
-      if (onCustomerUpdated) {
-        onCustomerUpdated();
+      if (response && response.success) {
+        console.log('Toggle successful:', response.message);
+        console.log('New status:', response.data.isBlocked);
+        
+        // Update local customer state immediately
+        customer.isBlocked = response.data.isBlocked;
+        
+        if (onCustomerUpdated) {
+          onCustomerUpdated();
+        }
       }
     } catch (error) {
       console.error('Error toggling customer status:', error);
