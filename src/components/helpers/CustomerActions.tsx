@@ -1,0 +1,150 @@
+import React, { useState } from 'react';
+import { Trash2, UserX, UserCheck, AlertTriangle } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { useApi } from '@/hooks/useApi';
+import { Customer } from '@/types/customer';
+
+interface CustomerActionsProps {
+  customer: Customer;
+  onCustomerUpdated: () => void;
+}
+
+export const CustomerActions: React.FC<CustomerActionsProps> = ({
+  customer,
+  onCustomerUpdated
+}) => {
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const statusApi = useApi({
+    cancelOnUnmount: false,
+    dedupe: false,
+  });
+
+  const deleteApi = useApi({
+    cancelOnUnmount: false,
+    dedupe: false,
+  });
+
+  const handleToggleStatus = async () => {
+    try {
+      await statusApi.post('/Admin/CustomerEditor/ToggleCustomerStatus', {
+        id: customer.id,
+        isBlocked: !customer.isBlocked
+      });
+
+      onCustomerUpdated();
+    } catch (error) {
+      console.error('Error toggling customer status:', error);
+    }
+  };
+
+  const handleDeleteCustomer = async () => {
+    try {
+      await deleteApi.delete('/Admin/CustomerEditor/DeleteCustomers', {
+        customerId: customer.id
+      });
+
+      onCustomerUpdated();
+      setShowDeleteConfirm(false);
+    } catch (error) {
+      console.error('Error deleting customer:', error);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <Card className="p-4 bg-red-50 border-red-200">
+        <h4 className="text-sm font-medium text-red-800 mb-3">Danger Zone</h4>
+        
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-red-800">
+                {customer.isBlocked ? 'Enable Customer' : 'Disable Customer'}
+              </p>
+              <p className="text-xs text-red-600">
+                {customer.isBlocked 
+                  ? 'Customer will be able to place orders again' 
+                  : 'Customer will not be able to place new orders'
+                }
+              </p>
+            </div>
+            <Button
+              onClick={handleToggleStatus}
+              variant={customer.isBlocked ? "success" : "warning"}
+              size="sm"
+              icon={customer.isBlocked ? UserCheck : UserX}
+              loading={statusApi.loading}
+            >
+              {customer.isBlocked ? 'Enable' : 'Disable'}
+            </Button>
+          </div>
+
+          <hr className="border-red-200" />
+
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-red-800">Delete Customer</p>
+              <p className="text-xs text-red-600">
+                Permanently remove this customer and all associated data
+              </p>
+            </div>
+            <Button
+              onClick={() => setShowDeleteConfirm(true)}
+              variant="danger"
+              size="sm"
+              icon={Trash2}
+              disabled={statusApi.loading || deleteApi.loading}
+            >
+              Delete
+            </Button>
+          </div>
+        </div>
+      </Card>
+
+      {showDeleteConfirm && (
+        <Card className="p-4 bg-red-50 border-red-300">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <h4 className="text-sm font-medium text-red-800 mb-2">
+                Confirm Customer Deletion
+              </h4>
+              <p className="text-sm text-red-700 mb-4">
+                Are you sure you want to delete <strong>{customer.firstName} {customer.lastName}</strong>? 
+                This action cannot be undone and will permanently remove:
+              </p>
+              <ul className="text-xs text-red-600 mb-4 space-y-1">
+                <li>• Customer profile and contact information</li>
+                <li>• All associated addresses</li>
+                <li>• Order history and transaction records</li>
+                <li>• Any linked quotes or pending requests</li>
+              </ul>
+              <div className="flex gap-3">
+                <Button
+                  onClick={handleDeleteCustomer}
+                  variant="danger"
+                  size="sm"
+                  loading={deleteApi.loading}
+                  className="flex-1"
+                >
+                  Yes, Delete Customer
+                </Button>
+                <Button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  variant="secondary"
+                  size="sm"
+                  className="flex-1"
+                  disabled={deleteApi.loading}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+};

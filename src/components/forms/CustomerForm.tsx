@@ -1,44 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Mail, Phone } from 'lucide-react';
+import { Plus, Trash2, Mail, Phone, User, MapPin, Building } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { FormInput } from '@/components/helpers/FormInput';
-
-interface Customer {
-  id: number;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  companyName: string;
-  joinedDate: string;
-}
-
-interface Address {
-  id: string;
-  type: string;
-  street: string;
-  city: string;
-  state: string;
-  zipCode: string;
-  country: string;
-}
-
-interface Comment {
-  id: string;
-  text: string;
-  timestamp: string;
-  type: 'manual' | 'auto';
-}
-
-interface CustomerFormData {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  companyName: string;
-  enabled: boolean;
-}
+import { AddressForm } from '@/components/forms/AddressForm';
+import { CustomerActions } from '@/components/helpers/CustomerActions';
+import { useApi } from '@/hooks/useApi';
+import { Customer, CustomerFormData, CustomerAddress, CustomerAddressFormData, CustomerOrder } from '@/types/customer';
+import { googleMapsUtils } from '@/lib/googleMaps';
 
 interface CustomerFormProps {
   customer?: Customer | null;
@@ -46,6 +15,7 @@ interface CustomerFormProps {
   onSubmit: (data: CustomerFormData) => Promise<void>;
   onSendResetPassword?: (email: string) => Promise<void>;
   onSendNewAccount?: (email: string) => Promise<void>;
+  onCustomerUpdated?: () => void;
   loading?: boolean;
 }
 
@@ -55,6 +25,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
   onSubmit,
   onSendResetPassword,
   onSendNewAccount,
+  onCustomerUpdated,
   loading = false
 }) => {
   const [formData, setFormData] = useState<CustomerFormData>({
@@ -62,21 +33,32 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
     lastName: '',
     email: '',
     phone: '',
+    website: 'promotionalproductinc.com',
     companyName: '',
-    enabled: true
+    isBusinessCustomer: false,
+    addresses: []
   });
   const [formErrors, setFormErrors] = useState<Partial<CustomerFormData>>({});
-  const [addresses, setAddresses] = useState<Address[]>([]);
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [newComment, setNewComment] = useState('');
+  const [addresses, setAddresses] = useState<CustomerAddress[]>([]);
+  const [orders, setOrders] = useState<CustomerOrder[]>([]);
   const [showAddressForm, setShowAddressForm] = useState(false);
-  const [newAddress, setNewAddress] = useState({
-    type: 'Home',
-    street: '',
-    city: '',
-    state: '',
-    zipCode: '',
-    country: 'US'
+  const [editingAddressIndex, setEditingAddressIndex] = useState<number | null>(null);
+  const [loadingAddresses, setLoadingAddresses] = useState(false);
+  const [loadingOrders, setLoadingOrders] = useState(false);
+
+  const addressApi = useApi({
+    cancelOnUnmount: false,
+    dedupe: false,
+  });
+
+  const ordersApi = useApi({
+    cancelOnUnmount: false,
+    dedupe: false,
+  });
+
+  const statusApi = useApi({
+    cancelOnUnmount: false,
+    dedupe: false,
   });
 
   useEffect(() => {
@@ -86,22 +68,15 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
         lastName: customer.lastName,
         email: customer.email,
         phone: customer.phone,
+        website: customer.website || 'promotionalproductinc.com',
         companyName: customer.companyName,
-        enabled: true
+        isBusinessCustomer: customer.isBusinessCustomer,
+        addresses: []
       });
       
       if (isEditing) {
-        setAddresses([
-          {
-            id: '1',
-            type: 'Office',
-            street: '19680 Tree Stand Terrace',
-            city: 'Loxahatchee',
-            state: 'Florida',
-            zipCode: '33470',
-            country: 'US'
-          }
-        ]);
+        fetchCustomerAddresses(customer.id);
+        fetchCustomerOrders(customer.id);
       }
     } else {
       setFormData({
@@ -109,13 +84,49 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
         lastName: '',
         email: '',
         phone: '',
+        website: 'promotionalproductinc.com',
         companyName: '',
-        enabled: true
+        isBusinessCustomer: false,
+        addresses: []
       });
       setAddresses([]);
-      setComments([]);
+      setOrders([]);
     }
   }, [customer, isEditing]);
+
+  const fetchCustomerAddresses = async (customerId: string) => {
+    setLoadingAddresses(true);
+    try {
+      const response = await addressApi.post('/Admin/CustomerEditor/GetCustomerById', { 
+        customerId 
+      });
+      
+      if (response) {
+        setAddresses(response.addresses || []);
+      }
+    } catch (error) {
+      console.error('Error fetching addresses:', error);
+    } finally {
+      setLoadingAddresses(false);
+    }
+  };
+
+  const fetchCustomerOrders = async (customerId: string) => {
+    setLoadingOrders(true);
+    try {
+      const response = await ordersApi.post('/Admin/CustomerEditor/GetCustomerOrders', { 
+        customerId 
+      });
+      
+      if (response) {
+        setOrders(response.data?.orders || []);
+      }
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+    } finally {
+      setLoadingOrders(false);
+    }
+  };
 
   const validateForm = (): boolean => {
     const errors: Partial<CustomerFormData> = {};
@@ -127,6 +138,8 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       errors.email = 'Email is invalid';
     }
+    if (!formData.phone.trim()) errors.phone = 'Phone number is required';
+    if (!formData.website.trim()) errors.website = 'Website is required';
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -141,9 +154,16 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
+    
+    let processedValue = value;
+    
+    if (name === 'phone') {
+      processedValue = googleMapsUtils.formatPhoneNumber(value);
+    }
+    
     setFormData(prev => ({ 
       ...prev, 
-      [name]: type === 'checkbox' ? checked : value 
+      [name]: type === 'checkbox' ? checked : processedValue 
     }));
     
     if (formErrors[name as keyof CustomerFormData]) {
@@ -151,49 +171,61 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
     }
   };
 
-  const handleAddressSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newAddress.street.trim() || !newAddress.city.trim()) return;
+  const handleAddressSubmit = async (addressData: CustomerAddressFormData) => {
+    if (!customer) return;
 
-    const address: Address = {
-      id: Date.now().toString(),
-      ...newAddress
-    };
-
-    setAddresses(prev => [...prev, address]);
-    setNewAddress({
-      type: 'Home',
-      street: '',
-      city: '',
-      state: '',
-      zipCode: '',
-      country: 'US'
-    });
-    setShowAddressForm(false);
+    try {
+      if (editingAddressIndex !== null) {
+        const addressToUpdate = addresses[editingAddressIndex];
+        await addressApi.post('/Admin/CustomerEditor/UpdateCustomerAddress', {
+          id: addressToUpdate.id,
+          ...addressData
+        });
+      } else {
+        await addressApi.post('/Admin/CustomerEditor/AddCustomerAddress', {
+          customerId: customer.id,
+          ...addressData
+        });
+      }
+      
+      await fetchCustomerAddresses(customer.id);
+      setShowAddressForm(false);
+      setEditingAddressIndex(null);
+    } catch (error) {
+      console.error('Error saving address:', error);
+    }
   };
 
-  const handleAddressInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setNewAddress(prev => ({ ...prev, [name]: value }));
+  const handleDeleteAddress = async (addressId: string) => {
+    if (!customer) return;
+
+    try {
+      await addressApi.delete('/Admin/CustomerEditor/DeleteCustomersAddress', {
+        addressId,
+        customerId: customer.id
+      });
+      
+      await fetchCustomerAddresses(customer.id);
+    } catch (error) {
+      console.error('Error deleting address:', error);
+    }
   };
 
-  const removeAddress = (id: string) => {
-    setAddresses(prev => prev.filter(addr => addr.id !== id));
-  };
+  const handleToggleCustomerStatus = async () => {
+    if (!customer) return;
 
-  const handleCommentSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newComment.trim()) return;
-
-    const comment: Comment = {
-      id: Date.now().toString(),
-      text: newComment,
-      timestamp: new Date().toLocaleString(),
-      type: 'manual'
-    };
-
-    setComments(prev => [comment, ...prev]);
-    setNewComment('');
+    try {
+      await statusApi.post('/Admin/CustomerEditor/ToggleCustomerStatus', {
+        id: customer.id,
+        isBlocked: !customer.isBlocked
+      });
+      
+      if (onCustomerUpdated) {
+        onCustomerUpdated();
+      }
+    } catch (error) {
+      console.error('Error toggling customer status:', error);
+    }
   };
 
   return (
@@ -220,52 +252,162 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <FormInput
+          label="Email Address"
+          name="email"
+          type="email"
+          value={formData.email}
+          onChange={handleInputChange}
+          error={formErrors.email}
+          required
+          placeholder="email@example.com"
+        />
+
+        <FormInput
+          label="Phone Number"
+          name="phone"
+          type="tel"
+          value={formData.phone}
+          onChange={handleInputChange}
+          error={formErrors.phone}
+          required
+          placeholder="Phone number"
+          helpText="Phone number will be auto-formatted as (123) 456-7890"
+        />
+
+        <FormInput
+          label="Website"
+          name="website"
+          value={formData.website}
+          onChange={handleInputChange}
+          error={formErrors.website}
+          required
+          placeholder="promotionalproductinc.com"
+        />
+
+        <div className="space-y-2">
           <FormInput
-            label="Email Address"
-            name="email"
-            type="email"
-            value={formData.email}
+            label="Company Name"
+            name="companyName"
+            value={formData.companyName}
             onChange={handleInputChange}
-            error={formErrors.email}
-            required
-            placeholder="email@example.com"
+            placeholder="Company Name (Optional)"
           />
-          <FormInput
-            label="Phone Number"
-            name="phone"
-            type="tel"
-            value={formData.phone}
-            onChange={handleInputChange}
-            placeholder="(555) 123-4567"
-          />
+          
+          {!formData.companyName && (
+            <FormInput
+              label=""
+              name="isBusinessCustomer"
+              type="checkbox"
+              value={!formData.isBusinessCustomer}
+              onChange={(e) => setFormData(prev => ({ ...prev, isBusinessCustomer: !e.target.checked }))}
+              placeholder="I am not purchasing for a business"
+            />
+          )}
         </div>
 
-        <FormInput
-          label="Company Name"
-          name="companyName"
-          value={formData.companyName}
-          onChange={handleInputChange}
-          placeholder="Company Name (Optional)"
-        />
+        {!isEditing && (
+          <div className="border-t pt-4">
+            <h4 className="text-sm font-medium text-gray-700 mb-4">Add Addresses (Optional)</h4>
+            
+            {formData.addresses.map((address, index) => (
+              <Card key={index} className="p-4 mb-3">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-medium">
+                        {address.type} - {address.label}
+                      </span>
+                      {address.isPrimary && (
+                        <span className="inline-block px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-medium">
+                          Primary
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-sm text-gray-900">
+                      <p>{address.name}</p>
+                      <p className="text-gray-600 mt-1">
+                        {address.street}<br />
+                        {address.city}, {address.state} {address.zipCode} ({address.country})
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        addresses: prev.addresses.filter((_, i) => i !== index)
+                      }));
+                    }}
+                    variant="danger"
+                    size="sm"
+                    icon={Trash2}
+                    iconOnly
+                  />
+                </div>
+              </Card>
+            ))}
 
-        <FormInput
-          label="Status"
-          name="enabled"
-          type="checkbox"
-          value={formData.enabled}
-          onChange={handleInputChange}
-          placeholder="Enable this customer"
-        />
+            <Button
+              type="button"
+              onClick={() => setShowAddressForm(true)}
+              variant="secondary"
+              size="sm"
+              icon={Plus}
+              className="w-full"
+            >
+              Add Address
+            </Button>
+
+            {showAddressForm && (
+              <Card className="p-4 mt-4 bg-gray-50">
+                <h5 className="text-sm font-medium text-gray-900 mb-3">Add New Address</h5>
+                <AddressForm
+                  onSubmit={(addressData) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      addresses: [...prev.addresses, addressData]
+                    }));
+                    setShowAddressForm(false);
+                  }}
+                  onCancel={() => setShowAddressForm(false)}
+                />
+              </Card>
+            )}
+          </div>
+        )}
 
         <Button
           type="submit"
           loading={loading}
           className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
         >
-          {isEditing ? "Update Customer" : "Add Customer"}
+          {isEditing ? "Update Customer" : "Create Customer"}
         </Button>
       </form>
+
+      {isEditing && customer && (
+        <div className="border-t border-gray-200 p-4 sm:p-6 bg-gray-50">
+          <div className="flex items-center justify-between mb-4">
+            <h4 className="text-sm font-medium text-gray-700">Customer Status</h4>
+            <Button
+              onClick={handleToggleCustomerStatus}
+              variant={customer.isBlocked ? "success" : "danger"}
+              size="sm"
+              icon={customer.isBlocked ? User : User}
+              loading={statusApi.loading}
+            >
+              {customer.isBlocked ? "Enable Customer" : "Disable Customer"}
+            </Button>
+          </div>
+          <div className="text-sm text-gray-600">
+            Status: <span className={`font-medium ${customer.isBlocked ? 'text-red-600' : 'text-green-600'}`}>
+              {customer.isBlocked ? 'Disabled' : 'Active'}
+            </span>
+          </div>
+        </div>
+      )}
 
       {isEditing && customer && (
         <div className="border-t border-gray-200 p-4 sm:p-6 bg-gray-50">
@@ -296,55 +438,15 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
         </div>
       )}
 
-      {isEditing && (
-        <div className="border-t border-gray-200 p-4 sm:p-6">
-          <h4 className="text-sm font-medium text-gray-700 mb-4">Comments</h4>
-          
-          <form onSubmit={handleCommentSubmit} className="space-y-3 mb-6">
-            <textarea
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              placeholder="Add a comment..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 resize-none"
-              rows={3}
-              maxLength={1000}
-            />
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-gray-500">{newComment.length} / 1000</span>
-              <Button type="submit" disabled={!newComment.trim()} variant="secondary" size="sm">
-                Add Comment
-              </Button>
-            </div>
-          </form>
-
-          <div className="space-y-3 max-h-48 overflow-y-auto">
-            {comments.map((comment) => (
-              <Card key={comment.id} className="p-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <span className={`inline-block px-2 py-1 rounded text-xs font-medium mb-2 ${
-                      comment.type === "auto" ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-800"
-                    }`}>
-                      {comment.type === "auto" ? "AUTO" : "MANUAL"}
-                    </span>
-                    <p className="text-sm text-gray-900">{comment.text}</p>
-                  </div>
-                </div>
-                <div className="text-xs text-gray-500 mt-2">
-                  {comment.timestamp}
-                </div>
-              </Card>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {isEditing && (
+      {isEditing && customer && (
         <div className="border-t border-gray-200 p-4 sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <h4 className="text-sm font-medium text-gray-700">Addresses</h4>
             <Button
-              onClick={() => setShowAddressForm(!showAddressForm)}
+              onClick={() => {
+                setEditingAddressIndex(null);
+                setShowAddressForm(!showAddressForm);
+              }}
               size="sm"
               icon={Plus}
               className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
@@ -353,127 +455,145 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
             </Button>
           </div>
 
-          <div className="space-y-3 mb-4">
-            {addresses.map((address) => (
-              <Card key={address.id} className="p-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-medium">
-                        {address.type}
-                      </span>
+          {loadingAddresses ? (
+            <div className="text-center py-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+            </div>
+          ) : (
+            <div className="space-y-3 mb-4">
+              {addresses.map((address, index) => (
+                <Card key={address.id} className="p-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-medium">
+                          {address.type} - {address.label}
+                        </span>
+                        {address.isPrimary && (
+                          <span className="inline-block px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-medium">
+                            Primary
+                          </span>
+                        )}
+                        {address.isVerified && (
+                          <span className="inline-block px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-medium">
+                            Verified
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-sm text-gray-900">
+                        <p>{address.name}</p>
+                        <p className="text-gray-600 mt-1">
+                          {address.street}<br />
+                          {address.city}, {address.state} {address.zipCode} ({address.country})
+                        </p>
+                      </div>
                     </div>
-                    <div className="text-sm text-gray-900">
-                      <p>{formData.companyName || "No Company"}</p>
-                      <p className="text-gray-600 mt-1">
-                        {address.street}<br />
-                        {address.city}, {address.state} {address.zipCode} ({address.country})
-                      </p>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => {
+                          setEditingAddressIndex(index);
+                          setShowAddressForm(true);
+                        }}
+                        variant="secondary"
+                        size="sm"
+                        icon={MapPin}
+                        iconOnly
+                      />
+                      <Button
+                        onClick={() => handleDeleteAddress(address.id)}
+                        variant="danger"
+                        size="sm"
+                        icon={Trash2}
+                        iconOnly
+                        loading={addressApi.loading}
+                      />
                     </div>
                   </div>
-                  <Button
-                    onClick={() => removeAddress(address.id)}
-                    variant="danger"
-                    size="sm"
-                    icon={Trash2}
-                    iconOnly
-                  />
-                </div>
-              </Card>
-            ))}
-          </div>
+                </Card>
+              ))}
+            </div>
+          )}
 
           {showAddressForm && (
             <Card className="p-4 bg-gray-50">
-              <h5 className="text-sm font-medium text-gray-900 mb-3">Add New Address</h5>
-              <form onSubmit={handleAddressSubmit} className="space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                    <select
-                      name="type"
-                      value={newAddress.type}
-                      onChange={handleAddressInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                    >
-                      <option value="Home">Home</option>
-                      <option value="Office">Office</option>
-                      <option value="Billing">Billing</option>
-                      <option value="Shipping">Shipping</option>
-                    </select>
-                  </div>
-                </div>
-                
-                <input
-                  type="text"
-                  name="street"
-                  value={newAddress.street}
-                  onChange={handleAddressInputChange}
-                  placeholder="Street Address"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                  required
-                />
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <input
-                    type="text"
-                    name="city"
-                    value={newAddress.city}
-                    onChange={handleAddressInputChange}
-                    placeholder="City"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                    required
-                  />
-                  <input
-                    type="text"
-                    name="state"
-                    value={newAddress.state}
-                    onChange={handleAddressInputChange}
-                    placeholder="State"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                  />
-                </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <input
-                    type="text"
-                    name="zipCode"
-                    value={newAddress.zipCode}
-                    onChange={handleAddressInputChange}
-                    placeholder="ZIP Code"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                  />
-                  <input
-                    type="text"
-                    name="country"
-                    value={newAddress.country}
-                    onChange={handleAddressInputChange}
-                    placeholder="Country"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                  />
-                </div>
-                
-                <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
-                  <Button
-                    type="submit"
-                    size="sm"
-                    className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-                  >
-                    Add Address
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={() => setShowAddressForm(false)}
-                    variant="secondary"
-                    size="sm"
-                    className="w-full sm:w-auto"
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </form>
+              <h5 className="text-sm font-medium text-gray-900 mb-3">
+                {editingAddressIndex !== null ? 'Edit Address' : 'Add New Address'}
+              </h5>
+              <AddressForm
+                address={editingAddressIndex !== null ? {
+                  type: addresses[editingAddressIndex].type,
+                  label: addresses[editingAddressIndex].label,
+                  name: addresses[editingAddressIndex].name,
+                  street: addresses[editingAddressIndex].street,
+                  city: addresses[editingAddressIndex].city,
+                  state: addresses[editingAddressIndex].state,
+                  zipCode: addresses[editingAddressIndex].zipCode,
+                  country: addresses[editingAddressIndex].country,
+                  isPrimary: addresses[editingAddressIndex].isPrimary
+                } : undefined}
+                onSubmit={handleAddressSubmit}
+                onCancel={() => {
+                  setShowAddressForm(false);
+                  setEditingAddressIndex(null);
+                }}
+                loading={addressApi.loading}
+              />
             </Card>
           )}
+        </div>
+      )}
+
+      {isEditing && customer && (
+        <div className="border-t border-gray-200 p-4 sm:p-6">
+          <h4 className="text-sm font-medium text-gray-700 mb-4">Customer Orders</h4>
+          
+          {loadingOrders ? (
+            <div className="text-center py-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+            </div>
+          ) : orders.length === 0 ? (
+            <p className="text-gray-500 text-sm">No orders found for this customer.</p>
+          ) : (
+            <div className="space-y-3 max-h-64 overflow-y-auto">
+              {orders.map((order, index) => (
+                <Card key={order.id || index} className="p-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        {order.id && (
+                          <span className="text-sm font-medium text-gray-900">
+                            Order #{order.id}
+                          </span>
+                        )}
+                        {order.status && (
+                          <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
+                            order.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {order.status}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {new Date(order.orderDate).toLocaleDateString()}
+                      </div>
+                    </div>
+                    <div className="text-sm font-medium text-green-600">
+                      ${order.total.toFixed(2)}
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {isEditing && customer && onCustomerUpdated && (
+        <div className="border-t border-gray-200 p-4 sm:p-6">
+          <CustomerActions
+            customer={customer}
+            onCustomerUpdated={onCustomerUpdated}
+          />
         </div>
       )}
     </div>
