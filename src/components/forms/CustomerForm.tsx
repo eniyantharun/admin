@@ -279,7 +279,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
           error={formErrors.phone}
           required
           placeholder="Phone number"
-          helpText="Phone number will be auto-formatted as (123) 456-7890"
+          
         />
 
         <FormInput

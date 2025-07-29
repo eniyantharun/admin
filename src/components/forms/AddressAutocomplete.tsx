@@ -20,7 +20,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
   disabled = false
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
-  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const autocompleteRef = useRef<google.maps.places.PlaceAutocompleteElement | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
 
@@ -36,7 +36,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
         
         if (!inputRef.current) return;
 
-        autocompleteRef.current = new google.maps.places.Autocomplete(inputRef.current, {
+        autocompleteRef.current = new google.maps.places.PlaceAutocompleteElement(inputRef.current, {
           types: ['address'],
           componentRestrictions: { country: ['us', 'ca'] }
         });
