@@ -61,23 +61,16 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     <AuthGuard>
       <div className="dashboard-layout-container flex h-screen bg-gradient-to-br from-gray-50 via-blue-50/50 to-indigo-50 relative overflow-hidden">
         <DashboardBackground />
-
         <Sidebar />
-
         <div className="dashboard-layout-main flex-1 flex flex-col overflow-hidden relative min-w-0">
           <Header />
-
           <main className="dashboard-layout-content flex-1 overflow-y-auto relative bg-transparent">
             <div className="dashboard-layout-page-wrapper h-full min-h-0">
-              {/* <div className="dashboard-layout-inner h-full p-4 sm:p-6 lg:p-8"> */}
               <ContentWrapper>{children}</ContentWrapper>
-              {/* </div> */}
             </div>
-
             <div className="dashboard-layout-scroll-indicator absolute top-0 right-0 w-1 bg-gradient-to-b from-blue-400/20 via-indigo-400/20 to-purple-400/20 rounded-full transition-opacity duration-300"></div>
           </main>
         </div>
-
         <FloatingElements />
       </div>
     </AuthGuard>

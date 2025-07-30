@@ -25,10 +25,10 @@ import {
 import { PaginationControls } from "@/components/helpers/PaginationControls";
 import { EntityDrawer } from "@/components/helpers/EntityDrawer";
 import { CustomerForm } from "@/components/forms/CustomerForm";
-import { Customer, CustomerFormData, ApiCustomer } from "@/types/customer";
+import { iCustomer, iCustomerFormData, iApiCustomer } from "@/types/customer";
 import { googleMapsUtils } from "@/lib/googleMaps";
 
-const ContactInfo = memo<{ customer: Customer }>(({ customer }) => (
+const ContactInfo = memo<{ customer: iCustomer }>(({ customer }) => (
   <>
     <div className="text-sm text-gray-900 flex items-center gap-1">
       <Mail className="w-3 h-3 text-gray-400" />
@@ -44,13 +44,13 @@ const ContactInfo = memo<{ customer: Customer }>(({ customer }) => (
 ContactInfo.displayName = "ContactInfo";
 
 export default function CustomersPage() {
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customers, setCustomers] = useState<iCustomer[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [localSearchTerm, setLocalSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [businessFilter, setBusinessFilter] = useState<string>("all");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<iCustomer | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(20);
@@ -71,7 +71,7 @@ export default function CustomersPage() {
   });
 
   const transformApiCustomer = useCallback(
-    (apiCustomer: ApiCustomer): Customer => {
+    (apiCustomer: iApiCustomer): iCustomer => {
       return {
         id: apiCustomer.id,
         idNum: apiCustomer.idNum,
@@ -116,15 +116,15 @@ export default function CustomersPage() {
         let transformedCustomers = (response.customers || []).map(transformApiCustomer);
 
         if (statusFilter === 'active') {
-          transformedCustomers = transformedCustomers.filter((c: Customer) => !c.isBlocked);
+          transformedCustomers = transformedCustomers.filter((c: iCustomer) => !c.isBlocked);
         } else if (statusFilter === 'disabled') {
-          transformedCustomers = transformedCustomers.filter((c: Customer) => c.isBlocked);
+          transformedCustomers = transformedCustomers.filter((c: iCustomer) => c.isBlocked);
         }
 
         if (businessFilter === 'business') {
-          transformedCustomers = transformedCustomers.filter((c: Customer) => c.isBusinessCustomer);
+          transformedCustomers = transformedCustomers.filter((c: iCustomer) => c.isBusinessCustomer);
         } else if (businessFilter === 'individual') {
-          transformedCustomers = transformedCustomers.filter((c: Customer) => !c.isBusinessCustomer);
+          transformedCustomers = transformedCustomers.filter((c: iCustomer) => !c.isBusinessCustomer);
         }
 
         setCustomers(transformedCustomers);
@@ -180,7 +180,7 @@ export default function CustomersPage() {
   };
 
   const handleSubmit = useCallback(
-    async (formData: CustomerFormData) => {
+    async (formData: iCustomerFormData) => {
       try {
         if (isEditing && selectedCustomer) {
           const updatePayload = {
@@ -223,18 +223,14 @@ export default function CustomersPage() {
           }
         }
 
-        // Clear the API cache to ensure fresh data
         mainApi.clearCache && mainApi.clearCache();
         
-        // Refresh the customer list
         await fetchCustomers();
         
-        // Close the drawer
         closeDrawer();
       } catch (error: any) {
         if (error?.name !== "CanceledError" && error?.code !== "ERR_CANCELED") {
           console.error("Error saving customer:", error);
-          // Handle 403 error specifically
           if (error?.response?.status === 403) {
             console.error("403 Forbidden error - check authentication and permissions");
           }
@@ -250,7 +246,7 @@ export default function CustomersPage() {
     setIsDrawerOpen(true);
   }, []);
 
-  const openEditCustomerDrawer = useCallback((customer: Customer) => {
+  const openEditCustomerDrawer = useCallback((customer: iCustomer) => {
     setIsEditing(true);
     setSelectedCustomer(customer);
     setIsDrawerOpen(true);
@@ -309,14 +305,11 @@ export default function CustomersPage() {
     [submitApi]
   );
 
-  // This function will be called whenever the customer is updated from within the drawer
   const handleCustomerUpdated = useCallback(async () => {
     console.log('Customer updated, refreshing list...');
-    // Clear cache to ensure fresh data
     if (mainApi.clearCache) {
       mainApi.clearCache();
     }
-    // Refresh the customer list
     await fetchCustomers();
   }, [fetchCustomers, mainApi]);
 

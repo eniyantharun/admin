@@ -219,16 +219,13 @@ export const useApi = (options: UseApiOptions = {}) => {
     }
   }, []);
 
-  // Clear cache method to force refresh
   const clearCache = useCallback(() => {
     requestCache.clear();
-    // Also clear the main API cache
     if (api.clearCache) {
       api.clearCache();
     }
   }, []);
 
-  // Clear cache by pattern for related endpoints
   const clearCacheByPattern = useCallback((pattern: string) => {
     const keys = Array.from(requestCache.keys());
     keys.forEach(key => {
@@ -236,7 +233,6 @@ export const useApi = (options: UseApiOptions = {}) => {
         requestCache.delete(key);
       }
     });
-    // Also clear the main API cache by pattern
     if (api.clearCacheByPattern) {
       api.clearCacheByPattern(pattern);
     }

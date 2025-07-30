@@ -15,25 +15,17 @@ import { AddressForm } from "@/components/forms/AddressForm";
 import { CustomerActions } from "@/components/helpers/CustomerActions";
 import { useApi } from "@/hooks/useApi";
 import {
-  Customer,
-  CustomerFormData,
-  CustomerAddress,
-  CustomerAddressFormData,
-  CustomerOrder,
+  iCustomer,
+  iCustomerFormData,
+  iCustomerAddress,
+  iCustomerAddressFormData,
+  iCustomerOrder,
 } from "@/types/customer";
 import { googleMapsUtils } from "@/lib/googleMaps";
+import { iCustomerFormProps } from "./../../types/customer"
 
-interface CustomerFormProps {
-  customer?: Customer | null;
-  isEditing: boolean;
-  onSubmit: (data: CustomerFormData) => Promise<void>;
-  onSendResetPassword?: (email: string) => Promise<void>;
-  onSendNewAccount?: (email: string) => Promise<void>;
-  onCustomerUpdated?: () => void;
-  loading?: boolean;
-}
 
-export const CustomerForm: React.FC<CustomerFormProps> = ({
+export const CustomerForm: React.FC<iCustomerFormProps> = ({
   customer,
   isEditing,
   onSubmit,
@@ -42,7 +34,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
   onCustomerUpdated,
   loading = false,
 }) => {
-  const [formData, setFormData] = useState<CustomerFormData>({
+  const [formData, setFormData] = useState<iCustomerFormData>({
     firstName: "",
     lastName: "",
     email: "",
@@ -52,14 +44,12 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
     isBusinessCustomer: false,
     addresses: [],
   });
-  const [formErrors, setFormErrors] = useState<Partial<CustomerFormData>>({});
-  const [addresses, setAddresses] = useState<CustomerAddress[]>([]);
-  const [orders, setOrders] = useState<CustomerOrder[]>([]);
+  const [formErrors, setFormErrors] = useState<Partial<iCustomerFormData>>({});
+  const [addresses, setAddresses] = useState<iCustomerAddress[]>([]);
+  const [orders, setOrders] = useState<iCustomerOrder[]>([]);
   const [showAddressForm, setShowAddressForm] = useState(false);
-  const [editingAddressIndex, setEditingAddressIndex] = useState<number | null>(
-    null
-  );
-  const [currentCustomer, setCurrentCustomer] = useState<Customer | null>(null);
+  const [editingAddressIndex, setEditingAddressIndex] = useState<number | null>(null);
+  const [currentCustomer, setCurrentCustomer] = useState<iCustomer | null>(null);
 
   const addressApi = useApi({
     cancelOnUnmount: false,
@@ -111,45 +101,41 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
 
   const fetchCustomerDetails = async (customerId: string) => {
     try {
-      console.log("Fetching customer details for:", customerId);
       const response = await customerDetailApi.get(
         `/Admin/CustomerEditor/GetCustomerById?customerId=${customerId}`
       );
 
       if (response?.customer) {
-        console.log("Customer details response:", response);
         setCurrentCustomer({
           ...customer!,
           isBlocked: response.customer.isBlocked || false,
         });
         setAddresses(response.addresses || []);
 
-        // Fetch orders separately
         fetchCustomerOrders(customerId);
       }
     } catch (error) {
-      console.error("Error fetching customer details:", error);
+      alert("Error fetching customer details:");
     }
   };
 
   const fetchCustomerOrders = async (customerId: string) => {
     try {
-      console.log("Fetching orders for customer:", customerId);
       const response = await ordersApi.get(
         `/Admin/CustomerEditor/GetCustomerOrders?CustomerId=${customerId}`
       );
 
-      if (response?.data?.orders) {
-        console.log("Orders response:", response);
+      const { data } = response || {};
+      if (data?.orders) {
         setOrders(response.data.orders);
       }
     } catch (error) {
-      console.error("Error fetching orders:", error);
+      alert('Error fetching orders:'+ error);
     }
   };
 
   const validateForm = (): boolean => {
-    const errors: Partial<CustomerFormData> = {};
+    const errors: Partial<iCustomerFormData> = {};
 
     if (!formData.firstName.trim()) errors.firstName = "First name is required";
     if (!formData.lastName.trim()) errors.lastName = "Last name is required";
@@ -191,12 +177,12 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
       [name]: type === "checkbox" ? checked : processedValue,
     }));
 
-    if (formErrors[name as keyof CustomerFormData]) {
+    if (formErrors[name as keyof iCustomerFormData]) {
       setFormErrors((prev) => ({ ...prev, [name]: undefined }));
     }
   };
 
-  const handleAddressSubmit = async (addressData: CustomerAddressFormData) => {
+  const handleAddressSubmit = async (addressData: iCustomerAddressFormData) => {
     if (!currentCustomer) return;
 
     try {
@@ -347,8 +333,6 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
           )}
         </div>
 
-        
-
         <Button
           type="submit"
           loading={loading}
@@ -470,9 +454,8 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
           {showAddressForm && (
             <Card className="p-4 bg-gray-50">
               <h5 className="text-sm font-medium text-gray-900 mb-3">
-                {editingAddressIndex !== null
-                  ? "Edit Address"
-                  : "Add New Address"}
+                  {!editingAddressIndex==null ? "Edit Address" : "Add New Address"}
+
               </h5>
               <AddressForm
                 address={

@@ -1,18 +1,7 @@
+import { iFormInputProps } from '@/types';
 import React from 'react';
 
-interface FormInputProps {
-  label: string;
-  name: string;
-  value: string | boolean;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  error?: string;
-  required?: boolean;
-  type?: string;
-  placeholder?: string;
-  helpText?: string;
-}
-
-export const FormInput: React.FC<FormInputProps> = ({ 
+export const FormInput: React.FC<iFormInputProps> = ({ 
   label, 
   name, 
   value, 

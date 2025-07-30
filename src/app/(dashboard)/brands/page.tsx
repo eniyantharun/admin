@@ -210,7 +210,6 @@ export default function BrandsPage() {
   const handleSubmit = async (formData: BrandFormData) => {
     try {
       if (isEditing && selectedBrand) {
-        console.log("Updating brand:", selectedBrand.id, formData);
       } else {
         console.log("Creating brand:", formData);
       }

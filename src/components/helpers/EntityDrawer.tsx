@@ -1,18 +1,9 @@
 import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { iEntityDrawerProps } from '@/types';
 
-interface EntityDrawerProps {
-  isOpen: boolean;
-  onClose: () => void;
-  title: string;
-  children: React.ReactNode;
-  loading?: boolean;
-  size?: 'sm' | 'md' | 'lg' | 'xl' | 'xxl';
-  footer?: React.ReactNode;
-}
-
-export const EntityDrawer: React.FC<EntityDrawerProps> = ({
+export const EntityDrawer: React.FC<iEntityDrawerProps> = ({
   isOpen,
   onClose,
   title,

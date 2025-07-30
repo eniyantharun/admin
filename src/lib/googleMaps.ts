@@ -1,9 +1,9 @@
-import { GoogleMapsResponse, GoogleMapsAddress } from '@/types/customer';
+import { iGoogleMapsResponse, iGoogleMapsAddress } from '@/types/customer';
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
 export const googleMapsUtils = {
-  async verifyAddress(address: string): Promise<GoogleMapsAddress | null> {
+  async verifyAddress(address: string): Promise<iGoogleMapsAddress | null> {
     if (!GOOGLE_MAPS_API_KEY) {
       console.warn('Google Maps API key not configured');
       return null;
@@ -19,7 +19,7 @@ export const googleMapsUtils = {
         throw new Error('Failed to verify address');
       }
 
-      const data: GoogleMapsResponse = await response.json();
+      const data: iGoogleMapsResponse = await response.json();
 
       if (data.status === 'OK' && data.results.length > 0) {
         return data.results[0];
@@ -49,7 +49,7 @@ export const googleMapsUtils = {
   return phone; 
 },
 
-  parseGoogleAddress(googleAddress: GoogleMapsAddress) {
+  parseGoogleAddress(googleAddress: iGoogleMapsAddress) {
     const components = googleAddress.address_components;
     
     const getComponent = (types: string[]) => {

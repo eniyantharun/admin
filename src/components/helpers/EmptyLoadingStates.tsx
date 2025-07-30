@@ -1,14 +1,8 @@
 import React from 'react';
 import { Building } from 'lucide-react';
+import { iEmptyStateProps, iLoadingStateProps } from '@/types';
 
-interface EmptyStateProps {
-  icon?: React.ComponentType<any>;
-  title: string;
-  description?: string;
-  hasSearch?: boolean;
-}
-
-export const EmptyState: React.FC<EmptyStateProps> = ({ 
+export const EmptyState: React.FC<iEmptyStateProps> = ({ 
   icon: Icon = Building, 
   title, 
   description, 
@@ -27,11 +21,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   </div>
 );
 
-interface LoadingStateProps {
-  message?: string;
-}
-
-export const LoadingState: React.FC<LoadingStateProps> = ({ message = 'Loading...' }) => (
+export const LoadingState: React.FC<iLoadingStateProps> = ({ message = 'Loading...' }) => (
   <div className="loading-state text-center py-8">
     <div className="loading-spinner w-8 h-8 mx-auto animate-spin text-blue-600 mb-3 border-2 border-blue-600 border-t-transparent rounded-full"></div>
     <p className="loading-text text-gray-500 text-sm">{message}</p>

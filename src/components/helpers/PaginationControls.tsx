@@ -1,17 +1,7 @@
 import React from 'react';
+import { iPaginationControlsProps } from '@/types';
 
-interface PaginationControlsProps {
-  currentPage: number;
-  totalPages: number;
-  totalCount: number;
-  rowsPerPage: number;
-  onPageChange: (page: number) => void;
-  onRowsPerPageChange: (rows: number) => void;
-  startIndex: number;
-  endIndex: number;
-}
-
-export const PaginationControls: React.FC<PaginationControlsProps> = ({
+export const PaginationControls: React.FC<iPaginationControlsProps> = ({
   currentPage,
   totalPages,
   totalCount,

@@ -3,14 +3,9 @@ import { Trash2, UserX, UserCheck, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { useApi } from '@/hooks/useApi';
-import { Customer } from '@/types/customer';
+import {iCustomer, iCustomerActionsProps } from '@/types/customer';
 
-interface CustomerActionsProps {
-  customer: Customer;
-  onCustomerUpdated: () => void;
-}
-
-export const CustomerActions: React.FC<CustomerActionsProps> = ({
+export const CustomerActions: React.FC<iCustomerActionsProps> = ({
   customer,
   onCustomerUpdated
 }) => {
@@ -41,16 +36,13 @@ export const CustomerActions: React.FC<CustomerActionsProps> = ({
         console.log('New status from API:', response.data.isBlocked);
         console.log('Updated at:', response.data.updatedAt);
         
-        // Update local customer state immediately
         customer.isBlocked = response.data.isBlocked;
         
-        // Call the callback to refresh both the drawer and main list
         onCustomerUpdated();
       }
     } catch (error: any) {
       console.error('Error toggling customer status:', error);
       
-      // Provide user feedback for different error types
       if (error?.response?.status === 403) {
         alert('Access denied. You do not have permission to change customer status.');
       } else if (error?.response?.status === 404) {
@@ -69,17 +61,14 @@ export const CustomerActions: React.FC<CustomerActionsProps> = ({
       if (response && response.success) {
         console.log('Delete successful:', response.message);
         
-        // Call the callback to refresh the main list and close the drawer
         onCustomerUpdated();
         setShowDeleteConfirm(false);
         
-        // Show success message
         alert('Customer deleted successfully');
       }
     } catch (error: any) {
       console.error('Error deleting customer:', error);
       
-      // Provide user feedback for different error types
       if (error?.response?.status === 403) {
         alert('Access denied. You do not have permission to delete customers.');
       } else if (error?.response?.status === 404) {

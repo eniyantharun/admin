@@ -22,7 +22,7 @@ export const loadGoogleMaps = (): Promise<typeof google> => {
 
     const loader = new Loader({
       apiKey: GOOGLE_MAPS_API_KEY,
-      version: 'beta', // Use beta or alpha version for PlaceAutocompleteElement
+      version: 'beta',
       libraries: ['places']
     });
 

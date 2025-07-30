@@ -1,4 +1,4 @@
-export interface ApiCustomer {
+export interface iApiCustomer {
   form: {
     companyName: string | null;
     firstName: string;
@@ -13,7 +13,16 @@ export interface ApiCustomer {
   createdAt: string;
 }
 
-export interface Customer {
+export interface iCustomerFormProps {
+  customer?: iCustomer | null;
+  isEditing: boolean;
+  onSubmit: (data: iCustomerFormData) => Promise<void>;
+  onSendResetPassword?: (email: string) => Promise<void>;
+  onSendNewAccount?: (email: string) => Promise<void>;
+  onCustomerUpdated?: () => void;
+  loading?: boolean;
+}
+export interface iCustomer {
   id: string;
   idNum: number;
   firstName: string;
@@ -28,7 +37,7 @@ export interface Customer {
   updatedAt?: string;
 }
 
-export interface CustomerAddress {
+export interface iCustomerAddress {
   id: string;
   type: 'billing' | 'shipping';
   label: string;
@@ -43,7 +52,7 @@ export interface CustomerAddress {
   createdAt?: string;
 }
 
-export interface CustomerOrder {
+export interface iCustomerOrder {
   id: number | null;
   orderNumber?: string;
   status: string | null;
@@ -51,7 +60,7 @@ export interface CustomerOrder {
   orderDate: string;
 }
 
-export interface CustomerFormData {
+export interface iCustomerFormData {
   firstName: string;
   lastName: string;
   email: string;
@@ -59,10 +68,10 @@ export interface CustomerFormData {
   website: string;
   companyName: string;
   isBusinessCustomer: boolean;
-  addresses: CustomerAddressFormData[];
+  addresses: iCustomerAddressFormData[];
 }
 
-export interface CustomerAddressFormData {
+export interface iCustomerAddressFormData {
   type: 'billing' | 'shipping';
   label: string;
   name: string;
@@ -74,26 +83,38 @@ export interface CustomerAddressFormData {
   isPrimary: boolean;
 }
 
-export interface CustomerListResponse {
-  customers: ApiCustomer[];
+export interface iCustomerActionsProps {
+  customer: iCustomer;
+  onCustomerUpdated: () => void;
+}
+
+export interface iAddressFormProps {
+  address?: iCustomerAddressFormData;
+  onSubmit: (address: iCustomerAddressFormData) => void;
+  onCancel: () => void;
+  loading?: boolean;
+}
+
+export interface iCustomerListResponse {
+  customers: iApiCustomer[];
   count: number;
 }
 
-export interface CustomerDetailResponse {
-  customer: Customer & {
+export interface iCustomerDetailResponse {
+  customer: iCustomer & {
     stats: {
       totalOrders: number;
       totalSpent: number;
       averageOrderValue: number;
     };
-    recentOrders: CustomerOrder[];
+    recentOrders: iCustomerOrder[];
     isBlocked: boolean; 
   };
-  addresses: CustomerAddress[];
+  addresses: iCustomerAddress[];
 }
 
-export interface CustomerOrdersResponse {
-  orders: CustomerOrder[];
+export interface iCustomerOrdersResponse {
+  orders: iCustomerOrder[];
   pagination: {
     currentPage: number;
     totalPages: number;
@@ -104,7 +125,7 @@ export interface CustomerOrdersResponse {
   };
 }
 
-export interface GoogleMapsAddress {
+export interface iGoogleMapsAddress {
   formatted_address: string;
   address_components: Array<{
     long_name: string;
@@ -119,12 +140,12 @@ export interface GoogleMapsAddress {
   };
 }
 
-export interface GoogleMapsResponse {
-  results: GoogleMapsAddress[];
+export interface iGoogleMapsResponse {
+  results: iGoogleMapsAddress[];
   status: string;
 }
 
-export interface UpdateCustomerRequest {
+export interface iUpdateCustomerRequest {
   customerId: string;
   firstName: string;
   lastName: string;
@@ -136,12 +157,12 @@ export interface UpdateCustomerRequest {
   website: string;
 }
 
-export interface ToggleCustomerStatusRequest {
+export interface iToggleCustomerStatusRequest {
   id: string;
   isBlocked: boolean;
 }
 
-export interface ToggleCustomerStatusResponse {
+export interface iToggleCustomerStatusResponse {
   success: boolean;
   message: string;
   data: {

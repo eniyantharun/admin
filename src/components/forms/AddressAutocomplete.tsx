@@ -1,17 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import { MapPin, Loader } from "lucide-react";
 import { loadGoogleMaps } from "@/lib/loadGoogleMaps";
+import { iAddressAutocompleteProps } from "@/types";
 
-interface AddressAutocompleteProps {
-  value: string;
-  onChange: (value: string) => void;
-  onPlaceSelect?: (place: google.maps.places.Place) => void;
-  placeholder?: string;
-  className?: string;
-  disabled?: boolean;
-}
-
-export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
+export const AddressAutocomplete: React.FC<iAddressAutocompleteProps> = ({
   value,
   onChange,
   onPlaceSelect,
@@ -22,7 +14,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const autocompleteElementRef =
     useRef<google.maps.places.PlaceAutocompleteElement | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
 
   useEffect(() => {
@@ -37,25 +29,19 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
 
         if (!containerRef.current) return;
 
-        // Create the new PlaceAutocompleteElement
         const placeAutocomplete =
           new google.maps.places.PlaceAutocompleteElement({});
 
-        // Store reference for cleanup
         autocompleteElementRef.current = placeAutocomplete;
 
-        // Clear any existing content and append the new element
         containerRef.current.innerHTML = "";
         containerRef.current.appendChild(placeAutocomplete);
 
-        // Add event listener for place selection
         placeAutocomplete.addEventListener("gmp-select", async (event: any) => {
           try {
-            // The event contains a placePrediction, not directly a place
             const placePrediction = event.placePrediction;
             const place = placePrediction.toPlace();
 
-            // Fetch additional fields if needed
             await place.fetchFields({
               fields: [
                 "formattedAddress",
@@ -65,12 +51,10 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
               ],
             });
 
-            // Update the input value
             if (place.formattedAddress) {
               onChange(place.formattedAddress);
             }
 
-            // Call the onPlaceSelect callback if provided
             if (onPlaceSelect) {
               onPlaceSelect(place);
             }
@@ -80,10 +64,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
           }
         });
 
-        // Set initial value if provided
         if (value) {
-          // The new API doesn't allow direct value setting the same way
-          // You might need to handle this differently based on your use case
           const input = placeAutocomplete.querySelector("input");
           if (input) {
             input.value = value;
@@ -99,17 +80,14 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
 
     initAutocomplete();
 
-    // Cleanup function
     return () => {
       if (autocompleteElementRef.current) {
-        // Remove event listeners and clean up
         autocompleteElementRef.current.remove();
         autocompleteElementRef.current = null;
       }
     };
-  }, [disabled, onPlaceSelect]); // Removed onChange and value from dependencies to prevent recreation
+  }, [disabled, onPlaceSelect]); 
 
-  // Handle manual input changes
   useEffect(() => {
     if (autocompleteElementRef.current && value !== undefined) {
       const input = autocompleteElementRef.current.querySelector("input");
@@ -119,7 +97,6 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
     }
   }, [value]);
 
-  // Handle input events to sync with parent component
   useEffect(() => {
     if (!autocompleteElementRef.current) return;
 
@@ -148,20 +125,17 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
         )}
       </div>
 
-      {/* Container for the PlaceAutocompleteElement */}
       <div
         ref={containerRef}
         className={`w-full ${className}`}
         style={
           {
-            // Ensure the autocomplete element takes full width and has proper styling
             "--gmp-primary-color": "#3b82f6",
             "--gmp-background-color": "#ffffff",
           } as React.CSSProperties
         }
       />
 
-      {/* Fallback input for when Google Maps fails to load */}
       {error && (
         <input
           type="text"
@@ -175,7 +149,6 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
 
       {error && <p className="text-xs text-amber-600 mt-1">{error}</p>}
 
-      {/* Custom styles for the autocomplete element */}
       <style jsx>{`
         :global(gmp-place-autocomplete) {
           width: 100% !important;

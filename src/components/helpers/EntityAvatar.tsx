@@ -1,13 +1,7 @@
+import { iEntityAvatarProps } from '@/types';
 import React from 'react';
 
-interface EntityAvatarProps {
-  name: string;
-  id: string | number;
-  type?: 'customer' | 'supplier' | 'default';
-  size?: 'sm' | 'md' | 'lg';
-}
-
-export const EntityAvatar: React.FC<EntityAvatarProps> = ({ 
+export const EntityAvatar: React.FC<iEntityAvatarProps> = ({ 
   name, 
   id, 
   type = 'default',

@@ -1,130 +1,144 @@
-import React, { useState, useCallback } from 'react';
-import { MapPin, CheckCircle, AlertCircle } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
-import { FormInput } from '@/components/helpers/FormInput';
-import { AddressAutocomplete } from '@/components/forms/AddressAutocomplete';
-import { CustomerAddressFormData } from '@/types/customer';
-import { googleMapsUtils } from '@/lib/googleMaps';
+import React, { useState, useCallback } from "react";
+import { MapPin, CheckCircle, AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { FormInput } from "@/components/helpers/FormInput";
+import { AddressAutocomplete } from "@/components/forms/AddressAutocomplete";
+import { iAddressFormProps, iCustomerAddressFormData } from "@/types/customer";
+import { googleMapsUtils } from "@/lib/googleMaps";
 
-interface AddressFormProps {
-  address?: CustomerAddressFormData;
-  onSubmit: (address: CustomerAddressFormData) => void;
-  onCancel: () => void;
-  loading?: boolean;
-}
-
-export const AddressForm: React.FC<AddressFormProps> = ({
+export const AddressForm: React.FC<iAddressFormProps> = ({
   address,
   onSubmit,
   onCancel,
-  loading = false
+  loading = false,
 }) => {
-  const [formData, setFormData] = useState<CustomerAddressFormData>(
+  const [formData, setFormData] = useState<iCustomerAddressFormData>(
     address || {
-      type: 'shipping',
-      label: 'Home',
-      name: '',
-      street: '',
-      city: '',
-      state: '',
-      zipCode: '',
-      country: 'US',
-      isPrimary: false
+      type: "shipping",
+      label: "Home",
+      name: "",
+      street: "",
+      city: "",
+      state: "",
+      zipCode: "",
+      country: "US",
+      isPrimary: false,
     }
   );
-  const [verificationStatus, setVerificationStatus] = useState<'idle' | 'verifying' | 'verified' | 'failed'>('idle');
-  const [verifiedAddress, setVerifiedAddress] = useState<string>('');
+  const [verificationStatus, setVerificationStatus] = useState<
+    "idle" | "verifying" | "verified" | "failed"
+  >("idle");
+  const [verifiedAddress, setVerifiedAddress] = useState<string>("");
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
     const { name, value, type } = e.target;
     const checked = (e.target as HTMLInputElement).checked;
-    
-    setFormData(prev => ({
+
+    setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === "checkbox" ? checked : value,
     }));
 
-    if (['street', 'city', 'state', 'zipCode'].includes(name)) {
-      setVerificationStatus('idle');
-      setVerifiedAddress('');
+    if (["street", "city", "state", "zipCode"].includes(name)) {
+      setVerificationStatus("idle");
+      setVerifiedAddress("");
     }
   };
 
-  const handlePlaceSelect = useCallback(async (place: google.maps.places.Place) => {
-    try {
-      // Fetch the address components if not already available
-      await place.fetchFields({
-        fields: ['addressComponents', 'formattedAddress']
-      });
+  const handlePlaceSelect = useCallback(
+    async (place: google.maps.places.Place) => {
+      try {
+        await place.fetchFields({
+          fields: ["addressComponents", "formattedAddress"],
+        });
 
-      if (!place.addressComponents) return;
+        if (!place.addressComponents) return;
 
-      const getComponent = (types: string[]) => {
-        const component = place.addressComponents?.find(comp => 
-          types.some(type => comp.types.includes(type))
-        );
-        return component?.longText || '';
-      };
+        const getComponent = (types: string[]) => {
+          const component = place.addressComponents?.find((comp) =>
+            types.some((type) => comp.types.includes(type))
+          );
+          return component?.longText || "";
+        };
 
-      const streetNumber = getComponent(['street_number']);
-      const route = getComponent(['route']);
-      const street = streetNumber && route ? `${streetNumber} ${route}` : (streetNumber || route);
+        const streetNumber = getComponent(["street_number"]);
+        const route = getComponent(["route"]);
+        const street =
+          streetNumber && route
+            ? `${streetNumber} ${route}`
+            : streetNumber || route;
 
-      setFormData(prev => ({
-        ...prev,
-        street: street || prev.street,
-        city: getComponent(['locality', 'sublocality']) || prev.city,
-        state: getComponent(['administrative_area_level_1']) || prev.state,
-        zipCode: getComponent(['postal_code']) || prev.zipCode,
-        country: getComponent(['country']) === 'United States' ? 'US' : getComponent(['country']) || prev.country
-      }));
+        setFormData((prev) => ({
+          ...prev,
+          street: street || prev.street,
+          city: getComponent(["locality", "sublocality"]) || prev.city,
+          state: getComponent(["administrative_area_level_1"]) || prev.state,
+          zipCode: getComponent(["postal_code"]) || prev.zipCode,
+          country:
+            getComponent(["country"]) === "United States"
+              ? "US"
+              : getComponent(["country"]) || prev.country,
+        }));
 
-      setVerificationStatus('verified');
-      setVerifiedAddress(place.formattedAddress || '');
-    } catch (error) {
-      console.error('Error processing place selection:', error);
-      setVerificationStatus('failed');
-    }
-  }, []);
+        setVerificationStatus("verified");
+        setVerifiedAddress(place.formattedAddress || "");
+      } catch (error) {
+        console.error("Error processing place selection:", error);
+        setVerificationStatus("failed");
+      }
+    },
+    []
+  );
 
   const handleAddressChange = useCallback((value: string) => {
-    setFormData(prev => ({ ...prev, street: value }));
-    setVerificationStatus('idle');
-    setVerifiedAddress('');
+    setFormData((prev) => ({ ...prev, street: value }));
+    setVerificationStatus("idle");
+    setVerifiedAddress("");
   }, []);
 
   const verifyAddress = useCallback(async () => {
     const fullAddress = `${formData.street}, ${formData.city}, ${formData.state} ${formData.zipCode}, ${formData.country}`;
-    
+
     if (!formData.street || !formData.city) {
       return;
     }
 
-    setVerificationStatus('verifying');
+    setVerificationStatus("verifying");
 
     try {
       const verified = await googleMapsUtils.verifyAddress(fullAddress);
-      
+
       if (verified) {
         const parsed = googleMapsUtils.parseGoogleAddress(verified);
         setVerifiedAddress(verified.formatted_address);
-        setVerificationStatus('verified');
-        
-        setFormData(prev => ({
+        setVerificationStatus("verified");
+
+        setFormData((prev) => ({
           ...prev,
           street: parsed.street || prev.street,
           city: parsed.city || prev.city,
           state: parsed.state || prev.state,
           zipCode: parsed.zipCode || prev.zipCode,
-          country: parsed.country === 'United States' ? 'US' : parsed.country || prev.country
+          country:
+            parsed.country === "United States"
+              ? "US"
+              : parsed.country || prev.country,
         }));
       } else {
-        setVerificationStatus('failed');
+        setVerificationStatus("failed");
       }
     } catch (error) {
-      setVerificationStatus('failed');
+      setVerificationStatus("failed");
     }
-  }, [formData.street, formData.city, formData.state, formData.zipCode, formData.country]);
+  }, [
+    formData.street,
+    formData.city,
+    formData.state,
+    formData.zipCode,
+    formData.country,
+  ]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -133,14 +147,30 @@ export const AddressForm: React.FC<AddressFormProps> = ({
 
   const getVerificationMessage = () => {
     switch (verificationStatus) {
-      case 'verifying':
-        return { text: 'Verifying address...', color: 'text-blue-600', icon: CheckCircle };
-      case 'verified':
-        return { text: `Verified: ${verifiedAddress}`, color: 'text-green-600', icon: CheckCircle };
-      case 'failed':
-        return { text: 'Address verification failed', color: 'text-red-600', icon: AlertCircle };
+      case "verifying":
+        return {
+          text: "Verifying address...",
+          color: "text-blue-600",
+          icon: CheckCircle,
+        };
+      case "verified":
+        return {
+          text: `Verified: ${verifiedAddress}`,
+          color: "text-green-600",
+          icon: CheckCircle,
+        };
+      case "failed":
+        return {
+          text: "Address verification failed",
+          color: "text-red-600",
+          icon: AlertCircle,
+        };
       default:
-        return null;
+        return {
+          text: "Unknown status",
+          color: "text-gray-600",
+          icon: AlertCircle,
+        };
     }
   };
 
@@ -253,7 +283,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({
           variant="secondary"
           size="sm"
           icon={MapPin}
-          loading={verificationStatus === 'verifying'}
+          loading={verificationStatus === "verifying"}
           disabled={!formData.street || !formData.city}
         >
           Verify Address
@@ -261,19 +291,17 @@ export const AddressForm: React.FC<AddressFormProps> = ({
       </div>
 
       {verificationMessage && (
-        <div className={`flex items-center gap-2 text-sm ${verificationMessage.color}`}>
+        <div
+          className={`flex items-center gap-2 text-sm ${verificationMessage.color}`}
+        >
           <verificationMessage.icon className="w-4 h-4" />
           <span>{verificationMessage.text}</span>
         </div>
       )}
 
       <div className="flex gap-3 pt-4">
-        <Button
-          type="submit"
-          loading={loading}
-          className="flex-1"
-        >
-          {address ? 'Update Address' : 'Add Address'}
+        <Button type="submit" loading={loading} className="flex-1">
+          {address ? "Update Address" : "Add Address"}
         </Button>
         <Button
           type="button"

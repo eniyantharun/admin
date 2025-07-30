@@ -4,12 +4,9 @@ import NextImage from 'next/image';
 import { LoginPageForm } from '@/components/forms/LoginForm';
 import { ShoppingCart, Users, Package, BarChart3, CreditCard, TrendingUp, Shield, Settings, Zap, Globe, Truck } from 'lucide-react';
 import ppi_logo from "../../../assets/images/logo.png"
+import { iLoginPageProps } from '@/types/login';
 
-interface LoginPageProps {
-  searchParams: Promise<{ redirect?: string }>;
-}
-
-const LoginPage: NextPage<LoginPageProps> = async ({ searchParams }) => {
+const LoginPage: NextPage<iLoginPageProps> = async ({ searchParams }) => {
   const { redirect: redirectPath } = await searchParams;
 
   const adminIcons = [
