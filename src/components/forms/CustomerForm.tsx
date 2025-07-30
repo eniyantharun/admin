@@ -445,8 +445,7 @@ export const CustomerForm: React.FC<iCustomerFormProps> = ({
           {showAddressForm && (
             <Card className="p-4 bg-gray-50">
               <h5 className="text-sm font-medium text-gray-900 mb-3">
-                  {!editingAddressIndex==null ? "Edit Address" : "Add New Address"}
-
+                  {editingAddressIndex === null ? "Add New Address" : "Edit Address"}
               </h5>
               <AddressForm
                 address={
