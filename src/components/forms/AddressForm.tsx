@@ -5,6 +5,7 @@ import { FormInput } from "@/components/helpers/FormInput";
 import { AddressAutocomplete } from "@/components/forms/AddressAutocomplete";
 import { iAddressFormProps, iCustomerAddressFormData } from "@/types/customer";
 import { googleMapsUtils } from "@/lib/googleMaps";
+import { showToast } from "@/lib/toast";
 
 export const AddressForm: React.FC<iAddressFormProps> = ({
   address,
@@ -85,7 +86,7 @@ export const AddressForm: React.FC<iAddressFormProps> = ({
         setVerificationStatus("verified");
         setVerifiedAddress(place.formattedAddress || "");
       } catch (error) {
-        console.error("Error processing place selection:", error);
+        showToast.error("Failed to process address selection");
         setVerificationStatus("failed");
       }
     },

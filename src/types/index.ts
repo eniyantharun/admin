@@ -57,3 +57,12 @@ export interface iPaginationControlsProps {
   startIndex: number;
   endIndex: number;
 }
+
+export interface iProvidersProps {
+  children: React.ReactNode;
+}
+
+export interface iToastOptions {
+  duration?: number;
+  position?: 'top-center' | 'top-right' | 'top-left' | 'bottom-center' | 'bottom-right' | 'bottom-left';
+}

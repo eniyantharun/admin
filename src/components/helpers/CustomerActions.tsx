@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
-import { Trash2, UserX, UserCheck, AlertTriangle } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
-import { useApi } from '@/hooks/useApi';
-import {iCustomer, iCustomerActionsProps } from '@/types/customer';
+import React, { useState } from "react";
+import { Trash2, UserX, UserCheck, AlertTriangle } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { useApi } from "@/hooks/useApi";
+import { iCustomer, iCustomerActionsProps } from "@/types/customer";
+import { showToast } from "@/lib/toast";
 
 export const CustomerActions: React.FC<iCustomerActionsProps> = ({
   customer,
-  onCustomerUpdated
+  onCustomerUpdated,
 }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -24,57 +25,60 @@ export const CustomerActions: React.FC<iCustomerActionsProps> = ({
   const handleToggleStatus = async () => {
     try {
       const newBlockedStatus = !customer.isBlocked;
-      console.log('Toggling customer status:', customer.id, 'from', customer.isBlocked, 'to', newBlockedStatus);
-      
-      const response = await statusApi.post('/Admin/CustomerEditor/ToggleCustomerStatus', {
-        id: customer.id,
-        isBlocked: newBlockedStatus
-      });
-      
+      const response = await statusApi.post(
+        "/Admin/CustomerEditor/ToggleCustomerStatus",
+        {
+          id: customer.id,
+          isBlocked: newBlockedStatus,
+        }
+      );
+
       if (response && response.success) {
-        console.log('Toggle successful:', response.message);
-        console.log('New status from API:', response.data.isBlocked);
-        console.log('Updated at:', response.data.updatedAt);
-        
         customer.isBlocked = response.data.isBlocked;
-        
         onCustomerUpdated();
       }
     } catch (error: any) {
-      console.error('Error toggling customer status:', error);
-      
+      showToast.error("Failed to update customer status");
+
       if (error?.response?.status === 403) {
-        alert('Access denied. You do not have permission to change customer status.');
+        showToast.error(
+          "Access denied. You do not have permission to change customer status."
+        );
       } else if (error?.response?.status === 404) {
-        alert('Customer not found. Please refresh the page and try again.');
+        showToast.error(
+          "Customer not found. Please refresh the page and try again."
+        );
       } else {
-        alert('Failed to update customer status. Please try again.');
+        showToast.error("Failed to update customer status. Please try again.");
       }
     }
   };
 
   const handleDeleteCustomer = async () => {
     try {
-      console.log('Deleting customer:', customer.id);
-      const response = await deleteApi.delete(`/Admin/CustomerEditor/DeleteCustomers?customerId=${customer.id}`);
+      const response = await deleteApi.delete(
+        `/Admin/CustomerEditor/DeleteCustomers?customerId=${customer.id}`
+      );
 
       if (response && response.success) {
-        console.log('Delete successful:', response.message);
-        
         onCustomerUpdated();
         setShowDeleteConfirm(false);
-        
-        alert('Customer deleted successfully');
+
+        showToast.success("Customer deleted successfully");
       }
     } catch (error: any) {
-      console.error('Error deleting customer:', error);
-      
+      showToast.error("Failed to delete customer");
+
       if (error?.response?.status === 403) {
-        alert('Access denied. You do not have permission to delete customers.');
+        showToast.error(
+          "Access denied. You do not have permission to delete customers."
+        );
       } else if (error?.response?.status === 404) {
-        alert('Customer not found. They may have already been deleted.');
+        showToast.error(
+          "Customer not found. They may have already been deleted."
+        );
       } else {
-        alert('Failed to delete customer. Please try again.');
+        showToast.error("Failed to delete customer. Please try again.");
       }
     }
   };
@@ -82,20 +86,26 @@ export const CustomerActions: React.FC<iCustomerActionsProps> = ({
   return (
     <div className="space-y-4">
       <Card className="p-4 bg-blue-50 border-blue-200">
-        <h4 className="text-sm font-medium text-blue-800 mb-3">Customer Status</h4>
-        
+        <h4 className="text-sm font-medium text-blue-800 mb-3">
+          Customer Status
+        </h4>
+
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-blue-800">
-              Current Status: <span className={customer.isBlocked ? 'text-red-600' : 'text-green-600'}>
-                {customer.isBlocked ? 'Disabled' : 'Active'}
+              Current Status:{" "}
+              <span
+                className={
+                  customer.isBlocked ? "text-red-600" : "text-green-600"
+                }
+              >
+                {customer.isBlocked ? "Disabled" : "Active"}
               </span>
             </p>
             <p className="text-xs text-blue-600 mt-1">
-              {customer.isBlocked 
-                ? 'Customer cannot place orders or access their account' 
-                : 'Customer has full access to place orders'
-              }
+              {customer.isBlocked
+                ? "Customer cannot place orders or access their account"
+                : "Customer has full access to place orders"}
             </p>
           </div>
           <Button
@@ -105,14 +115,14 @@ export const CustomerActions: React.FC<iCustomerActionsProps> = ({
             icon={customer.isBlocked ? UserCheck : UserX}
             loading={statusApi.loading}
           >
-            {customer.isBlocked ? 'Enable Customer' : 'Disable Customer'}
+            {customer.isBlocked ? "Enable Customer" : "Disable Customer"}
           </Button>
         </div>
       </Card>
 
       <Card className="p-4 bg-red-50 border-red-200">
         <h4 className="text-sm font-medium text-red-800 mb-3">Danger Zone</h4>
-        
+
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-red-800">Delete Customer</p>
@@ -141,8 +151,11 @@ export const CustomerActions: React.FC<iCustomerActionsProps> = ({
                 Confirm Customer Deletion
               </h4>
               <p className="text-sm text-red-700 mb-4">
-                Are you sure you want to delete <strong>{customer.firstName} {customer.lastName}</strong>? 
-                This action cannot be undone and will permanently remove:
+                Are you sure you want to delete{" "}
+                <strong>
+                  {customer.firstName} {customer.lastName}
+                </strong>
+                ? This action cannot be undone and will permanently remove:
               </p>
               <ul className="text-xs text-red-600 mb-4 space-y-1">
                 <li>• Customer profile and contact information</li>

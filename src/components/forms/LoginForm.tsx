@@ -9,6 +9,7 @@ import { useAppDispatch } from '@/hooks/redux';
 import { setAuthFromStorage } from '@/store/authSlice';
 import { Eye, EyeOff, User, Lock, AlertCircle } from 'lucide-react';
 import { iLoginPageFormProps } from '@/types/login';
+import { showToast } from '@/lib/toast';
 
 export const LoginPageForm: React.FC<iLoginPageFormProps> = ({ redirectTo = '/dashboard' }) => {
   const [showPassword, setShowPassword] = useState(false);
@@ -43,8 +44,11 @@ export const LoginPageForm: React.FC<iLoginPageFormProps> = ({ redirectTo = '/da
       }));
       
       router.push(redirectTo);
+      showToast.success('Welcome back!');
+
     } catch (err: any) {
-      console.error('Login error:', err);
+      showToast.error('Login error:');
+
     }
   };
 

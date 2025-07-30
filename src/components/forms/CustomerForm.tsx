@@ -23,6 +23,7 @@ import {
 } from "@/types/customer";
 import { googleMapsUtils } from "@/lib/googleMaps";
 import { iCustomerFormProps } from "./../../types/customer"
+import { showToast } from "@/lib/toast";
 
 
 export const CustomerForm: React.FC<iCustomerFormProps> = ({
@@ -115,7 +116,7 @@ export const CustomerForm: React.FC<iCustomerFormProps> = ({
         fetchCustomerOrders(customerId);
       }
     } catch (error) {
-      alert("Error fetching customer details:");
+      showToast.error("Failed to load customer details");
     }
   };
 
@@ -130,7 +131,7 @@ export const CustomerForm: React.FC<iCustomerFormProps> = ({
         setOrders(response.data.orders);
       }
     } catch (error) {
-      alert('Error fetching orders:'+ error);
+      showToast.error("Failed to load customer orders");
     }
   };
 
@@ -188,17 +189,12 @@ export const CustomerForm: React.FC<iCustomerFormProps> = ({
     try {
       if (editingAddressIndex !== null) {
         const addressToUpdate = addresses[editingAddressIndex];
-        console.log("Updating address:", addressToUpdate.id, addressData);
         await addressApi.post("/Admin/CustomerEditor/UpdateCustomerAddress", {
           id: addressToUpdate.id,
           ...addressData,
         });
       } else {
-        console.log(
-          "Adding new address for customer:",
-          currentCustomer.id,
-          addressData
-        );
+       
         await addressApi.post("/Admin/CustomerEditor/AddCustomerAddress", {
           customerId: currentCustomer.id,
           ...addressData,
@@ -213,7 +209,7 @@ export const CustomerForm: React.FC<iCustomerFormProps> = ({
         onCustomerUpdated();
       }
     } catch (error) {
-      console.error("Error saving address:", error);
+      showToast.error("Failed to save address");
     }
   };
 
@@ -221,12 +217,7 @@ export const CustomerForm: React.FC<iCustomerFormProps> = ({
     if (!currentCustomer) return;
 
     try {
-      console.log(
-        "Deleting address:",
-        addressId,
-        "for customer:",
-        currentCustomer.id
-      );
+      
       await addressApi.delete(
         `/Admin/CustomerEditor/DeleteCustomersAddress?addressId=${addressId}&customerId=${currentCustomer.id}`
       );
@@ -237,7 +228,7 @@ export const CustomerForm: React.FC<iCustomerFormProps> = ({
         onCustomerUpdated();
       }
     } catch (error) {
-      console.error("Error deleting address:", error);
+      showToast.error("Failed to delete address");
     }
   };
 

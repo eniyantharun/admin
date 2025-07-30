@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import React, { useState, useEffect, useCallback, memo, useRef } from "react";
 import {
@@ -27,6 +27,7 @@ import { EntityDrawer } from "@/components/helpers/EntityDrawer";
 import { CustomerForm } from "@/components/forms/CustomerForm";
 import { iCustomer, iCustomerFormData, iApiCustomer } from "@/types/customer";
 import { googleMapsUtils } from "@/lib/googleMaps";
+import { showToast } from "@/lib/toast";
 
 const ContactInfo = memo<{ customer: iCustomer }>(({ customer }) => (
   <>
@@ -36,7 +37,11 @@ const ContactInfo = memo<{ customer: iCustomer }>(({ customer }) => (
     </div>
     <div className="text-xs text-gray-500 flex items-center gap-1 mt-1">
       <Phone className="w-3 h-3 text-gray-400" />
-      <span>{customer.phone ? googleMapsUtils.formatPhoneNumber(customer.phone) : "No phone"}</span>
+      <span>
+        {customer.phone
+          ? googleMapsUtils.formatPhoneNumber(customer.phone)
+          : "No phone"}
+      </span>
     </div>
   </>
 ));
@@ -50,7 +55,9 @@ export default function CustomersPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [businessFilter, setBusinessFilter] = useState<string>("all");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState<iCustomer | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<iCustomer | null>(
+    null
+  );
   const [isEditing, setIsEditing] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(20);
@@ -78,7 +85,9 @@ export default function CustomersPage() {
         firstName: apiCustomer.form.firstName || "",
         lastName: apiCustomer.form.lastName || "",
         email: apiCustomer.form.email || "",
-        phone: apiCustomer.form.phoneNumber ? googleMapsUtils.formatPhoneNumber(apiCustomer.form.phoneNumber) : "",
+        phone: apiCustomer.form.phoneNumber
+          ? googleMapsUtils.formatPhoneNumber(apiCustomer.form.phoneNumber)
+          : "",
         website: apiCustomer.website || "PromotionalProductInc",
         companyName: apiCustomer.form.companyName || "",
         isBlocked: false,
@@ -106,32 +115,44 @@ export default function CustomersPage() {
           Search: localSearchTerm || "",
           Count: rowsPerPage.toString(),
           Index: ((currentPage - 1) * rowsPerPage).toString(),
-          Website: "promotional_product_inc"
+          Website: "promotional_product_inc",
         });
 
-        const response = await mainApi.get(`/Admin/CustomerEditor/GetCustomersList?${queryParams}`);
+        const response = await mainApi.get(
+          `/Admin/CustomerEditor/GetCustomersList?${queryParams}`
+        );
 
         if (!mountedRef.current || !response) return;
 
-        let transformedCustomers = (response.customers || []).map(transformApiCustomer);
+        let transformedCustomers = (response.customers || []).map(
+          transformApiCustomer
+        );
 
-        if (statusFilter === 'active') {
-          transformedCustomers = transformedCustomers.filter((c: iCustomer) => !c.isBlocked);
-        } else if (statusFilter === 'disabled') {
-          transformedCustomers = transformedCustomers.filter((c: iCustomer) => c.isBlocked);
+        if (statusFilter === "active") {
+          transformedCustomers = transformedCustomers.filter(
+            (c: iCustomer) => !c.isBlocked
+          );
+        } else if (statusFilter === "disabled") {
+          transformedCustomers = transformedCustomers.filter(
+            (c: iCustomer) => c.isBlocked
+          );
         }
 
-        if (businessFilter === 'business') {
-          transformedCustomers = transformedCustomers.filter((c: iCustomer) => c.isBusinessCustomer);
-        } else if (businessFilter === 'individual') {
-          transformedCustomers = transformedCustomers.filter((c: iCustomer) => !c.isBusinessCustomer);
+        if (businessFilter === "business") {
+          transformedCustomers = transformedCustomers.filter(
+            (c: iCustomer) => c.isBusinessCustomer
+          );
+        } else if (businessFilter === "individual") {
+          transformedCustomers = transformedCustomers.filter(
+            (c: iCustomer) => !c.isBusinessCustomer
+          );
         }
 
         setCustomers(transformedCustomers);
         setTotalCount(response.count || 0);
       } catch (error: any) {
         if (error?.name !== "CanceledError" && error?.code !== "ERR_CANCELED") {
-          console.error("Error fetching customers:", error);
+          showToast.error("Failed to load customers");
         }
       } finally {
         if (mountedRef.current) {
@@ -169,7 +190,7 @@ export default function CustomersPage() {
       setCurrentPage(1);
     }
   }, [localSearchTerm, statusFilter, businessFilter]);
-  
+
   const paginationData = {
     totalPages: Math.ceil(totalCount / rowsPerPage),
     startIndex: (currentPage - 1) * rowsPerPage,
@@ -182,60 +203,65 @@ export default function CustomersPage() {
   const handleSubmit = useCallback(
     async (formData: iCustomerFormData) => {
       try {
-        if (isEditing && selectedCustomer) {
-          const updatePayload = {
-            customerId: selectedCustomer.id,
-            firstName: formData.firstName,
-            lastName: formData.lastName,
-            email: formData.email,
-            phone: formData.phone,
-            companyName: formData.companyName,
-            isBusinessCustomer: formData.isBusinessCustomer,
-            isBlocked: selectedCustomer.isBlocked,
-            website: formData.website
-          };
+  if (isEditing && selectedCustomer) {
+    const updatePayload = {
+      customerId: selectedCustomer.id,
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      email: formData.email,
+      phone: formData.phone,
+      companyName: formData.companyName,
+      isBusinessCustomer: formData.isBusinessCustomer,
+      isBlocked: selectedCustomer.isBlocked,
+      website: formData.website,
+    };
 
-          console.log('Updating customer with payload:', updatePayload);
-          
-          const response = await submitApi.put('/Admin/CustomerEditor/UpdateCustomer', updatePayload);
-          
-          console.log('Update customer response:', response);
-          
-        } else {
-          const response = await submitApi.post('/Admin/CustomerEditor/CreateCustomer', {
-            firstName: formData.firstName,
-            lastName: formData.lastName,
-            email: formData.email,
-            phone: formData.phone,
-            website: formData.website,
-            companyName: formData.companyName,
-            isBusinessCustomer: formData.isBusinessCustomer
-          });
-
-          if (formData.addresses.length > 0 && response?.data?.id) {
-            const customerId = response.data.id;
-            for (const address of formData.addresses) {
-              await submitApi.post('/Admin/CustomerEditor/AddCustomerAddress', {
-                customerId,
-                ...address
-              });
-            }
-          }
-        }
-
-        mainApi.clearCache && mainApi.clearCache();
-        
-        await fetchCustomers();
-        
-        closeDrawer();
-      } catch (error: any) {
-        if (error?.name !== "CanceledError" && error?.code !== "ERR_CANCELED") {
-          console.error("Error saving customer:", error);
-          if (error?.response?.status === 403) {
-            console.error("403 Forbidden error - check authentication and permissions");
-          }
-        }
+    await showToast.promise(
+      submitApi.put("/Admin/CustomerEditor/UpdateCustomer", updatePayload),
+      {
+        loading: "Updating customer...",
+        success: "Customer updated successfully",
+        error: "Failed to update customer",
       }
+    );
+  } else {
+    const createPromise = submitApi.post("/Admin/CustomerEditor/CreateCustomer", {
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      email: formData.email,
+      phone: formData.phone,
+      website: formData.website,
+      companyName: formData.companyName,
+      isBusinessCustomer: formData.isBusinessCustomer,
+    });
+
+    const response = await showToast.promise(createPromise, {
+      loading: "Creating customer...",
+      success: "Customer created successfully",
+      error: "Failed to create customer",
+    });
+
+    if (formData.addresses.length > 0 && response?.data?.id) {
+      const customerId = response.data.id;
+      for (const address of formData.addresses) {
+        await submitApi.post("/Admin/CustomerEditor/AddCustomerAddress", {
+          customerId,
+          ...address,
+        });
+      }
+    }
+  }
+
+  mainApi.clearCache && mainApi.clearCache();
+  await fetchCustomers();
+  closeDrawer();
+} catch (error: any) {
+  if (error?.name !== "CanceledError" && error?.code !== "ERR_CANCELED") {
+    if (error?.response?.status === 403) {
+      showToast.error("Session expired. Please login again.");
+    }
+  }
+}
     },
     [isEditing, selectedCustomer, fetchCustomers, submitApi, mainApi]
   );
@@ -272,15 +298,14 @@ export default function CustomersPage() {
   const sendResetPasswordEmail = useCallback(
     async (email: string) => {
       try {
-        await submitApi.post('/Admin/CustomerEditor/SendResetPasswordEmail', {
+        await submitApi.post("/Admin/CustomerEditor/SendResetPasswordEmail", {
           email: email,
-          website: "PromotionalProductInc"
+          website: "PromotionalProductInc",
         });
-        alert(`Reset password email sent to ${email}`);
+        showToast.error("Failed to send reset password email");
       } catch (error: any) {
         if (error?.name !== "CanceledError" && error?.code !== "ERR_CANCELED") {
-          console.error("Error sending reset password email:", error);
-          alert("Failed to send reset password email");
+          showToast.error("Failed to send reset password email");
         }
       }
     },
@@ -290,15 +315,14 @@ export default function CustomersPage() {
   const sendNewAccountEmail = useCallback(
     async (email: string) => {
       try {
-        await submitApi.post('/Admin/CustomerEditor/SendNewAccountEmail', {
+        await submitApi.post("/Admin/CustomerEditor/SendNewAccountEmail", {
           email: email,
-          website: "PromotionalProductInc"
+          website: "PromotionalProductInc",
         });
-        alert(`New account email sent to ${email}`);
+        showToast.success(`Welcome email sent to ${email}`);
       } catch (error: any) {
         if (error?.name !== "CanceledError" && error?.code !== "ERR_CANCELED") {
-          console.error("Error sending new account email:", error);
-          alert("Failed to send new account email");
+          showToast.error("Failed to send welcome email");
         }
       }
     },
@@ -306,7 +330,6 @@ export default function CustomersPage() {
   );
 
   const handleCustomerUpdated = useCallback(async () => {
-    console.log('Customer updated, refreshing list...');
     if (mainApi.clearCache) {
       mainApi.clearCache();
     }
@@ -417,7 +440,11 @@ export default function CustomersPage() {
                       icon={User}
                       title="No customers found"
                       description="Get started by adding your first customer."
-                      hasSearch={!!localSearchTerm || statusFilter !== 'all' || businessFilter !== 'all'}
+                      hasSearch={
+                        !!localSearchTerm ||
+                        statusFilter !== "all" ||
+                        businessFilter !== "all"
+                      }
                     />
                   </td>
                 </tr>
@@ -457,21 +484,27 @@ export default function CustomersPage() {
                       </div>
                     </td>
                     <td className="px-4 py-2 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                        customer.isBusinessCustomer 
-                          ? 'bg-blue-100 text-blue-800' 
-                          : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {customer.isBusinessCustomer ? 'Business' : 'Individual'}
+                      <span
+                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          customer.isBusinessCustomer
+                            ? "bg-blue-100 text-blue-800"
+                            : "bg-gray-100 text-gray-800"
+                        }`}
+                      >
+                        {customer.isBusinessCustomer
+                          ? "Business"
+                          : "Individual"}
                       </span>
                     </td>
                     <td className="px-4 py-2 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                        customer.isBlocked 
-                          ? 'bg-red-100 text-red-800' 
-                          : 'bg-green-100 text-green-800'
-                      }`}>
-                        {customer.isBlocked ? 'Disabled' : 'Active'}
+                      <span
+                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          customer.isBlocked
+                            ? "bg-red-100 text-red-800"
+                            : "bg-green-100 text-green-800"
+                        }`}
+                      >
+                        {customer.isBlocked ? "Disabled" : "Active"}
                       </span>
                     </td>
                     <td className="px-4 py-2 whitespace-nowrap">

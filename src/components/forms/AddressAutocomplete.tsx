@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { MapPin, Loader } from "lucide-react";
 import { loadGoogleMaps } from "@/lib/loadGoogleMaps";
 import { iAddressAutocompleteProps } from "@/types";
+import { showToast } from "@/lib/toast";
 
 export const AddressAutocomplete: React.FC<iAddressAutocompleteProps> = ({
   value,
@@ -59,7 +60,7 @@ export const AddressAutocomplete: React.FC<iAddressAutocompleteProps> = ({
               onPlaceSelect(place);
             }
           } catch (error) {
-            console.error("Error handling place selection:", error);
+            showToast.error("Error processing selected address");
             setError("Error processing selected address");
           }
         });
@@ -71,7 +72,7 @@ export const AddressAutocomplete: React.FC<iAddressAutocompleteProps> = ({
           }
         }
       } catch (error) {
-        console.error("Failed to load Google Maps:", error);
+        showToast.error("Address autocomplete unavailable");
         setError("Address autocomplete unavailable");
       } finally {
         setIsLoading(false);
