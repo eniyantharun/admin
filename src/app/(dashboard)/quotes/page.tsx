@@ -18,7 +18,6 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useApi } from "@/hooks/useApi";
-
 import { StatusBadge } from "@/components/helpers/StatusBadge";
 import { DateDisplay } from "@/components/helpers/DateDisplay";
 import {
@@ -29,6 +28,7 @@ import { PaginationControls } from "@/components/helpers/PaginationControls";
 import { EntityDrawer } from "@/components/helpers/EntityDrawer";
 import { QuoteForm } from "@/components/forms/QuoteForm";
 import { iQuote, iQuoteFormData } from "@/types/quotes";
+import { showToast } from "@/components/ui/toast";
 
 const mockQuotes: iQuote[] = [
   {
@@ -231,7 +231,7 @@ export default function QuotesPage() {
       setTotalCount(filteredQuotes.length);
     } catch (error: any) {
       if (error?.name !== "CanceledError" && error?.code !== "ERR_CANCELED") {
-        console.error("Error fetching quotes:", error);
+        showToast.error("Error fetching quotes");
       }
     } finally {
       setIsInitialLoad(false);
@@ -262,16 +262,16 @@ export default function QuotesPage() {
   const handleSubmit = async (formData: iQuoteFormData) => {
     try {
       if (isEditing && selectedQuote) {
-        console.log("Updating quote:", selectedQuote.id, formData);
+        showToast.success("Quote updated successfully");
       } else {
-        console.log("Creating quote:", formData);
+        showToast.success("Quote created successfully");
       }
 
       await fetchQuotes();
       closeDrawer();
     } catch (error: any) {
       if (error?.name !== "CanceledError" && error?.code !== "ERR_CANCELED") {
-        console.error("Error saving quote:", error);
+        showToast.error("Error saving quote");
       }
     }
   };
@@ -303,14 +303,14 @@ export default function QuotesPage() {
   };
 
   return (
-    <div className="quotes-page space-y-6">
+    <div className="quotes-page space-y-4">
       <Card className="overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <h3 className="text-lg font-semibold text-gray-900">
               Quotes ({totalCount.toLocaleString()})
             </h3>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
               <div className="relative w-full sm:w-auto">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Search className="w-4 h-4 text-gray-400" />
@@ -351,7 +351,7 @@ export default function QuotesPage() {
               <Button
                 onClick={openNewQuoteDrawer}
                 icon={Plus}
-                className=" shadow-lg"
+                className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-lg"
               >
                 Add Quote
               </Button>
@@ -362,22 +362,22 @@ export default function QuotesPage() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Quote
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Customer
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Date & Time
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   In-Hand Date
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Customer Total
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
@@ -385,13 +385,13 @@ export default function QuotesPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {loading && isInitialLoad ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8">
+                  <td colSpan={6} className="px-4 py-6">
                     <LoadingState message="Loading quotes..." />
                   </td>
                 </tr>
               ) : quotes.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8">
+                  <td colSpan={6} className="px-4 py-6">
                     <EmptyState
                       icon={FileText}
                       title="No quotes found"
@@ -410,11 +410,11 @@ export default function QuotesPage() {
                       className="hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
                       onClick={() => openEditQuoteDrawer(quote)}
                     >
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-4 py-2 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="flex-shrink-0">
-                            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center">
-                              <FileText className="w-5 h-5 text-white" />
+                            <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                              <FileText className="w-4 h-4 text-white" />
                             </div>
                           </div>
                           <div className="ml-3">
@@ -433,33 +433,33 @@ export default function QuotesPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-4 py-2 whitespace-nowrap">
                         <div className="text-sm text-gray-900 flex items-center gap-1">
-                          <User className="w-4 h-4 text-gray-400" />
+                          <User className="w-3 h-3 text-gray-400" />
                           <span className="font-medium">{quote.customer}</span>
                         </div>
-                        <div className="text-xs text-gray-500 ml-5 flex items-center gap-1">
+                        <div className="text-xs text-gray-500 ml-4 flex items-center gap-1">
                           <Mail className="w-3 h-3" />
                           {quote.customerEmail}
                         </div>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="text-sm text-gray-900 flex items-center gap-1">
-                          <Calendar className="w-4 h-4 text-gray-400" />
+                      <td className="px-4 py-2 whitespace-nowrap">
+                        <div className="text-xs text-gray-900 flex items-center gap-1">
+                          <Calendar className="w-3 h-3 text-gray-400" />
                           <span>{quote.dateTime}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
+                      <td className="px-4 py-2 whitespace-nowrap">
+                        <div className="text-xs text-gray-900">
                           {quote.inHandDate || "N/A"}
                         </div>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-4 py-2 whitespace-nowrap">
                         <div className="text-sm font-medium text-green-600 flex items-center gap-1">
                           ${quote.customerTotal.toFixed(2)}
                         </div>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-right">
+                      <td className="px-4 py-2 whitespace-nowrap text-right">
                         <Button
                           onClick={(e) => {
                             e.stopPropagation();

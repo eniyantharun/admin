@@ -26,6 +26,7 @@ import { PaginationControls } from "@/components/helpers/PaginationControls";
 import { EntityDrawer } from "@/components/helpers/EntityDrawer";
 import { OrderForm } from "@/components/forms/OrderForm";
 import { iOrder, iOrderFormData } from "@/types/order";
+import { showToast } from "@/components/ui/toast";
 
 const mockOrders: iOrder[] = [
   {
@@ -271,7 +272,7 @@ export default function OrdersPage() {
       setTotalCount(filteredOrders.length);
     } catch (error: any) {
       if (error?.name !== "CanceledError" && error?.code !== "ERR_CANCELED") {
-        console.error("Error fetching orders:", error);
+        showToast.error("Error fetching orders");
       }
     } finally {
       setIsInitialLoad(false);
@@ -302,16 +303,16 @@ export default function OrdersPage() {
   const handleSubmit = async (formData: iOrderFormData) => {
     try {
       if (isEditing && selectedOrder) {
-        console.log("Updating order:", selectedOrder.id, formData);
+        showToast.success("Order updated successfully");
       } else {
-        console.log("Creating order:", formData);
+        showToast.success("Order created successfully");
       }
 
       await fetchOrders();
       closeDrawer();
     } catch (error: any) {
       if (error?.name !== "CanceledError" && error?.code !== "ERR_CANCELED") {
-        console.error("Error saving order:", error);
+        showToast.error("Error saving order");
       }
     }
   };
@@ -343,14 +344,14 @@ export default function OrdersPage() {
   };
 
   return (
-    <div className="orders-page space-y-6">
+    <div className="orders-page space-y-4">
       <Card className="overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <h3 className="text-lg font-semibold text-gray-900">
               Orders ({totalCount.toLocaleString()})
             </h3>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
               <div className="relative w-full sm:w-auto">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Search className="w-4 h-4 text-gray-400" />
@@ -401,31 +402,31 @@ export default function OrdersPage() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Order
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Customer
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Date & Time
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   In-Hand Date
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Customer Total
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Supplier Total
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Profit
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Payment Method
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
@@ -433,13 +434,13 @@ export default function OrdersPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {loading && isInitialLoad ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-8">
+                  <td colSpan={9} className="px-4 py-6">
                     <LoadingState message="Loading orders..." />
                   </td>
                 </tr>
               ) : orders.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-8">
+                  <td colSpan={9} className="px-4 py-6">
                     <EmptyState
                       icon={ShoppingCart}
                       title="No orders found"
@@ -457,11 +458,11 @@ export default function OrdersPage() {
                       className="hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
                       onClick={() => openEditOrderDrawer(order)}
                     >
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-4 py-2 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="flex-shrink-0">
-                            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
-                              <ShoppingCart className="w-5 h-5 text-white" />
+                            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                              <ShoppingCart className="w-4 h-4 text-white" />
                             </div>
                           </div>
                           <div className="ml-3">
@@ -479,43 +480,43 @@ export default function OrdersPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-4 py-2 whitespace-nowrap">
                         <div className="text-sm text-gray-900 flex items-center gap-1">
-                          <User className="w-4 h-4 text-gray-400" />
+                          <User className="w-3 h-3 text-gray-400" />
                           <span className="font-medium">{order.customer}</span>
                         </div>
-                        <div className="text-xs text-gray-500 ml-5">
+                        <div className="text-xs text-gray-500 ml-4">
                           {order.customerEmail}
                         </div>
                         {order.itemCount && (
-                          <div className="text-xs text-blue-600 ml-5">
+                          <div className="text-xs text-blue-600 ml-4">
                             <Package className="w-3 h-3 inline mr-1" />
                             {order.itemCount} items
                           </div>
                         )}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="text-sm text-gray-900 flex items-center gap-1">
-                          <Calendar className="w-4 h-4 text-gray-400" />
+                      <td className="px-4 py-2 whitespace-nowrap">
+                        <div className="text-xs text-gray-900 flex items-center gap-1">
+                          <Calendar className="w-3 h-3 text-gray-400" />
                           <span>{order.dateTime}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
+                      <td className="px-4 py-2 whitespace-nowrap">
+                        <div className="text-xs text-gray-900">
                           {order.inHandDate || "N/A"}
                         </div>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-4 py-2 whitespace-nowrap">
                         <div className="text-sm font-medium text-green-600 flex items-center gap-1">
                           ${order.customerTotal.toFixed(2)}
                         </div>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-4 py-2 whitespace-nowrap">
                         <div className="text-sm text-gray-900 flex items-center gap-1">
                           ${order.supplierTotal.toFixed(2)}
                         </div>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-4 py-2 whitespace-nowrap">
                         <div
                           className={`text-sm font-medium flex items-center gap-1 ${
                             order.profit > 0
@@ -526,13 +527,13 @@ export default function OrdersPage() {
                           ${order.profit.toFixed(2)}
                         </div>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="text-sm text-gray-900 flex items-center gap-1">
-                          <CreditCard className="w-4 h-4 text-gray-400" />
+                      <td className="px-4 py-2 whitespace-nowrap">
+                        <div className="text-xs text-gray-900 flex items-center gap-1">
+                          <CreditCard className="w-3 h-3 text-gray-400" />
                           {order.paymentMethod}
                         </div>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-right">
+                      <td className="px-4 py-2 whitespace-nowrap text-right">
                         <Button
                           onClick={(e) => {
                             e.stopPropagation();

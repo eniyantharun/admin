@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Package, DollarSign, Calendar, CreditCard, User, MapPin, MessageSquare, ChevronRight, ChevronDown, CheckCircle, Plus, Trash2, ShoppingCart, ChevronLeft } from 'lucide-react';
+import { Package, DollarSign, Calendar, CreditCard, User, MapPin, MessageSquare, ChevronRight, ChevronDown, CheckCircle, Plus, Trash2, ShoppingCart, ChevronLeft, Truck, FileText, Send, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { FormInput } from '@/components/helpers/FormInput';
@@ -7,10 +7,40 @@ import { CustomerSearch } from '@/components/helpers/CustomerSearch';
 import { AddressForm } from '@/components/forms/AddressForm';
 import { iCustomer, iCustomerAddressFormData } from '@/types/customer';
 import { iOrderFormData, iOrderFormProps, iOrderItem } from '@/types/order';
+import { showToast } from '@/components/ui/toast';
 
+type FormStep = 'customer' | 'address' | 'items' | 'details' | 'checkout' | 'notes';
 
-
-type FormStep = 'customer' | 'address' | 'items' | 'details' | 'notes';
+const mockCustomerAddresses = [
+  {
+    id: '1',
+    type: 'billing' as const,
+    label: 'Home',
+    name: 'Matt Herrick',
+    street: '1216 Hillside Avenue',
+    city: 'Chesapeake',
+    state: 'Virginia',
+    zipCode: '23322',
+    country: 'US',
+    isPrimary: true,
+    isVerified: true,
+    createdAt: '2025-01-15T10:00:00Z'
+  },
+  {
+    id: '2',
+    type: 'shipping' as const,
+    label: 'Office',
+    name: 'Matt Herrick',
+    street: '1216 Hillside Avenue',
+    city: 'Chesapeake',
+    state: 'Virginia',
+    zipCode: '23322',
+    country: 'US',
+    isPrimary: false,
+    isVerified: true,
+    createdAt: '2025-01-15T10:00:00Z'
+  }
+];
 
 export const OrderForm: React.FC<iOrderFormProps> = ({
   order,
@@ -20,7 +50,6 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
 }) => {
   const [currentStep, setCurrentStep] = useState<FormStep>('customer');
   const [selectedCustomer, setSelectedCustomer] = useState<iCustomer | null>(null);
-  const [showNewCustomerForm, setShowNewCustomerForm] = useState(false);
   const [showBillingAddressForm, setShowBillingAddressForm] = useState(false);
   const [showShippingAddressForm, setShowShippingAddressForm] = useState(false);
   
@@ -35,28 +64,42 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
     notes: '',
     billingAddress: {
       type: 'billing',
-      label: 'Billing',
-      name: '',
-      street: '',
-      city: '',
-      state: '',
-      zipCode: '',
+      label: 'Home',
+      name: 'Matt Herrick',
+      street: '1216 Hillside Avenue',
+      city: 'Chesapeake',
+      state: 'Virginia',
+      zipCode: '23322',
       country: 'US',
-      isPrimary: false,
+      isPrimary: true,
     },
     shippingAddress: {
       type: 'shipping',
-      label: 'Shipping',
-      name: '',
-      street: '',
-      city: '',
-      state: '',
-      zipCode: '',
+      label: 'Office',
+      name: 'Matt Herrick',
+      street: '1216 Hillside Avenue',
+      city: 'Chesapeake',
+      state: 'Virginia',
+      zipCode: '23322',
       country: 'US',
       isPrimary: false,
     },
     sameAsShipping: false,
     items: [],
+    checkoutDetails: {
+      inHandDate: '',
+      additionalInstructions: '',
+      paymentMethod: 'Credit Card',
+      paymentDate: new Date().toISOString().split('T')[0],
+      paymentStatus: 'Paid'
+    },
+    shippingDetails: {
+      type: 'Ground',
+      company: 'UPS',
+      cost: 0,
+      date: '',
+      trackingNumber: ''
+    }
   });
   
   const [formErrors, setFormErrors] = useState<Partial<iOrderFormData>>({});
@@ -109,7 +152,7 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
 
   const handleNextStep = () => {
     if (validateCurrentStep()) {
-      const steps: FormStep[] = ['customer', 'address', 'items', 'details', 'notes'];
+      const steps: FormStep[] = ['customer', 'address', 'items', 'details', 'checkout', 'notes'];
       const currentIndex = steps.indexOf(currentStep);
       if (currentIndex < steps.length - 1) {
         setCurrentStep(steps[currentIndex + 1]);
@@ -118,7 +161,7 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
   };
 
   const handlePrevStep = () => {
-    const steps: FormStep[] = ['customer', 'address', 'items', 'details', 'notes'];
+    const steps: FormStep[] = ['customer', 'address', 'items', 'details', 'checkout', 'notes'];
     const currentIndex = steps.indexOf(currentStep);
     if (currentIndex > 0) {
       setCurrentStep(steps[currentIndex - 1]);
@@ -136,10 +179,30 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
     const { name, value, type } = e.target;
     const checked = (e.target as HTMLInputElement).checked;
     
-    setFormData(prev => ({ 
-      ...prev, 
-      [name]: type === 'checkbox' ? checked : value 
-    }));
+    if (name.startsWith('checkout.')) {
+      const field = name.split('.')[1];
+      setFormData(prev => ({
+        ...prev,
+        checkoutDetails: {
+          ...prev.checkoutDetails,
+          [field]: type === 'checkbox' ? checked : value
+        }
+      }));
+    } else if (name.startsWith('shipping.')) {
+      const field = name.split('.')[1];
+      setFormData(prev => ({
+        ...prev,
+        shippingDetails: {
+          ...prev.shippingDetails,
+          [field]: type === 'checkbox' ? checked : (field === 'cost' ? parseFloat(value) || 0 : value)
+        }
+      }));
+    } else {
+      setFormData(prev => ({ 
+        ...prev, 
+        [name]: type === 'checkbox' ? checked : value 
+      }));
+    }
     
     if (formErrors[name as keyof iOrderFormData]) {
       setFormErrors(prev => ({ ...prev, [name]: undefined }));
@@ -153,11 +216,11 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
       customer: `${customer.firstName} ${customer.lastName}`,
       customerEmail: customer.email,
       billingAddress: {
-        ...prev.billingAddress,
+        ...mockCustomerAddresses[0],
         name: `${customer.firstName} ${customer.lastName}`,
       },
       shippingAddress: {
-        ...prev.shippingAddress,
+        ...mockCustomerAddresses[1],
         name: `${customer.firstName} ${customer.lastName}`,
       }
     }));
@@ -220,11 +283,12 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
 
   const getStepTitle = (step: FormStep) => {
     switch (step) {
-      case 'customer': return 'Select Customer';
-      case 'address': return 'Billing & Shipping';
-      case 'items': return 'Line Items';
-      case 'details': return 'Order Details';
-      case 'notes': return 'Additional Notes';
+      case 'customer': return 'Customer';
+      case 'address': return 'Addresses';
+      case 'items': return 'Items';
+      case 'details': return 'Details';
+      case 'checkout': return 'Checkout';
+      case 'notes': return 'Notes';
       default: return 'Order';
     }
   };
@@ -235,16 +299,25 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
       case 'address': return !!(formData.billingAddress.street && formData.shippingAddress.street);
       case 'items': return formData.items.length > 0;
       case 'details': return !!(formData.customerTotal && parseFloat(formData.customerTotal) > 0);
+      case 'checkout': return true;
       case 'notes': return true;
       default: return false;
     }
   };
 
+  const handleSendInvoice = () => {
+    showToast.success('Invoice sent successfully to ' + formData.customerEmail);
+  };
+
+  const handleGenerateInvoice = () => {
+    showToast.success('Invoice generated successfully');
+  };
+
   const renderStepIndicator = () => {
-    const steps: FormStep[] = ['customer', 'address', 'items', 'details', 'notes'];
+    const steps: FormStep[] = ['customer', 'address', 'items', 'details', 'checkout', 'notes'];
     
     return (
-      <div className="flex items-center justify-between mb-4 bg-gray-50 p-3 rounded-lg">
+      <div className="flex items-center justify-between mb-3 bg-gray-50 p-2 rounded-lg">
         <Button
           type="button"
           onClick={handlePrevStep}
@@ -253,7 +326,7 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
           icon={ChevronLeft}
           iconOnly
           disabled={currentStep === 'customer'}
-          className="w-8 h-8"
+          className="w-7 h-7"
         />
         
         <div className="flex items-center space-x-1 flex-1 justify-center">
@@ -263,7 +336,7 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
             
             return (
               <React.Fragment key={step}>
-                <div className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
+                <div className={`px-2 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
                   isActive 
                     ? 'bg-blue-500 text-white' 
                     : isCompleted 
@@ -273,7 +346,7 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
                   {getStepTitle(step)}
                 </div>
                 {index < steps.length - 1 && (
-                  <div className={`w-6 h-0.5 ${
+                  <div className={`w-4 h-0.5 ${
                     isStepCompleted(steps[index]) ? 'bg-green-300' : 'bg-gray-200'
                   }`} />
                 )}
@@ -289,7 +362,7 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
             size="sm"
             icon={CheckCircle}
             iconOnly
-            className="w-8 h-8 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+            className="w-7 h-7 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
             disabled={!canProceed()}
             title={isEditing ? "Update Order" : "Create Order"}
           />
@@ -302,7 +375,7 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
             icon={ChevronRight}
             iconOnly
             disabled={!canProceed()}
-            className="w-8 h-8"
+            className="w-7 h-7"
           />
         )}
       </div>
@@ -310,11 +383,11 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
   };
 
   const renderCustomerStep = () => (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <CustomerSearch 
         onCustomerSelect={handleCustomerSelect}
         selectedCustomer={selectedCustomer}
-        onNewCustomer={() => setShowNewCustomerForm(true)}
+        onNewCustomer={() => {}}
       />
       
       {selectedCustomer && (
@@ -337,7 +410,7 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
   );
 
   const renderAddressStep = () => (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <Card className="p-3">
         <div className="flex items-center justify-between mb-2">
           <h4 className="font-medium text-gray-900 text-sm">Billing Address</h4>
@@ -346,7 +419,7 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
             variant="secondary"
             size="sm"
             icon={showBillingAddressForm ? ChevronDown : ChevronRight}
-            className="h-7"
+            className="h-6"
           >
             {formData.billingAddress.street ? 'Edit' : 'Add'}
           </Button>
@@ -361,7 +434,7 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
         )}
         
         {showBillingAddressForm && (
-          <div className="border-t pt-3 mt-2">
+          <div className="border-t pt-2 mt-2">
             <AddressForm
               address={formData.billingAddress}
               onSubmit={handleBillingAddressSubmit}
@@ -396,7 +469,7 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
               size="sm"
               icon={showShippingAddressForm ? ChevronDown : ChevronRight}
               disabled={formData.sameAsShipping}
-              className="h-7"
+              className="h-6"
             >
               {formData.shippingAddress.street ? 'Edit' : 'Add'}
             </Button>
@@ -412,7 +485,7 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
         )}
         
         {showShippingAddressForm && !formData.sameAsShipping && (
-          <div className="border-t pt-3 mt-2">
+          <div className="border-t pt-2 mt-2">
             <AddressForm
               address={formData.shippingAddress}
               onSubmit={handleShippingAddressSubmit}
@@ -425,7 +498,7 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
   );
 
   const renderItemsStep = () => (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <div className="flex items-center justify-between">
         <h4 className="font-medium text-gray-900 text-sm">Order Items</h4>
         <Button
@@ -433,22 +506,21 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
           variant="secondary"
           size="sm"
           icon={Plus}
-          className="h-7"
+          className="h-6"
         >
           Add Item
         </Button>
       </div>
 
       {formData.items.length === 0 ? (
-        <Card className="p-4 text-center">
-          <ShoppingCart className="w-8 h-8 mx-auto text-gray-400 mb-2" />
-          <p className="text-sm text-gray-500">No items added yet</p>
+        <Card className="p-3 text-center">
+          <ShoppingCart className="w-6 h-6 mx-auto text-gray-400 mb-2" />
+          <p className="text-sm text-gray-500 mb-2">No items added yet</p>
           <Button
             onClick={addOrderItem}
             variant="secondary"
             size="sm"
             icon={Plus}
-            className="mt-2"
           >
             Add First Item
           </Button>
@@ -465,7 +537,7 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
                   size="sm"
                   icon={Trash2}
                   iconOnly
-                  className="w-6 h-6"
+                  className="w-5 h-5"
                 />
               </div>
               
@@ -564,8 +636,8 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
     const profit = customerTotal - supplierTotal;
 
     return (
-      <div className="space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="space-y-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <div className="form-input-group">
             <label className="form-label block text-sm font-medium text-gray-700 mb-1">
               Status <span className="text-red-500">*</span>
@@ -584,32 +656,15 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
             </select>
           </div>
 
-          <div className="form-input-group">
-            <label className="form-label block text-sm font-medium text-gray-700 mb-1">
-              Payment Method
-            </label>
-            <select
-              name="paymentMethod"
-              value={formData.paymentMethod}
-              onChange={handleInputChange}
-              className="form-input w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-            >
-              <option value="Credit Card">Credit Card</option>
-              <option value="PayPal">PayPal</option>
-              <option value="Bank Transfer">Bank Transfer</option>
-              <option value="Check">Check</option>
-            </select>
-          </div>
+          <FormInput
+            label="In-Hand Date"
+            name="inHandDate"
+            type="date"
+            value={formData.inHandDate}
+            onChange={handleInputChange}
+            helpText="Expected delivery date"
+          />
         </div>
-
-        <FormInput
-          label="In-Hand Date"
-          name="inHandDate"
-          type="date"
-          value={formData.inHandDate}
-          onChange={handleInputChange}
-          helpText="Expected delivery date (optional)"
-        />
 
         <Card className="p-3 bg-gray-50">
           <h5 className="font-medium text-gray-800 mb-2 text-sm">Financial Summary</h5>
@@ -634,8 +689,153 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
     );
   };
 
-  const renderNotesStep = () => (
+  const renderCheckoutStep = () => (
     <div className="space-y-3">
+      <Card className="p-3">
+        <h4 className="font-medium text-gray-900 text-sm mb-3 flex items-center gap-2">
+          <Calendar className="w-4 h-4 text-blue-500" />
+          Checkout Details
+        </h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <FormInput
+            label="In-Hand Date"
+            name="checkout.inHandDate"
+            type="date"
+            value={formData.checkoutDetails?.inHandDate || ''}
+            onChange={handleInputChange}
+            placeholder="dd-mm-yyyy"
+          />
+          <div className="form-input-group">
+            <label className="form-label block text-sm font-medium text-gray-700 mb-1">
+              Additional Instructions
+            </label>
+            <textarea
+              name="checkout.additionalInstructions"
+              value={formData.checkoutDetails?.additionalInstructions || ''}
+              onChange={handleInputChange}
+              className="form-input w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 resize-none"
+              placeholder="Special delivery instructions..."
+              rows={2}
+            />
+          </div>
+        </div>
+      </Card>
+
+      <Card className="p-3">
+        <h4 className="font-medium text-gray-900 text-sm mb-3 flex items-center gap-2">
+          <Truck className="w-4 h-4 text-orange-500" />
+          Shipping Details
+        </h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="form-input-group">
+            <label className="form-label block text-sm font-medium text-gray-700 mb-1">
+              Type
+            </label>
+            <select
+              name="shipping.type"
+              value={formData.shippingDetails?.type || 'Ground'}
+              onChange={handleInputChange}
+              className="form-input w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+            >
+              <option value="Ground">Ground</option>
+              <option value="Express">Express</option>
+              <option value="Overnight">Overnight</option>
+            </select>
+          </div>
+          <div className="form-input-group">
+            <label className="form-label block text-sm font-medium text-gray-700 mb-1">
+              Company
+            </label>
+            <select
+              name="shipping.company"
+              value={formData.shippingDetails?.company || 'UPS'}
+              onChange={handleInputChange}
+              className="form-input w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+            >
+              <option value="UPS">UPS</option>
+              <option value="FedEx">FedEx</option>
+              <option value="USPS">USPS</option>
+              <option value="DHL">DHL</option>
+            </select>
+          </div>
+          <FormInput
+            label="Cost"
+            name="shipping.cost"
+            type="number"
+            value={formData.shippingDetails?.cost?.toString() || '0'}
+            onChange={handleInputChange}
+            placeholder="0.00"
+          />
+          <FormInput
+            label="Date"
+            name="shipping.date"
+            type="date"
+            value={formData.shippingDetails?.date || ''}
+            onChange={handleInputChange}
+            placeholder="dd-mm-yyyy"
+          />
+        </div>
+        <FormInput
+          label="Tracking Number"
+          name="shipping.trackingNumber"
+          value={formData.shippingDetails?.trackingNumber || ''}
+          onChange={handleInputChange}
+          placeholder="Enter tracking number"
+        />
+      </Card>
+
+      <Card className="p-3">
+        <h4 className="font-medium text-gray-900 text-sm mb-3 flex items-center gap-2">
+          <CreditCard className="w-4 h-4 text-green-500" />
+          Payment Details
+        </h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="form-input-group">
+            <label className="form-label block text-sm font-medium text-gray-700 mb-1">
+              Payment Method
+            </label>
+            <select
+              name="checkout.paymentMethod"
+              value={formData.checkoutDetails?.paymentMethod || 'Credit Card'}
+              onChange={handleInputChange}
+              className="form-input w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+            >
+              <option value="Credit Card">Credit Card</option>
+              <option value="PayPal">PayPal</option>
+              <option value="Bank Transfer">Bank Transfer</option>
+              <option value="Check">Check</option>
+            </select>
+          </div>
+          <FormInput
+            label="Payment Date"
+            name="checkout.paymentDate"
+            type="date"
+            value={formData.checkoutDetails?.paymentDate || ''}
+            onChange={handleInputChange}
+            placeholder="dd-mm-yyyy"
+          />
+          <div className="form-input-group">
+            <label className="form-label block text-sm font-medium text-gray-700 mb-1">
+              Payment Status
+            </label>
+            <select
+              name="checkout.paymentStatus"
+              value={formData.checkoutDetails?.paymentStatus || 'Paid'}
+              onChange={handleInputChange}
+              className="form-input w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+            >
+              <option value="Paid">Paid</option>
+              <option value="Pending">Pending</option>
+              <option value="Failed">Failed</option>
+            </select>
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+
+  const renderNotesStep = () => (
+    <div className="space-y-2">
       <div className="form-input-group">
         <label className="form-label block text-sm font-medium text-gray-700 mb-1">
           Order Notes
@@ -646,7 +846,7 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
           onChange={handleInputChange}
           className="form-input w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 resize-none"
           placeholder="Add any special instructions, requirements, or notes for this order..."
-          rows={4}
+          rows={3}
         />
         <p className="text-xs text-gray-500 mt-1">Internal notes for order processing</p>
       </div>
@@ -668,7 +868,7 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
           </div>
           <div className="flex justify-between">
             <span className="text-blue-700">Payment:</span>
-            <span className="font-medium text-blue-800">{formData.paymentMethod}</span>
+            <span className="font-medium text-blue-800">{formData.checkoutDetails?.paymentMethod || formData.paymentMethod}</span>
           </div>
           {formData.inHandDate && (
             <div className="flex justify-between">
@@ -678,6 +878,29 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
           )}
         </div>
       </Card>
+
+      {isEditing && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <Button
+            onClick={handleGenerateInvoice}
+            variant="secondary"
+            size="sm"
+            icon={FileText}
+            className="w-full"
+          >
+            Generate Invoice
+          </Button>
+          <Button
+            onClick={handleSendInvoice}
+            variant="primary"
+            size="sm"
+            icon={Send}
+            className="w-full"
+          >
+            Send Invoice Email
+          </Button>
+        </div>
+      )}
     </div>
   );
 
@@ -687,6 +910,7 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
       case 'address': return renderAddressStep();
       case 'items': return renderItemsStep();
       case 'details': return renderDetailsStep();
+      case 'checkout': return renderCheckoutStep();
       case 'notes': return renderNotesStep();
       default: return renderCustomerStep();
     }
@@ -698,25 +922,26 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
       case 'address': return !!(formData.billingAddress.street && formData.shippingAddress.street);
       case 'items': return formData.items.length > 0;
       case 'details': return !!(formData.customerTotal && parseFloat(formData.customerTotal) > 0);
+      case 'checkout': return true;
       case 'notes': return true;
       default: return false;
     }
   };
 
   return (
-    <div className="space-y-4">
-      <div className="p-4 border-b border-gray-200">
+    <div className="space-y-3">
+      <div className="p-3 border-b border-gray-200">
         {renderStepIndicator()}
       </div>
 
-      <form onSubmit={handleSubmit} className="p-4 space-y-4">
+      <form onSubmit={handleSubmit} className="p-3 space-y-3">
         {renderCurrentStep()}
       </form>
 
       {isEditing && order && (
-        <div className="border-t border-gray-200 p-4 bg-gray-50">
-          <h4 className="text-sm font-medium text-gray-700 mb-3">Order Details</h4>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+        <div className="border-t border-gray-200 p-3 bg-gray-50">
+          <h4 className="text-sm font-medium text-gray-700 mb-2">Order Details</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
             <div className="flex items-center gap-2">
               <Package className="w-3 h-3 text-gray-400" />
               <span className="text-gray-500">Order Number:</span>

@@ -17,6 +17,8 @@ export interface iOrder {
   billingAddress?: iOrderAddress;
   shippingAddress?: iOrderAddress;
   items?: iOrderItem[];
+  checkoutDetails?: iOrderCheckoutDetails;
+  shippingDetails?: iOrderShippingDetails;
 }
 
 export interface iOrderAddress {
@@ -44,6 +46,22 @@ export interface iOrderItem {
   description?: string;
 }
 
+export interface iOrderCheckoutDetails {
+  inHandDate?: string;
+  additionalInstructions?: string;
+  paymentMethod?: string;
+  paymentDate?: string;
+  paymentStatus?: 'Paid' | 'Pending' | 'Failed';
+}
+
+export interface iOrderShippingDetails {
+  type?: 'Ground' | 'Express' | 'Overnight';
+  company?: 'UPS' | 'FedEx' | 'USPS' | 'DHL';
+  cost?: number;
+  date?: string;
+  trackingNumber?: string;
+}
+
 export interface iOrderFormData {
   customer: string;
   customerEmail: string;
@@ -57,6 +75,8 @@ export interface iOrderFormData {
   shippingAddress: iCustomerAddressFormData;
   sameAsShipping: boolean;
   items: iOrderItem[];
+  checkoutDetails?: iOrderCheckoutDetails;
+  shippingDetails?: iOrderShippingDetails;
 }
 
 export interface iOrderFormProps {
@@ -88,6 +108,8 @@ export interface iCreateOrderRequest {
   billingAddress: iOrderAddress;
   shippingAddress: iOrderAddress;
   items: iOrderItem[];
+  checkoutDetails?: iOrderCheckoutDetails;
+  shippingDetails?: iOrderShippingDetails;
 }
 
 export interface iUpdateOrderRequest extends Partial<iCreateOrderRequest> {
@@ -100,23 +122,4 @@ export interface iOrderStatusUpdate {
   updatedBy: string;
   updatedAt: string;
   trackingNumber?: string;
-}
-
-export interface iOrderPaymentDetails {
-  orderId: number;
-  paymentMethod: string;
-  transactionId?: string;
-  paymentStatus: 'pending' | 'completed' | 'failed' | 'refunded';
-  amount: number;
-  paymentDate?: string;
-}
-
-export interface iOrderShippingDetails {
-  orderId: number;
-  carrier: string;
-  trackingNumber: string;
-  shippedDate: string;
-  estimatedDelivery?: string;
-  actualDelivery?: string;
-  shippingCost?: number;
 }

@@ -10,6 +10,8 @@ export interface iQuote {
   notes?: string;
   billingAddress?: iQuoteAddress;
   shippingAddress?: iQuoteAddress;
+  checkoutDetails?: iQuoteCheckoutDetails;
+  shippingDetails?: iQuoteShippingDetails;
 }
 
 export interface iQuoteAddress {
@@ -24,6 +26,22 @@ export interface iQuoteAddress {
   isPrimary: boolean;
 }
 
+export interface iQuoteCheckoutDetails {
+  inHandDate?: string;
+  additionalInstructions?: string;
+  paymentMethod?: string;
+  paymentDate?: string;
+  paymentStatus?: 'Pending' | 'Paid' | 'Failed';
+}
+
+export interface iQuoteShippingDetails {
+  type?: 'Ground' | 'Express' | 'Overnight';
+  company?: 'UPS' | 'FedEx' | 'USPS' | 'DHL';
+  cost?: number;
+  date?: string;
+  trackingNumber?: string;
+}
+
 export interface iQuoteFormData {
   customer: string;
   customerEmail: string;
@@ -34,6 +52,8 @@ export interface iQuoteFormData {
   billingAddress: iQuoteAddress;
   shippingAddress: iQuoteAddress;
   sameAsShipping: boolean;
+  checkoutDetails?: iQuoteCheckoutDetails;
+  shippingDetails?: iQuoteShippingDetails;
 }
 
 export interface iQuoteFormProps {
@@ -73,6 +93,8 @@ export interface iCreateQuoteRequest {
   billingAddress: iQuoteAddress;
   shippingAddress: iQuoteAddress;
   items: iQuoteItem[];
+  checkoutDetails?: iQuoteCheckoutDetails;
+  shippingDetails?: iQuoteShippingDetails;
 }
 
 export interface iUpdateQuoteRequest extends Partial<iCreateQuoteRequest> {
