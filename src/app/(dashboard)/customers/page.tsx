@@ -203,65 +203,71 @@ export default function CustomersPage() {
   const handleSubmit = useCallback(
     async (formData: iCustomerFormData) => {
       try {
-  if (isEditing && selectedCustomer) {
-    const updatePayload = {
-      customerId: selectedCustomer.id,
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      email: formData.email,
-      phone: formData.phone,
-      companyName: formData.companyName,
-      isBusinessCustomer: formData.isBusinessCustomer,
-      isBlocked: selectedCustomer.isBlocked,
-      website: formData.website,
-    };
+        if (isEditing && selectedCustomer) {
+          const updatePayload = {
+            customerId: selectedCustomer.id,
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            email: formData.email,
+            phone: formData.phone,
+            companyName: formData.companyName,
+            isBusinessCustomer: formData.isBusinessCustomer,
+            isBlocked: selectedCustomer.isBlocked,
+            website: formData.website,
+          };
 
-    await showToast.promise(
-      submitApi.put("/Admin/CustomerEditor/UpdateCustomer", updatePayload),
-      {
-        loading: "Updating customer...",
-        success: "Customer updated successfully",
-        error: "Failed to update customer",
+          await showToast.promise(
+            submitApi.put(
+              "/Admin/CustomerEditor/UpdateCustomer",
+              updatePayload
+            ),
+            {
+              loading: "Updating customer...",
+              success: "Customer updated successfully",
+              error: "Failed to update customer",
+            }
+          );
+        } else {
+          const createPromise = submitApi.post(
+            "/Admin/CustomerEditor/CreateCustomer",
+            {
+              firstName: formData.firstName,
+              lastName: formData.lastName,
+              email: formData.email,
+              phone: formData.phone,
+              website: formData.website,
+              companyName: formData.companyName,
+              isBusinessCustomer: formData.isBusinessCustomer,
+            }
+          );
+
+          const response = await showToast.promise(createPromise, {
+            loading: "Creating customer...",
+            success: "Customer created successfully",
+            error: "Failed to create customer",
+          });
+
+          if (formData.addresses.length > 0 && response?.data?.id) {
+            const customerId = response.data.id;
+            for (const address of formData.addresses) {
+              await submitApi.post("/Admin/CustomerEditor/AddCustomerAddress", {
+                customerId,
+                ...address,
+              });
+            }
+          }
+        }
+
+        mainApi.clearCache && mainApi.clearCache();
+        await fetchCustomers();
+        closeDrawer();
+      } catch (error: any) {
+        if (error?.name !== "CanceledError" && error?.code !== "ERR_CANCELED") {
+          if (error?.response?.status === 403) {
+            showToast.error("Session expired. Please login again.");
+          }
+        }
       }
-    );
-  } else {
-    const createPromise = submitApi.post("/Admin/CustomerEditor/CreateCustomer", {
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      email: formData.email,
-      phone: formData.phone,
-      website: formData.website,
-      companyName: formData.companyName,
-      isBusinessCustomer: formData.isBusinessCustomer,
-    });
-
-    const response = await showToast.promise(createPromise, {
-      loading: "Creating customer...",
-      success: "Customer created successfully",
-      error: "Failed to create customer",
-    });
-
-    if (formData.addresses.length > 0 && response?.data?.id) {
-      const customerId = response.data.id;
-      for (const address of formData.addresses) {
-        await submitApi.post("/Admin/CustomerEditor/AddCustomerAddress", {
-          customerId,
-          ...address,
-        });
-      }
-    }
-  }
-
-  mainApi.clearCache && mainApi.clearCache();
-  await fetchCustomers();
-  closeDrawer();
-} catch (error: any) {
-  if (error?.name !== "CanceledError" && error?.code !== "ERR_CANCELED") {
-    if (error?.response?.status === 403) {
-      showToast.error("Session expired. Please login again.");
-    }
-  }
-}
     },
     [isEditing, selectedCustomer, fetchCustomers, submitApi, mainApi]
   );

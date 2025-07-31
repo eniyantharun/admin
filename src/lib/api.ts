@@ -27,7 +27,7 @@ apiClient.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     } else {
-      showToast.info('No auth token found in cookies');
+      console.log('No auth token found in cookies');
     }
     return config;
   },
