@@ -27,7 +27,7 @@ import { EntityDrawer } from "@/components/helpers/EntityDrawer";
 import { CustomerForm } from "@/components/forms/CustomerForm";
 import { iCustomer, iCustomerFormData, iApiCustomer } from "@/types/customer";
 import { googleMapsUtils } from "@/lib/googleMaps";
-import { showToast } from "@/lib/toast";
+import { showToast } from "@/components/ui/toast";
 
 const ContactInfo = memo<{ customer: iCustomer }>(({ customer }) => (
   <>

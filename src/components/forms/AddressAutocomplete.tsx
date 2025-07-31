@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { MapPin, Loader } from "lucide-react";
 import { loadGoogleMaps } from "@/lib/loadGoogleMaps";
 import { iAddressAutocompleteProps } from "@/types";
-import { showToast } from "@/lib/toast";
+import { showToast } from "@/components/ui/toast";
 
 export const AddressAutocomplete: React.FC<iAddressAutocompleteProps> = ({
   value,

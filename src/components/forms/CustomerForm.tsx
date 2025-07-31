@@ -23,7 +23,7 @@ import {
 } from "@/types/customer";
 import { googleMapsUtils } from "@/lib/googleMaps";
 import { iCustomerFormProps } from "./../../types/customer"
-import { showToast } from "@/lib/toast";
+import { showToast } from "@/components/ui/toast";
 
 
 export const CustomerForm: React.FC<iCustomerFormProps> = ({

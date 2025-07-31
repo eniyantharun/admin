@@ -12,6 +12,8 @@ import {
   ExternalLink,
   Calendar,
   Package,
+  LayoutGrid,
+  List,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -25,173 +27,60 @@ import {
 import { PaginationControls } from "@/components/helpers/PaginationControls";
 import { EntityDrawer } from "@/components/helpers/EntityDrawer";
 import { BrandForm } from "@/components/forms/BrandForm";
+import { IBrand, IBrandFormData } from "@/types/brand";
+import toast from "react-hot-toast";
 
-interface Brand {
-  id: number;
-  name: string;
-  imageUrl: string | null;
-  websiteUrl: string | null;
-  description: string | null;
-  enabled: boolean;
-  productCount: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface BrandFormData {
-  name: string;
-  imageUrl: string;
-  websiteUrl: string;
-  description: string;
-  enabled: boolean;
-}
-
-const mockBrands: Brand[] = [
-  {
-    id: 1,
-    name: "PRIME LINE",
-    imageUrl: "https://logo.clearbit.com/primeline.com",
-    websiteUrl: "https://www.primeline.com",
-    description:
-      "Premium promotional products and corporate gifts for businesses worldwide",
-    enabled: true,
-    productCount: 710,
-    createdAt: "2024-01-15T10:00:00Z",
-    updatedAt: "2024-01-20T14:30:00Z",
-  },
-  {
-    id: 2,
-    name: "Devon and Jones",
-    imageUrl:
-      "https://cdn11.bigcommerce.com/s-ce94a/images/stencil/500x250/p/devon-and-jones-logo-blakclothing.ca_1636989173__25430.original.jpeg",
-    websiteUrl: "https://www.devonandjones.com",
-    description:
-      "High-quality apparel and fashion accessories for professional environments",
-    enabled: true,
-    productCount: 132,
-    createdAt: "2024-01-16T11:15:00Z",
-    updatedAt: "2024-01-21T09:45:00Z",
-  },
-  {
-    id: 3,
-    name: "Harriton",
-    imageUrl: "https://image.coastalreign.com/Harriton_1687204899048.jpg",
-    websiteUrl: "https://www.harriton.com",
-    description: "Professional business attire and corporate wear solutions",
-    enabled: true,
-    productCount: 120,
-    createdAt: "2024-01-17T12:30:00Z",
-    updatedAt: "2024-01-22T16:20:00Z",
-  },
-  {
-    id: 4,
-    name: "CORE 365",
-    imageUrl:
-      "https://images.seeklogo.com/logo-png/53/3/core-365-logo-png_seeklogo-531321.png",
-    websiteUrl: "https://www.core365.com",
-    description:
-      "Performance sportswear and athletic apparel for active professionals",
-    enabled: true,
-    productCount: 101,
-    createdAt: "2024-01-18T13:45:00Z",
-    updatedAt: "2024-01-23T11:10:00Z",
-  },
-  {
-    id: 5,
-    name: "LEEMAN",
-    imageUrl:
-      "https://media.licdn.com/dms/image/v2/C4D0BAQHrv6Eflwkxxw/company-logo_200_200/company-logo_200_200/0/1644269888246/leeman_architectural_woodwork_logo?e=2147483647&v=beta&t=za5WlojrPY_BJ29BE-T-jOLR2O1umUMgyZ9enSn1cIs",
-    websiteUrl: "https://www.leeman.com",
-    description: "Luxury leather goods and executive accessories collection",
-    enabled: true,
-    productCount: 92,
-    createdAt: "2024-01-19T14:20:00Z",
-    updatedAt: "2024-01-24T10:30:00Z",
-  },
-  {
-    id: 6,
-    name: "BELLA+CANVAS",
-    imageUrl:
-      "https://s3.us-west-1.amazonaws.com/dtlaprint.com/wp-content/images/brands/color/bella-canvas-color.png",
-    websiteUrl: "https://www.bellacanvas.com",
-    description: "Premium fashion-forward apparel with sustainable practices",
-    enabled: true,
-    productCount: 83,
-    createdAt: "2024-01-20T15:10:00Z",
-    updatedAt: "2024-01-25T12:45:00Z",
-  },
-  {
-    id: 7,
-    name: "Citizen",
-    imageUrl: "https://logo.clearbit.com/citizen.com",
-    websiteUrl: "https://www.citizen.com",
-    description: "Precision timepieces and watches for every occasion",
-    enabled: false,
-    productCount: 82,
-    createdAt: "2024-01-21T16:00:00Z",
-    updatedAt: "2024-01-26T14:15:00Z",
-  },
-  {
-    id: 8,
-    name: "Ray-Ban",
-    imageUrl: "https://logo.clearbit.com/ray-ban.com",
-    websiteUrl: "https://www.ray-ban.com",
-    description: "Iconic eyewear and sunglasses since 1937",
-    enabled: true,
-    productCount: 81,
-    createdAt: "2024-01-22T17:30:00Z",
-    updatedAt: "2024-01-27T15:20:00Z",
-  },
-];
 
 export default function BrandsPage() {
-  const [brands, setBrands] = useState<Brand[]>([]);
+  const [brands, setBrands] = useState<IBrand[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [localSearchTerm, setLocalSearchTerm] = useState("");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [selectedBrand, setSelectedBrand] = useState<Brand | null>(null);
+  const [selectedBrand, setSelectedBrand] = useState<IBrand | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(12);
+  const [rowsPerPage, setRowsPerPage] = useState(50);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [enabledFilter, setEnabledFilter] = useState<boolean | null>(true); 
 
-  const { get, post, put, loading } = useApi();
-  const submitApi = useApi();
+  const { get, loading, error } = useApi(); 
+  const { post, put, loading: submitLoading, error: submitError } = useApi();
 
   const fetchBrands = useCallback(async () => {
-    if (!isInitialLoad && loading) return;
-
     try {
-      let filteredBrands = [...mockBrands];
-
-      if (localSearchTerm) {
-        filteredBrands = filteredBrands.filter(
-          (brand: Brand) =>
-            brand.name.toLowerCase().includes(localSearchTerm.toLowerCase()) ||
-            (brand.description &&
-              brand.description
-                .toLowerCase()
-                .includes(localSearchTerm.toLowerCase()))
-        );
+      let queryParams = [];
+      if (enabledFilter !== null) {
+        queryParams.push(`enabled=${enabledFilter}`);
       }
 
-      const startIndex = (currentPage - 1) * rowsPerPage;
-      const paginatedBrands = filteredBrands.slice(
-        startIndex,
-        startIndex + rowsPerPage
-      );
+      if (localSearchTerm) {
+        queryParams.push(`search=${encodeURIComponent(localSearchTerm)}`);
+      }
 
-      setBrands(paginatedBrands);
-      setTotalCount(filteredBrands.length);
-    } catch (error: any) {
-      if (error?.name !== "CanceledError" && error?.code !== "ERR_CANCELED") {
-        console.error("Error fetching brands:", error);
+      const queryString = queryParams.length > 0 ? `?${queryParams.join('&')}` : '';
+      const response = await get(`/Admin/BrandsList/GetBrandsList${queryString}`);
+
+       const { success, data, message } = response || {};
+       if (success && data?.brands?.length >= 0) {
+        setBrands(data.brands);
+        setTotalCount(data.brands.length);
+       } else {
+        toast.error("Failed to fetch brands:", message);
+          setBrands([]);
+          setTotalCount(0);
+           }
+
+    } catch (err: any) {
+      if (err?.name !== "CanceledError" && err?.code !== "ERR_CANCELED") {
+        toast.error("Error fetching brands:", err);
+        setBrands([]);
+        setTotalCount(0);
       }
     } finally {
       setIsInitialLoad(false);
     }
-  }, [localSearchTerm, currentPage, rowsPerPage, loading, isInitialLoad]);
+  }, [get, localSearchTerm, enabledFilter]);
 
   useEffect(() => {
     fetchBrands();
@@ -201,24 +90,46 @@ export default function BrandsPage() {
     if (currentPage !== 1) {
       setCurrentPage(1);
     }
-  }, [localSearchTerm]);
+  }, [localSearchTerm, enabledFilter]);
 
   const totalPages = Math.ceil(totalCount / rowsPerPage);
   const startIndex = (currentPage - 1) * rowsPerPage;
   const endIndex = Math.min(startIndex + rowsPerPage, totalCount);
 
-  const handleSubmit = async (formData: BrandFormData) => {
-    try {
-      if (isEditing && selectedBrand) {
+  const handleSubmit = async (formData: IBrandFormData) => {
+ try {
+        if (isEditing && selectedBrand) {
+        const updatePayload = {
+          brandId: selectedBrand.id, 
+          // name: formData.name,
+          description: formData.description,
+          website: "promotional_product_inc",
+          logoUrl: formData.imageUrl,   
+          isActive: formData.enabled,   
+        };
+        const response = await post("/Admin/BrandsList/UpdateBrandDetail", updatePayload);
+        if (!response.success) {
+          throw new Error(response.message || "Failed to update brand.");
+        }
       } else {
-        console.log("Creating brand:", formData);
+        const createPayload = {
+          name: formData.name,
+          description: formData.description,
+          website: "promotional_product_inc", 
+          logoUrl: formData.imageUrl,   
+          isActive: formData.enabled,   
+        };
+        const response = await post("/Admin/BrandsList/AddNewBrand", createPayload);
+        if (!response.success) {
+          throw new Error(response.message || "Failed to add new brand.");
+        }
       }
 
-      await fetchBrands();
+      await fetchBrands(); 
       closeDrawer();
-    } catch (error: any) {
-      if (error?.name !== "CanceledError" && error?.code !== "ERR_CANCELED") {
-        console.error("Error saving brand:", error);
+    } catch (err: any) {
+      if (err?.name !== "CanceledError" && err?.code !== "ERR_CANCELED") {
+        toast.error("Error saving brand:", err);
       }
     }
   };
@@ -229,7 +140,7 @@ export default function BrandsPage() {
     setIsDrawerOpen(true);
   };
 
-  const openEditBrandDrawer = (brand: Brand) => {
+  const openEditBrandDrawer = (brand: IBrand) => {
     setIsEditing(true);
     setSelectedBrand(brand);
     setIsDrawerOpen(true);
@@ -249,7 +160,7 @@ export default function BrandsPage() {
     setLocalSearchTerm("");
   };
 
-  const BrandCard = ({ brand }: { brand: Brand }) => {
+  const BrandCard = ({ brand }: { brand: IBrand }) => {
     const [imageError, setImageError] = useState(false);
 
     if (viewMode === "list") {
@@ -278,36 +189,21 @@ export default function BrandsPage() {
                       )}
                     </div>
                   </div>
-                  <div className="absolute -top-2 -right-2">
-                    <StatusBadge enabled={brand.enabled} variant="compact" />
-                  </div>
+                  {/* REMOVED: StatusBadge from here */}
                 </div>
               </div>
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0 mr-4">
-                    <h3 className="font-bold text-gray-900 text-xl mb-1 group-hover:text-blue-600 transition-colors">
+                    <h3 className="font-bold text-gray-900 text-xl mb-1 group-hover:text-blue-600 transition-colors flex items-center gap-2"> {/* Added flex and gap for badge */}
                       {brand.name}
+                      <StatusBadge enabled={brand.enabled} variant="compact" /> {/* MOVED: StatusBadge here */}
                     </h3>
                     <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
-                      <div className="flex items-center gap-1">
-                        <Package className="w-4 h-4 text-blue-500" />
-                        <span className="font-medium">
-                          {brand.productCount} products
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Calendar className="w-4 h-4 text-gray-400" />
-                        <DateDisplay
-                          date={brand.updatedAt}
-                          format="relative"
-                          showIcon={false}
-                        />
-                      </div>
-                      {brand.websiteUrl && (
+                      {brand.website && (
                         <a
-                          href={brand.websiteUrl}
+                          href={brand.website}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex items-center gap-1 text-blue-600 hover:text-blue-800 transition-colors"
@@ -353,6 +249,7 @@ export default function BrandsPage() {
       );
     }
 
+
     return (
       <div
         className="brand-card group cursor-pointer"
@@ -360,9 +257,7 @@ export default function BrandsPage() {
       >
         <Card className="hover:shadow-xl transition-all duration-300 overflow-hidden border-2 hover:border-blue-200 bg-gradient-to-br from-white to-gray-50">
           <div className="relative">
-            <div className="absolute top-3 right-3 z-10">
-              <StatusBadge enabled={brand.enabled} variant="compact" />
-            </div>
+            {/* REMOVED: StatusBadge from absolute position here */}
 
             <div className="brand-image-container bg-white relative overflow-hidden h-32 border-b border-gray-100">
               <div className="absolute inset-0 bg-gradient-to-r from-blue-50 to-indigo-50 opacity-30"></div>
@@ -383,16 +278,11 @@ export default function BrandsPage() {
             </div>
 
             <div className="p-4">
-              <div className="mb-3">
-                <h3 className="font-bold text-gray-900 text-lg mb-1 group-hover:text-blue-600 transition-colors">
+              <div className="mb-3 flex items-center justify-between"> {/* Added flex and justify-between for badge placement */}
+                <h3 className="font-bold text-gray-900 text-lg group-hover:text-blue-600 transition-colors">
                   {brand.name}
                 </h3>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <Package className="w-4 h-4 text-blue-500" />
-                  <span className="font-medium">
-                    {brand.productCount} products
-                  </span>
-                </div>
+                <StatusBadge enabled={brand.enabled} variant="compact" /> {/* MOVED: StatusBadge here */}
               </div>
 
               <p className="text-gray-600 text-sm mb-4 line-clamp-2">
@@ -401,9 +291,9 @@ export default function BrandsPage() {
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  {brand.websiteUrl && (
+                  {brand.website && (
                     <a
-                      href={brand.websiteUrl}
+                      href={brand.website}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-blue-600 hover:text-blue-800 transition-colors"
@@ -449,6 +339,7 @@ export default function BrandsPage() {
     );
   };
 
+
   return (
     <div className="brands-page space-y-6">
       <Card className="p-4">
@@ -481,7 +372,40 @@ export default function BrandsPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">View:</span>
+            {/* <span className="text-sm text-gray-600">Filter:</span> */}
+            <div className="flex bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => setEnabledFilter(true)}
+                className={`px-3 py-1 text-sm rounded transition-colors ${
+                  enabledFilter === true
+                    ? "bg-white shadow-sm text-green-600"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                Enabled
+              </button>
+              <button
+                onClick={() => setEnabledFilter(false)}
+                className={`px-3 py-1 text-sm rounded transition-colors ${
+                  enabledFilter === false
+                    ? "bg-white shadow-sm text-red-600"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                Disabled
+              </button>
+              <button
+                onClick={() => setEnabledFilter(null)}
+                className={`px-3 py-1 text-sm rounded transition-colors ${
+                  enabledFilter === null
+                    ? "bg-white shadow-sm text-gray-800"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                All
+              </button>
+            </div>
+            {/* <span className="text-sm text-gray-600">View:</span> */}
             <div className="flex bg-gray-100 rounded-lg p-1">
               <button
                 onClick={() => setViewMode("grid")}
@@ -491,7 +415,7 @@ export default function BrandsPage() {
                     : "text-gray-600 hover:text-gray-900"
                 }`}
               >
-                Grid
+                <LayoutGrid size={15} />
               </button>
               <button
                 onClick={() => setViewMode("list")}
@@ -501,7 +425,7 @@ export default function BrandsPage() {
                     : "text-gray-600 hover:text-gray-900"
                 }`}
               >
-                List
+                <List size={15} />
               </button>
             </div>
             <Button
@@ -539,9 +463,11 @@ export default function BrandsPage() {
                 : "space-y-3"
             }`}
           >
-            {brands.map((brand) => (
-              <BrandCard key={brand.id} brand={brand} />
-            ))}
+            {brands
+              .slice(startIndex, endIndex)
+              .map((brand) => (
+                <BrandCard key={brand.id} brand={brand} />
+              ))}
           </div>
         )}
       </Card>
@@ -569,13 +495,13 @@ export default function BrandsPage() {
         onClose={closeDrawer}
         title={isEditing ? "Edit Brand" : "Add New Brand"}
         size="xl"
-        loading={submitApi.loading}
+        loading={submitLoading} // Use submitLoading here
       >
         <BrandForm
           brand={selectedBrand}
           isEditing={isEditing}
           onSubmit={handleSubmit}
-          loading={submitApi.loading}
+          loading={submitLoading} // Use submitLoading here
         />
       </EntityDrawer>
     </div>

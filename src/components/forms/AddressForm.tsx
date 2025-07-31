@@ -5,7 +5,7 @@ import { FormInput } from "@/components/helpers/FormInput";
 import { AddressAutocomplete } from "@/components/forms/AddressAutocomplete";
 import { iAddressFormProps, iCustomerAddressFormData } from "@/types/customer";
 import { googleMapsUtils } from "@/lib/googleMaps";
-import { showToast } from "@/lib/toast";
+import { showToast } from "@/components/ui/toast";
 
 export const AddressForm: React.FC<iAddressFormProps> = ({
   address,

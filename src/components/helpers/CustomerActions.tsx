@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useApi } from "@/hooks/useApi";
 import { iCustomer, iCustomerActionsProps } from "@/types/customer";
-import { showToast } from "@/lib/toast";
+import { showToast } from "@/components/ui/toast";
 
 export const CustomerActions: React.FC<iCustomerActionsProps> = ({
   customer,

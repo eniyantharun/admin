@@ -25,33 +25,9 @@ import {
 import { PaginationControls } from "@/components/helpers/PaginationControls";
 import { EntityDrawer } from "@/components/helpers/EntityDrawer";
 import { OrderForm } from "@/components/forms/OrderForm";
+import { iOrder, iOrderFormData } from "@/types/order";
 
-interface Order {
-  id: number;
-  orderNumber: string;
-  customer: string;
-  customerEmail: string;
-  status: "new" | "in-production" | "shipped" | "delivered" | "cancelled";
-  dateTime: string;
-  inHandDate: string | null;
-  customerTotal: number;
-  supplierTotal: number;
-  profit: number;
-  paymentMethod: string;
-  itemCount?: number;
-}
-
-interface OrderFormData {
-  customer: string;
-  customerEmail: string;
-  status: string;
-  paymentMethod: string;
-  customerTotal: string;
-  supplierTotal: string;
-  inHandDate: string;
-}
-
-const mockOrders: Order[] = [
+const mockOrders: iOrder[] = [
   {
     id: 6874,
     orderNumber: "ORD-6874",
@@ -208,7 +184,7 @@ const mockOrders: Order[] = [
   },
 ];
 
-const getStatusConfig = (status: Order["status"]) => {
+const getStatusConfig = (status: iOrder["status"]) => {
   switch (status) {
     case "new":
       return {
@@ -244,11 +220,11 @@ const getStatusConfig = (status: Order["status"]) => {
 };
 
 export default function OrdersPage() {
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<iOrder[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [localSearchTerm, setLocalSearchTerm] = useState("");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<iOrder | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(20);
@@ -266,7 +242,7 @@ export default function OrdersPage() {
 
       if (localSearchTerm) {
         filteredOrders = filteredOrders.filter(
-          (order: Order) =>
+          (order: iOrder) =>
             order.orderNumber
               .toLowerCase()
               .includes(localSearchTerm.toLowerCase()) ||
@@ -281,7 +257,7 @@ export default function OrdersPage() {
 
       if (statusFilter !== "all") {
         filteredOrders = filteredOrders.filter(
-          (order: Order) => order.status === statusFilter
+          (order: iOrder) => order.status === statusFilter
         );
       }
 
@@ -323,7 +299,7 @@ export default function OrdersPage() {
   const startIndex = (currentPage - 1) * rowsPerPage;
   const endIndex = Math.min(startIndex + rowsPerPage, totalCount);
 
-  const handleSubmit = async (formData: OrderFormData) => {
+  const handleSubmit = async (formData: iOrderFormData) => {
     try {
       if (isEditing && selectedOrder) {
         console.log("Updating order:", selectedOrder.id, formData);
@@ -346,7 +322,7 @@ export default function OrdersPage() {
     setIsDrawerOpen(true);
   };
 
-  const openEditOrderDrawer = (order: Order) => {
+  const openEditOrderDrawer = (order: iOrder) => {
     setIsEditing(true);
     setSelectedOrder(order);
     setIsDrawerOpen(true);
@@ -531,14 +507,12 @@ export default function OrdersPage() {
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div className="text-sm font-medium text-green-600 flex items-center gap-1">
-                          <DollarSign className="w-4 h-4" />$
-                          {order.customerTotal.toFixed(2)}
+                          ${order.customerTotal.toFixed(2)}
                         </div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div className="text-sm text-gray-900 flex items-center gap-1">
-                          <DollarSign className="w-4 h-4 text-gray-400" />$
-                          {order.supplierTotal.toFixed(2)}
+                          ${order.supplierTotal.toFixed(2)}
                         </div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
@@ -549,8 +523,7 @@ export default function OrdersPage() {
                               : "text-gray-500"
                           }`}
                         >
-                          <DollarSign className="w-4 h-4" />$
-                          {order.profit.toFixed(2)}
+                          ${order.profit.toFixed(2)}
                         </div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">

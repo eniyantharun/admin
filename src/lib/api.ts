@@ -1,6 +1,6 @@
 import axios, { AxiosRequestConfig, AxiosError } from 'axios';
 import Cookies from 'js-cookie';
-import { showToast } from './toast';
+import { showToast } from '../components/ui/toast';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL!;
 

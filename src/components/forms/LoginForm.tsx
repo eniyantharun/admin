@@ -9,7 +9,7 @@ import { useAppDispatch } from '@/hooks/redux';
 import { setAuthFromStorage } from '@/store/authSlice';
 import { Eye, EyeOff, User, Lock, AlertCircle } from 'lucide-react';
 import { iLoginPageFormProps } from '@/types/login';
-import { showToast } from '@/lib/toast';
+import { showToast } from '@/components/ui/toast';
 
 export const LoginPageForm: React.FC<iLoginPageFormProps> = ({ redirectTo = '/dashboard' }) => {
   const [showPassword, setShowPassword] = useState(false);

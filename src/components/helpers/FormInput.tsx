@@ -1,10 +1,26 @@
 import { iFormInputProps } from '@/types';
 import React from 'react';
 
-export const FormInput: React.FC<iFormInputProps> = ({ 
+interface FormInputProps {
+  label: string;
+  name: string;
+  value: string | boolean;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  error?: string;
+  required?: boolean;
+  type?: string;
+  placeholder?: string;
+  helpText?: string;
+   disabled?: boolean;
+   checked?: boolean; 
+}
+
+export const FormInput: React.FC<FormInputProps> = ({ 
   label, 
   name, 
   value, 
+   checked,
+   disabled,
   onChange, 
   error, 
   required = false, 
@@ -24,6 +40,7 @@ export const FormInput: React.FC<iFormInputProps> = ({
           checked={value as boolean}
           onChange={onChange}
           className="form-checkbox h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+          disabled={disabled}
         />
         <span className="ml-2 text-sm text-gray-600">{placeholder}</span>
       </div>
@@ -37,6 +54,7 @@ export const FormInput: React.FC<iFormInputProps> = ({
           error ? 'border-red-500' : 'border-gray-300'
         }`}
         placeholder={placeholder}
+        disabled={disabled}
       />
     )}
     {helpText && !error && (

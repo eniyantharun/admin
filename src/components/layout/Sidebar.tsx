@@ -27,8 +27,8 @@ import {
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Products', href: '/products', icon: Package },
-  { name: 'Orders', href: '/orders', icon: ShoppingCart },
   { name: 'Quotes', href: '/quotes', icon: FileText },
+  { name: 'Orders', href: '/orders', icon: ShoppingCart },
   { name: 'Customers', href: '/customers', icon: User },
   { name: 'Suppliers', href: '/suppliers', icon: Users },
   { name: 'Brands', href: '/brands', icon: Award },

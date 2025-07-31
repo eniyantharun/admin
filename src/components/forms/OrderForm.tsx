@@ -6,57 +6,13 @@ import { FormInput } from '@/components/helpers/FormInput';
 import { CustomerSearch } from '@/components/helpers/CustomerSearch';
 import { AddressForm } from '@/components/forms/AddressForm';
 import { iCustomer, iCustomerAddressFormData } from '@/types/customer';
+import { iOrderFormData, iOrderFormProps, iOrderItem } from '@/types/order';
 
-interface Order {
-  id: number;
-  orderNumber: string;
-  customer: string;
-  customerEmail: string;
-  status: 'new' | 'in-production' | 'shipped' | 'delivered' | 'cancelled';
-  dateTime: string;
-  inHandDate: string | null;
-  customerTotal: number;
-  supplierTotal: number;
-  profit: number;
-  paymentMethod: string;
-  itemCount?: number;
-}
 
-interface OrderItem {
-  id: string;
-  productName: string;
-  quantity: number;
-  unitPrice: number;
-  totalPrice: number;
-  supplierPrice: number;
-  customization?: string;
-}
-
-interface OrderFormData {
-  customer: string;
-  customerEmail: string;
-  status: string;
-  paymentMethod: string;
-  customerTotal: string;
-  supplierTotal: string;
-  inHandDate: string;
-  notes: string;
-  billingAddress: iCustomerAddressFormData;
-  shippingAddress: iCustomerAddressFormData;
-  sameAsShipping: boolean;
-  items: OrderItem[];
-}
-
-interface OrderFormProps {
-  order?: Order | null;
-  isEditing: boolean;
-  onSubmit: (data: OrderFormData) => Promise<void>;
-  loading?: boolean;
-}
 
 type FormStep = 'customer' | 'address' | 'items' | 'details' | 'notes';
 
-export const OrderForm: React.FC<OrderFormProps> = ({
+export const OrderForm: React.FC<iOrderFormProps> = ({
   order,
   isEditing,
   onSubmit,
@@ -68,7 +24,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({
   const [showBillingAddressForm, setShowBillingAddressForm] = useState(false);
   const [showShippingAddressForm, setShowShippingAddressForm] = useState(false);
   
-  const [formData, setFormData] = useState<OrderFormData>({
+  const [formData, setFormData] = useState<iOrderFormData>({
     customer: '',
     customerEmail: '',
     status: 'new',
@@ -103,7 +59,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({
     items: [],
   });
   
-  const [formErrors, setFormErrors] = useState<Partial<OrderFormData>>({});
+  const [formErrors, setFormErrors] = useState<Partial<iOrderFormData>>({});
 
   useEffect(() => {
     if (order) {
@@ -122,7 +78,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({
   }, [order]);
 
   const validateCurrentStep = (): boolean => {
-    const errors: Partial<OrderFormData> = {};
+    const errors: Partial<iOrderFormData> = {};
     
     switch (currentStep) {
       case 'customer':
@@ -185,7 +141,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({
       [name]: type === 'checkbox' ? checked : value 
     }));
     
-    if (formErrors[name as keyof OrderFormData]) {
+    if (formErrors[name as keyof iOrderFormData]) {
       setFormErrors(prev => ({ ...prev, [name]: undefined }));
     }
   };
@@ -224,7 +180,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({
   };
 
   const addOrderItem = () => {
-    const newItem: OrderItem = {
+    const newItem: iOrderItem = {
       id: Date.now().toString(),
       productName: '',
       quantity: 1,
@@ -246,7 +202,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({
     }));
   };
 
-  const updateOrderItem = (itemId: string, field: keyof OrderItem, value: any) => {
+  const updateOrderItem = (itemId: string, field: keyof iOrderItem, value: any) => {
     setFormData(prev => ({
       ...prev,
       items: prev.items.map(item => {

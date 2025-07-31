@@ -3,31 +3,12 @@ import { Award, Package, ExternalLink, Calendar, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { FormInput } from '@/components/helpers/FormInput';
-
-interface Brand {
-  id: number;
-  name: string;
-  imageUrl: string | null;
-  websiteUrl: string | null;
-  description: string | null;
-  enabled: boolean;
-  productCount: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface BrandFormData {
-  name: string;
-  imageUrl: string;
-  websiteUrl: string;
-  description: string;
-  enabled: boolean;
-}
+import { IBrand, IBrandFormData } from '@/types/brand';
 
 interface BrandFormProps {
-  brand?: Brand | null;
+  brand?: IBrand | null;
   isEditing: boolean;
-  onSubmit: (data: BrandFormData) => Promise<void>;
+  onSubmit: (data: IBrandFormData) => Promise<void>;
   loading?: boolean;
 }
 
@@ -37,14 +18,14 @@ export const BrandForm: React.FC<BrandFormProps> = ({
   onSubmit,
   loading = false
 }) => {
-  const [formData, setFormData] = useState<BrandFormData>({
+  const [formData, setFormData] = useState<IBrandFormData>({
     name: '',
     imageUrl: '',
-    websiteUrl: '',
-    description: '',
+  websiteUrl: 'PromotionalProductInc',
+      description: '',
     enabled: true
   });
-  const [formErrors, setFormErrors] = useState<Partial<BrandFormData>>({});
+  const [formErrors, setFormErrors] = useState<Partial<IBrandFormData>>({});
   const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
@@ -52,7 +33,7 @@ export const BrandForm: React.FC<BrandFormProps> = ({
       setFormData({
         name: brand.name,
         imageUrl: brand.imageUrl || '',
-        websiteUrl: brand.websiteUrl || '',
+        websiteUrl: brand.website || 'PromotionalProductInc',
         description: brand.description || '',
         enabled: brand.enabled
       });
@@ -61,7 +42,7 @@ export const BrandForm: React.FC<BrandFormProps> = ({
       setFormData({
         name: '',
         imageUrl: '',
-        websiteUrl: '',
+        websiteUrl: 'PromotionalProductInc',
         description: '',
         enabled: true
       });
@@ -70,12 +51,9 @@ export const BrandForm: React.FC<BrandFormProps> = ({
   }, [brand]);
 
   const validateForm = (): boolean => {
-    const errors: Partial<BrandFormData> = {};
+    const errors: Partial<IBrandFormData> = {};
     
     if (!formData.name.trim()) errors.name = 'Brand name is required';
-    if (formData.websiteUrl && !formData.websiteUrl.startsWith('http')) {
-      errors.websiteUrl = 'Website URL must start with http:// or https://';
-    }
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -97,7 +75,7 @@ export const BrandForm: React.FC<BrandFormProps> = ({
       [name]: type === 'checkbox' ? checked : value 
     }));
     
-    if (formErrors[name as keyof BrandFormData]) {
+    if (formErrors[name as keyof IBrandFormData]) {
       setFormErrors(prev => ({ ...prev, [name]: undefined }));
     }
 
@@ -117,6 +95,7 @@ export const BrandForm: React.FC<BrandFormProps> = ({
           error={formErrors.name}
           required
           placeholder="Enter brand name"
+          disabled={isEditing}
         />
 
         <FormInput
@@ -177,7 +156,7 @@ export const BrandForm: React.FC<BrandFormProps> = ({
           label="Status"
           name="enabled"
           type="checkbox"
-          value={formData.enabled}
+          value={formData.enabled} 
           onChange={handleInputChange}
           placeholder="Enable this brand for product listings"
         />
@@ -201,11 +180,6 @@ export const BrandForm: React.FC<BrandFormProps> = ({
               <span className="font-medium">{brand.id}</span>
             </div>
             <div className="flex items-center gap-2">
-              <Package className="w-4 h-4 text-gray-400" />
-              <span className="text-gray-500">Products:</span>
-              <span className="font-medium">{brand.productCount} items</span>
-            </div>
-            <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4 text-gray-400" />
               <span className="text-gray-500">Created:</span>
               <span className="font-medium">{new Date(brand.createdAt).toLocaleDateString()}</span>
@@ -223,33 +197,17 @@ export const BrandForm: React.FC<BrandFormProps> = ({
         <div className="border-t border-gray-200 p-4 sm:p-6 bg-orange-50">
           <h4 className="text-sm font-medium text-gray-700 mb-4">Brand Actions</h4>
           <div className="flex flex-col gap-3">
-            <Button
-              variant="secondary"
-              size="sm"
-              icon={Package}
-              className="justify-start"
-            >
-              View All Products ({brand.productCount})
-            </Button>
-            {brand.websiteUrl && (
+            {brand.website && (
               <Button
                 variant="secondary"
                 size="sm"
                 icon={ExternalLink}
                 className="justify-start"
-                onClick={() => window.open(brand.websiteUrl!, '_blank')}
+                onClick={() => window.open(brand.frontendUrl!, '_blank')}
               >
                 Visit Brand Website
               </Button>
             )}
-            <Button
-              variant="secondary"
-              size="sm"
-              icon={Globe}
-              className="justify-start"
-            >
-              Brand Analytics & Performance
-            </Button>
           </div>
         </div>
       )}

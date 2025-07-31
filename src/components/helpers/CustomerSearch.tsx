@@ -9,7 +9,7 @@ import { EntityDrawer } from '@/components/helpers/EntityDrawer';
 import { EmptyState, LoadingState } from '@/components/helpers/EmptyLoadingStates';
 import { iCustomer, iApiCustomer, iCustomerFormData } from '@/types/customer';
 import { googleMapsUtils } from '@/lib/googleMaps';
-import { showToast } from '@/lib/toast';
+import { showToast } from '@/components/ui/toast';
 
 interface CustomerSearchProps {
   onCustomerSelect: (customer: iCustomer) => void;

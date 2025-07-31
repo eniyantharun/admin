@@ -6,40 +6,11 @@ import { FormInput } from '@/components/helpers/FormInput';
 import { CustomerSearch } from '@/components/helpers/CustomerSearch';
 import { AddressForm } from '@/components/forms/AddressForm';
 import { iCustomer, iCustomerAddress, iCustomerAddressFormData } from '@/types/customer';
-
-interface Quote {
-  id: number;
-  quoteNumber: string;
-  customer: string;
-  customerEmail: string;
-  status: 'new-quote' | 'quote-sent-to-customer' | 'quote-converted-to-order';
-  dateTime: string;
-  inHandDate: string | null;
-  customerTotal: number;
-}
-
-interface QuoteFormData {
-  customer: string;
-  customerEmail: string;
-  status: string;
-  customerTotal: string;
-  inHandDate: string;
-  notes: string;
-  billingAddress: iCustomerAddressFormData;
-  shippingAddress: iCustomerAddressFormData;
-  sameAsShipping: boolean;
-}
-
-interface QuoteFormProps {
-  quote?: Quote | null;
-  isEditing: boolean;
-  onSubmit: (data: QuoteFormData) => Promise<void>;
-  loading?: boolean;
-}
+import { iQuoteFormData, iQuoteFormProps } from '@/types/quotes';
 
 type FormStep = 'customer' | 'address' | 'quote' | 'notes';
 
-export const QuoteForm: React.FC<QuoteFormProps> = ({
+export const QuoteForm: React.FC<iQuoteFormProps> = ({
   quote,
   isEditing,
   onSubmit,
@@ -52,7 +23,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({
   const [showBillingAddressForm, setShowBillingAddressForm] = useState(false);
   const [showShippingAddressForm, setShowShippingAddressForm] = useState(false);
   
-  const [formData, setFormData] = useState<QuoteFormData>({
+  const [formData, setFormData] = useState<iQuoteFormData>({
     customer: '',
     customerEmail: '',
     status: 'new-quote',
@@ -84,7 +55,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({
     sameAsShipping: false,
   });
   
-  const [formErrors, setFormErrors] = useState<Partial<QuoteFormData>>({});
+  const [formErrors, setFormErrors] = useState<Partial<iQuoteFormData>>({});
 
   useEffect(() => {
     if (quote) {
@@ -101,7 +72,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({
   }, [quote]);
 
   const validateCurrentStep = (): boolean => {
-    const errors: Partial<QuoteFormData> = {};
+    const errors: Partial<iQuoteFormData> = {};
     
     switch (currentStep) {
       case 'customer':
@@ -159,7 +130,7 @@ export const QuoteForm: React.FC<QuoteFormProps> = ({
       [name]: type === 'checkbox' ? checked : value 
     }));
     
-    if (formErrors[name as keyof QuoteFormData]) {
+    if (formErrors[name as keyof iQuoteFormData]) {
       setFormErrors(prev => ({ ...prev, [name]: undefined }));
     }
   };

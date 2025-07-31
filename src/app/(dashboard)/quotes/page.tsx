@@ -28,27 +28,9 @@ import {
 import { PaginationControls } from "@/components/helpers/PaginationControls";
 import { EntityDrawer } from "@/components/helpers/EntityDrawer";
 import { QuoteForm } from "@/components/forms/QuoteForm";
+import { iQuote, iQuoteFormData } from "@/types/quotes";
 
-interface Quote {
-  id: number;
-  quoteNumber: string;
-  customer: string;
-  customerEmail: string;
-  status: "new-quote" | "quote-sent-to-customer" | "quote-converted-to-order";
-  dateTime: string;
-  inHandDate: string | null;
-  customerTotal: number;
-}
-
-interface QuoteFormData {
-  customer: string;
-  customerEmail: string;
-  status: string;
-  customerTotal: string;
-  inHandDate: string;
-}
-
-const mockQuotes: Quote[] = [
+const mockQuotes: iQuote[] = [
   {
     id: 10679,
     quoteNumber: "QUO-10679",
@@ -161,7 +143,7 @@ const mockQuotes: Quote[] = [
   },
 ];
 
-const getStatusConfig = (status: Quote["status"]) => {
+const getStatusConfig = (status: iQuote["status"]) => {
   switch (status) {
     case "new-quote":
       return {
@@ -198,11 +180,11 @@ const getStatusConfig = (status: Quote["status"]) => {
 };
 
 export default function QuotesPage() {
-  const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [quotes, setQuotes] = useState<iQuote[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [localSearchTerm, setLocalSearchTerm] = useState("");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
+  const [selectedQuote, setSelectedQuote] = useState<iQuote | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(20);
@@ -220,7 +202,7 @@ export default function QuotesPage() {
 
       if (localSearchTerm) {
         filteredQuotes = filteredQuotes.filter(
-          (quote: Quote) =>
+          (quote: iQuote) =>
             quote.quoteNumber
               .toLowerCase()
               .includes(localSearchTerm.toLowerCase()) ||
@@ -235,7 +217,7 @@ export default function QuotesPage() {
 
       if (statusFilter !== "all") {
         filteredQuotes = filteredQuotes.filter(
-          (quote: Quote) => quote.status === statusFilter
+          (quote: iQuote) => quote.status === statusFilter
         );
       }
 
@@ -277,7 +259,7 @@ export default function QuotesPage() {
   const startIndex = (currentPage - 1) * rowsPerPage;
   const endIndex = Math.min(startIndex + rowsPerPage, totalCount);
 
-  const handleSubmit = async (formData: QuoteFormData) => {
+  const handleSubmit = async (formData: iQuoteFormData) => {
     try {
       if (isEditing && selectedQuote) {
         console.log("Updating quote:", selectedQuote.id, formData);
@@ -300,7 +282,7 @@ export default function QuotesPage() {
     setIsDrawerOpen(true);
   };
 
-  const openEditQuoteDrawer = (quote: Quote) => {
+  const openEditQuoteDrawer = (quote: iQuote) => {
     setIsEditing(true);
     setSelectedQuote(quote);
     setIsDrawerOpen(true);
