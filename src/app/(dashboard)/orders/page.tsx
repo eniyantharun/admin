@@ -603,7 +603,7 @@ export default function OrdersPage() {
         isOpen={isDrawerOpen}
         onClose={closeDrawer}
         title={isEditing ? "Edit Order" : "Create New Order"}
-        size="xl"
+        size="xxl"
         loading={submitApi.loading}
       >
         <OrderForm

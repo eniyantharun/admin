@@ -474,8 +474,7 @@ export default function QuotesPage() {
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div className="text-sm font-medium text-green-600 flex items-center gap-1">
-                          <DollarSign className="w-4 h-4" />$
-                          {quote.customerTotal.toFixed(2)}
+                          ${quote.customerTotal.toFixed(2)}
                         </div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-right">
@@ -522,7 +521,7 @@ export default function QuotesPage() {
         isOpen={isDrawerOpen}
         onClose={closeDrawer}
         title={isEditing ? "Edit Quote" : "Create New Quote"}
-        size="xl"
+        size="xxl"
         loading={submitApi.loading}
       >
         <QuoteForm
