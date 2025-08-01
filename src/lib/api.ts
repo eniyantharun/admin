@@ -168,7 +168,7 @@ export const apiEndpoints = {
   },
   
   suppliers: {
-    list: '/Admin/SupplierList/GetSuppliersList',
+    list: '/Admin/SupplierEditor/GetSupplier',
     create: '/Admin/SupplierList/CreateSupplier',
     update: (id: string | number) => `/Admin/SupplierList/UpdateSupplier/${id}`,
     delete: (id: string | number) => `/Admin/SupplierList/DeleteSupplier/${id}`,

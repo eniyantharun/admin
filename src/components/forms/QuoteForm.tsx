@@ -1,14 +1,86 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, DollarSign, Calendar, Send, CheckCircle, User, MapPin, MessageSquare, ChevronRight, ChevronDown, ChevronLeft } from 'lucide-react';
+import { FileText, DollarSign, Calendar, Send, CheckCircle, User, MapPin, MessageSquare, ChevronRight, ChevronDown, ChevronLeft, Plus, Trash2, Package, Mail, Phone, Building } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { FormInput } from '@/components/helpers/FormInput';
 import { CustomerSearch } from '@/components/helpers/CustomerSearch';
 import { AddressForm } from '@/components/forms/AddressForm';
-import { iCustomer, iCustomerAddress, iCustomerAddressFormData } from '@/types/customer';
-import { iQuoteFormData, iQuoteFormProps } from '@/types/quotes';
+import { EntityAvatar } from '@/components/helpers/EntityAvatar';
+import { iCustomer, iCustomerAddressFormData } from '@/types/customer';
+import { iQuoteFormData, iQuoteFormProps, iQuote } from '@/types/quotes';
 
-type FormStep = 'customer' | 'address' | 'quote' | 'notes';
+type FormStep = 'customer' | 'address' | 'items' | 'quote' | 'notes';
+
+interface QuoteItem {
+  id: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  customization?: string;
+  description?: string;
+}
+
+// Mock customer data for demonstration
+const mockCustomer: iCustomer = {
+  id: '12345',
+  idNum: 67890,
+  firstName: 'Christina',
+  lastName: 'Johnson',
+  email: 'christina.johnson@example.com',
+  phone: '(555) 123-4567',
+  website: 'promotionalproductinc.com',
+  companyName: 'Johnson Marketing LLC',
+  isBlocked: false,
+  isBusinessCustomer: true,
+  createdAt: '2025-01-15T10:00:00Z',
+};
+
+const mockAddresses = {
+  billing: {
+    type: 'billing' as const,
+    label: 'Corporate Office',
+    name: 'Christina Johnson',
+    street: '123 Business Park Drive',
+    city: 'Atlanta',
+    state: 'GA',
+    zipCode: '30309',
+    country: 'US',
+    isPrimary: true,
+  },
+  shipping: {
+    type: 'shipping' as const,
+    label: 'Warehouse',
+    name: 'Christina Johnson',
+    street: '456 Industrial Blvd',
+    city: 'Atlanta',
+    state: 'GA',
+    zipCode: '30310',
+    country: 'US',
+    isPrimary: false,
+  }
+};
+
+const mockQuoteItems: QuoteItem[] = [
+  {
+    id: '1',
+    productName: 'Custom Branded Mugs',
+    quantity: 100,
+    unitPrice: 8.50,
+    totalPrice: 850.00,
+    customization: 'Company logo on both sides',
+    description: 'Ceramic mugs with custom full-color printing'
+  },
+  {
+    id: '2', 
+    productName: 'Promotional Pens',
+    quantity: 500,
+    unitPrice: 1.25,
+    totalPrice: 625.00,
+    customization: 'Company name and contact info',
+    description: 'Metal ballpoint pens with laser engraving'
+  }
+];
 
 export const QuoteForm: React.FC<iQuoteFormProps> = ({
   quote,
@@ -18,10 +90,9 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
 }) => {
   const [currentStep, setCurrentStep] = useState<FormStep>('customer');
   const [selectedCustomer, setSelectedCustomer] = useState<iCustomer | null>(null);
-  const [customerAddresses, setCustomerAddresses] = useState<iCustomerAddress[]>([]);
-  const [showNewCustomerForm, setShowNewCustomerForm] = useState(false);
   const [showBillingAddressForm, setShowBillingAddressForm] = useState(false);
   const [showShippingAddressForm, setShowShippingAddressForm] = useState(false);
+  const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
   
   const [formData, setFormData] = useState<iQuoteFormData>({
     customer: '',
@@ -30,93 +101,85 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
     customerTotal: '0',
     inHandDate: '',
     notes: '',
-    billingAddress: {
-      type: 'billing',
-      label: 'Billing',
-      name: '',
-      street: '',
-      city: '',
-      state: '',
-      zipCode: '',
-      country: 'US',
-      isPrimary: false,
-    },
-    shippingAddress: {
-      type: 'shipping',
-      label: 'Shipping',
-      name: '',
-      street: '',
-      city: '',
-      state: '',
-      zipCode: '',
-      country: 'US',
-      isPrimary: false,
-    },
+    billingAddress: mockAddresses.billing,
+    shippingAddress: mockAddresses.shipping,
     sameAsShipping: false,
   });
   
   const [formErrors, setFormErrors] = useState<Partial<iQuoteFormData>>({});
 
+  // Initialize form data based on edit/create mode
   useEffect(() => {
-    if (quote) {
-      setFormData(prev => ({
-        ...prev,
+    if (isEditing && quote) {
+      // Edit mode: pre-populate with quote data
+      setSelectedCustomer(mockCustomer);
+      setQuoteItems(mockQuoteItems);
+      setFormData({
         customer: quote.customer,
         customerEmail: quote.customerEmail,
         status: quote.status,
         customerTotal: quote.customerTotal.toString(),
-        inHandDate: quote.inHandDate || ''
-      }));
-      setCurrentStep('quote');
+        inHandDate: quote.inHandDate || '',
+        notes: quote.notes || '',
+        billingAddress: mockAddresses.billing,
+        shippingAddress: mockAddresses.shipping,
+        sameAsShipping: false,
+      });
+      setCurrentStep('customer'); // Always start from step 1
+    } else {
+      // Create mode: use mock data for demo purposes
+      setSelectedCustomer(mockCustomer);
+      setQuoteItems(mockQuoteItems);
+      setFormData({
+        customer: mockCustomer.firstName + ' ' + mockCustomer.lastName,
+        customerEmail: mockCustomer.email,
+        status: 'new-quote',
+        customerTotal: mockQuoteItems.reduce((sum, item) => sum + item.totalPrice, 0).toString(),
+        inHandDate: '',
+        notes: '',
+        billingAddress: mockAddresses.billing,
+        shippingAddress: mockAddresses.shipping,
+        sameAsShipping: false,
+      });
     }
-  }, [quote]);
+  }, [quote, isEditing]);
 
-  const validateCurrentStep = (): boolean => {
-    const errors: Partial<iQuoteFormData> = {};
-    
-    switch (currentStep) {
-      case 'customer':
-        if (!selectedCustomer) {
-          return false;
-        }
-        break;
-      case 'address':
-        if (!formData.billingAddress.street || !formData.shippingAddress.street) {
-          return false;
-        }
-        break;
-      case 'quote':
-        if (!formData.customerTotal || parseFloat(formData.customerTotal) <= 0) {
-          errors.customerTotal = 'Customer total must be greater than 0';
-        }
-        break;
-    }
-
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
+  // Navigation functions without validation
   const handleNextStep = () => {
-    if (validateCurrentStep()) {
-      const steps: FormStep[] = ['customer', 'address', 'quote', 'notes'];
-      const currentIndex = steps.indexOf(currentStep);
-      if (currentIndex < steps.length - 1) {
-        setCurrentStep(steps[currentIndex + 1]);
-      }
+    const steps: FormStep[] = ['customer', 'address', 'items', 'quote', 'notes'];
+    const currentIndex = steps.indexOf(currentStep);
+    if (currentIndex < steps.length - 1) {
+      setCurrentStep(steps[currentIndex + 1]);
     }
   };
 
   const handlePrevStep = () => {
-    const steps: FormStep[] = ['customer', 'address', 'quote', 'notes'];
+    const steps: FormStep[] = ['customer', 'address', 'items', 'quote', 'notes'];
     const currentIndex = steps.indexOf(currentStep);
     if (currentIndex > 0) {
       setCurrentStep(steps[currentIndex - 1]);
     }
   };
 
+  // Final validation only when submitting
+  const validateForm = (): boolean => {
+    const errors: Partial<iQuoteFormData> = {};
+    
+    if (!selectedCustomer) errors.customer = 'Customer is required';
+    if (!formData.customerTotal || parseFloat(formData.customerTotal) <= 0) {
+      errors.customerTotal = 'Customer total must be greater than 0';
+    }
+    if (quoteItems.length === 0) {
+      // Add items validation
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (validateCurrentStep()) {
+    if (validateForm()) {
       await onSubmit(formData);
     }
   };
@@ -142,11 +205,11 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
       customer: `${customer.firstName} ${customer.lastName}`,
       customerEmail: customer.email,
       billingAddress: {
-        ...prev.billingAddress,
+        ...mockAddresses.billing,
         name: `${customer.firstName} ${customer.lastName}`,
       },
       shippingAddress: {
-        ...prev.shippingAddress,
+        ...mockAddresses.shipping,
         name: `${customer.firstName} ${customer.lastName}`,
       }
     }));
@@ -168,22 +231,53 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
     setShowShippingAddressForm(false);
   };
 
-  const getStepIcon = (step: FormStep) => {
-    switch (step) {
-      case 'customer': return User;
-      case 'address': return MapPin;
-      case 'quote': return FileText;
-      case 'notes': return MessageSquare;
-      default: return FileText;
-    }
+  // Quote items management
+  const addQuoteItem = () => {
+    const newItem: QuoteItem = {
+      id: Date.now().toString(),
+      productName: '',
+      quantity: 1,
+      unitPrice: 0,
+      totalPrice: 0,
+      customization: '',
+      description: ''
+    };
+    setQuoteItems(prev => [...prev, newItem]);
   };
+
+  const removeQuoteItem = (itemId: string) => {
+    setQuoteItems(prev => prev.filter(item => item.id !== itemId));
+  };
+
+  const updateQuoteItem = (itemId: string, field: keyof QuoteItem, value: any) => {
+    setQuoteItems(prev => prev.map(item => {
+      if (item.id === itemId) {
+        const updatedItem = { ...item, [field]: value };
+        if (field === 'quantity' || field === 'unitPrice') {
+          updatedItem.totalPrice = updatedItem.quantity * updatedItem.unitPrice;
+        }
+        return updatedItem;
+      }
+      return item;
+    }));
+  };
+
+  // Update form total when items change
+  useEffect(() => {
+    const total = quoteItems.reduce((sum, item) => sum + item.totalPrice, 0);
+    setFormData(prev => ({
+      ...prev,
+      customerTotal: total.toString()
+    }));
+  }, [quoteItems]);
 
   const getStepTitle = (step: FormStep) => {
     switch (step) {
-      case 'customer': return 'Select Customer';
-      case 'address': return 'Billing & Shipping';
+      case 'customer': return 'Customer';
+      case 'address': return 'Addresses';
+      case 'items': return 'Items';
       case 'quote': return 'Quote Details';
-      case 'notes': return 'Additional Notes';
+      case 'notes': return 'Notes';
       default: return 'Quote';
     }
   };
@@ -192,6 +286,7 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
     switch (step) {
       case 'customer': return !!selectedCustomer;
       case 'address': return !!(formData.billingAddress.street && formData.shippingAddress.street);
+      case 'items': return quoteItems.length > 0;
       case 'quote': return !!(formData.customerTotal && parseFloat(formData.customerTotal) > 0);
       case 'notes': return true;
       default: return false;
@@ -199,7 +294,7 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
   };
 
   const renderStepIndicator = () => {
-    const steps: FormStep[] = ['customer', 'address', 'quote', 'notes'];
+    const steps: FormStep[] = ['customer', 'address', 'items', 'quote', 'notes'];
     
     return (
       <div className="flex items-center justify-between mb-4 bg-gray-50 p-3 rounded-lg">
@@ -221,13 +316,15 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
             
             return (
               <React.Fragment key={step}>
-                <div className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 ${
+                <div className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 cursor-pointer ${
                   isActive 
-                    ? 'bg-blue-500 text-white' 
+                    ? 'bg-purple-500 text-white' 
                     : isCompleted 
                     ? 'bg-green-500 text-white' 
                     : 'bg-gray-200 text-gray-600'
-                }`}>
+                }`}
+                onClick={() => setCurrentStep(step)}
+                >
                   {getStepTitle(step)}
                 </div>
                 {index < steps.length - 1 && (
@@ -248,7 +345,6 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
             icon={CheckCircle}
             iconOnly
             className="w-8 h-8 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
-            disabled={!canProceed()}
             title={isEditing ? "Update Quote" : "Create Quote"}
           />
         ) : (
@@ -259,7 +355,6 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
             size="sm"
             icon={ChevronRight}
             iconOnly
-            disabled={!canProceed()}
             className="w-8 h-8"
           />
         )}
@@ -267,37 +362,100 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
     );
   };
 
-  const renderCustomerStep = () => (
-    <div className="space-y-3">
-      <CustomerSearch 
-        onCustomerSelect={handleCustomerSelect}
-        selectedCustomer={selectedCustomer}
-        onNewCustomer={() => setShowNewCustomerForm(true)}
-      />
-      
-      {selectedCustomer && (
-        <Card className="p-3 bg-green-50 border-green-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium text-green-800 text-sm">
-                {selectedCustomer.firstName} {selectedCustomer.lastName}
-              </p>
-              <p className="text-xs text-green-600">{selectedCustomer.email}</p>
-              {selectedCustomer.companyName && (
-                <p className="text-xs text-green-600">{selectedCustomer.companyName}</p>
-              )}
+  const renderCustomerStep = () => {
+    if (isEditing && selectedCustomer) {
+      // Show customer details for edit mode
+      return (
+        <div className="space-y-4">
+          <Card className="p-4 bg-blue-50 border-blue-200">
+            <div className="flex items-center space-x-4">
+              <EntityAvatar
+                name={`${selectedCustomer.firstName} ${selectedCustomer.lastName}`}
+                id={selectedCustomer.idNum}
+                type="customer"
+                size="lg"
+              />
+              <div className="flex-1">
+                <div className="flex items-center space-x-2 mb-2">
+                  <h3 className="text-lg font-semibold text-blue-800">
+                    {selectedCustomer.firstName} {selectedCustomer.lastName}
+                  </h3>
+                  {selectedCustomer.isBusinessCustomer && (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      Business Customer
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                  <div className="flex items-center gap-2 text-blue-700">
+                    <Mail className="w-4 h-4" />
+                    <span>{selectedCustomer.email}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-blue-700">
+                    <Phone className="w-4 h-4" />
+                    <span>{selectedCustomer.phone}</span>
+                  </div>
+                  {selectedCustomer.companyName && (
+                    <div className="flex items-center gap-2 text-blue-700 sm:col-span-2">
+                      <Building className="w-4 h-4" />
+                      <span>{selectedCustomer.companyName}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <CheckCircle className="w-6 h-6 text-green-500" />
             </div>
-            <CheckCircle className="w-4 h-4 text-green-500" />
+          </Card>
+          
+          <div className="text-center">
+            <p className="text-sm text-gray-600 mb-3">
+              This quote is associated with the customer shown above.
+            </p>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setCurrentStep('address')}
+            >
+              Continue to Addresses
+            </Button>
           </div>
-        </Card>
-      )}
-    </div>
-  );
+        </div>
+      );
+    }
+
+    // Show customer search for create mode
+    return (
+      <div className="space-y-3">
+        <CustomerSearch 
+          onCustomerSelect={handleCustomerSelect}
+          selectedCustomer={selectedCustomer}
+          onNewCustomer={() => {}}
+        />
+        
+        {selectedCustomer && (
+          <Card className="p-3 bg-green-50 border-green-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-green-800 text-sm">
+                  {selectedCustomer.firstName} {selectedCustomer.lastName}
+                </p>
+                <p className="text-xs text-green-600">{selectedCustomer.email}</p>
+                {selectedCustomer.companyName && (
+                  <p className="text-xs text-green-600">{selectedCustomer.companyName}</p>
+                )}
+              </div>
+              <CheckCircle className="w-4 h-4 text-green-500" />
+            </div>
+          </Card>
+        )}
+      </div>
+    );
+  };
 
   const renderAddressStep = () => (
     <div className="space-y-4">
-      <Card className="p-3">
-        <div className="flex items-center justify-between mb-2">
+      <Card className="p-4">
+        <div className="flex items-center justify-between mb-3">
           <h4 className="font-medium text-gray-900 text-sm">Billing Address</h4>
           <Button
             onClick={() => setShowBillingAddressForm(!showBillingAddressForm)}
@@ -311,15 +469,16 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
         </div>
         
         {formData.billingAddress.street && (
-          <div className="text-xs text-gray-600 mb-2">
-            <p className="font-medium">{formData.billingAddress.name}</p>
+          <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+            <p className="font-medium text-gray-900">{formData.billingAddress.name}</p>
             <p>{formData.billingAddress.street}</p>
             <p>{formData.billingAddress.city}, {formData.billingAddress.state} {formData.billingAddress.zipCode}</p>
+            <p className="text-xs text-blue-600 mt-1">{formData.billingAddress.label}</p>
           </div>
         )}
         
         {showBillingAddressForm && (
-          <div className="border-t pt-3 mt-2">
+          <div className="border-t pt-3 mt-3">
             <AddressForm
               address={formData.billingAddress}
               onSubmit={handleBillingAddressSubmit}
@@ -329,8 +488,8 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
         )}
       </Card>
 
-      <Card className="p-3">
-        <div className="flex items-center justify-between mb-2">
+      <Card className="p-4">
+        <div className="flex items-center justify-between mb-3">
           <h4 className="font-medium text-gray-900 text-sm">Shipping Address</h4>
           <div className="flex items-center space-x-2">
             <label className="flex items-center text-xs">
@@ -362,15 +521,16 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
         </div>
         
         {formData.shippingAddress.street && (
-          <div className="text-xs text-gray-600 mb-2">
-            <p className="font-medium">{formData.shippingAddress.name}</p>
+          <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+            <p className="font-medium text-gray-900">{formData.shippingAddress.name}</p>
             <p>{formData.shippingAddress.street}</p>
             <p>{formData.shippingAddress.city}, {formData.shippingAddress.state} {formData.shippingAddress.zipCode}</p>
+            <p className="text-xs text-blue-600 mt-1">{formData.shippingAddress.label}</p>
           </div>
         )}
         
         {showShippingAddressForm && !formData.sameAsShipping && (
-          <div className="border-t pt-3 mt-2">
+          <div className="border-t pt-3 mt-3">
             <AddressForm
               address={formData.shippingAddress}
               onSubmit={handleShippingAddressSubmit}
@@ -382,9 +542,138 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
     </div>
   );
 
+  const renderItemsStep = () => (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h4 className="font-medium text-gray-900 text-sm">Quote Items</h4>
+        <Button
+          onClick={addQuoteItem}
+          variant="secondary"
+          size="sm"
+          icon={Plus}
+          className="h-7"
+        >
+          Add Item
+        </Button>
+      </div>
+
+      {quoteItems.length === 0 ? (
+        <Card className="p-6 text-center">
+          <Package className="w-8 h-8 mx-auto text-gray-400 mb-3" />
+          <p className="text-sm text-gray-500 mb-3">No items added yet</p>
+          <Button
+            onClick={addQuoteItem}
+            variant="secondary"
+            size="sm"
+            icon={Plus}
+          >
+            Add First Item
+          </Button>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {quoteItems.map((item, index) => (
+            <Card key={item.id} className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-medium text-gray-900">Item #{index + 1}</span>
+                <Button
+                  onClick={() => removeQuoteItem(item.id)}
+                  variant="danger"
+                  size="sm"
+                  icon={Trash2}
+                  iconOnly
+                  className="w-6 h-6"
+                />
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                <FormInput
+                  label="Product Name"
+                  name={`product-${item.id}`}
+                  value={item.productName}
+                  onChange={(e) => updateQuoteItem(item.id, 'productName', e.target.value)}
+                  placeholder="Enter product name"
+                  required
+                />
+                <FormInput
+                  label="Description"
+                  name={`description-${item.id}`}
+                  value={item.description || ''}
+                  onChange={(e) => updateQuoteItem(item.id, 'description', e.target.value)}
+                  placeholder="Product description"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <FormInput
+                  label="Quantity"
+                  name={`quantity-${item.id}`}
+                  type="number"
+                  value={item.quantity.toString()}
+                  onChange={(e) => updateQuoteItem(item.id, 'quantity', parseInt(e.target.value) || 0)}
+                  placeholder="1"
+                  required
+                />
+                <FormInput
+                  label="Unit Price"
+                  name={`unitPrice-${item.id}`}
+                  type="number"
+                  value={item.unitPrice.toString()}
+                  onChange={(e) => updateQuoteItem(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
+                  placeholder="0.00"
+                  required
+                />
+                <div className="form-input-group">
+                  <label className="form-label block text-sm font-medium text-gray-700 mb-1">
+                    Total Price
+                  </label>
+                  <div className="text-lg font-bold text-green-600 py-2">
+                    ${item.totalPrice.toFixed(2)}
+                  </div>
+                </div>
+                <div className="form-input-group">
+                  <label className="form-label block text-sm font-medium text-gray-700 mb-1">
+                    Margin
+                  </label>
+                  <div className="text-sm text-gray-600 py-2">
+                    {item.unitPrice > 0 ? ((item.unitPrice * 0.15) / item.unitPrice * 100).toFixed(1) : '0.0'}%
+                  </div>
+                </div>
+              </div>
+
+              <FormInput
+                label="Customization/Notes"
+                name={`customization-${item.id}`}
+                value={item.customization || ''}
+                onChange={(e) => updateQuoteItem(item.id, 'customization', e.target.value)}
+                placeholder="Special instructions or customization details"
+              />
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {quoteItems.length > 0 && (
+        <Card className="p-4 bg-purple-50 border-purple-200">
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-medium text-purple-800">Quote Summary</span>
+            <div className="text-right">
+              <div className="text-xl font-bold text-green-600">
+                ${quoteItems.reduce((sum, item) => sum + item.totalPrice, 0).toFixed(2)}
+              </div>
+              <div className="text-xs text-purple-600">
+                {quoteItems.length} item{quoteItems.length !== 1 ? 's' : ''}
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+
   const renderQuoteStep = () => (
-    <div className="space-y-3">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="form-input-group">
           <label className="form-label block text-sm font-medium text-gray-700 mb-1">
             Status <span className="text-red-500">*</span>
@@ -402,30 +691,39 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
         </div>
 
         <FormInput
-          label="Quote Total"
-          name="customerTotal"
-          type="number"
-          value={formData.customerTotal}
+          label="In-Hand Date"
+          name="inHandDate"
+          type="date"
+          value={formData.inHandDate}
           onChange={handleInputChange}
-          error={formErrors.customerTotal}
-          required
-          placeholder="0.00"
+          helpText="Expected delivery date (optional)"
         />
       </div>
 
-      <FormInput
-        label="In-Hand Date"
-        name="inHandDate"
-        type="date"
-        value={formData.inHandDate}
-        onChange={handleInputChange}
-        helpText="Expected delivery date (optional)"
-      />
+      <Card className="p-4 bg-gray-50">
+        <h5 className="font-medium text-gray-800 mb-3 text-sm">Financial Summary</h5>
+        <div className="space-y-2 text-sm">
+          <div className="flex justify-between">
+            <span className="text-gray-600">Subtotal:</span>
+            <span className="font-medium">${parseFloat(formData.customerTotal || '0').toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-600">Tax (8.5%):</span>
+            <span className="font-medium">${(parseFloat(formData.customerTotal || '0') * 0.085).toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between border-t pt-2">
+            <span className="text-gray-600 font-medium">Total Amount:</span>
+            <span className="font-bold text-green-600 text-lg">
+              ${(parseFloat(formData.customerTotal || '0') * 1.085).toFixed(2)}
+            </span>
+          </div>
+        </div>
+      </Card>
     </div>
   );
 
   const renderNotesStep = () => (
-    <div className="space-y-1">
+    <div className="space-y-4">
       <div className="form-input-group">
         <label className="form-label block text-sm font-medium text-gray-700 mb-1">
           Quote Notes
@@ -441,9 +739,9 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
         <p className="text-xs text-gray-500 mt-1">These notes will be visible to the customer on the quote</p>
       </div>
 
-      <Card className="p-3 bg-blue-50 border-blue-200">
-        <h5 className="font-medium text-blue-800 mb-2 text-sm">Quote Summary</h5>
-        <div className="space-y-1 text-xs">
+      <Card className="p-4 bg-blue-50 border-blue-200">
+        <h5 className="font-medium text-blue-800 mb-3 text-sm">Quote Summary</h5>
+        <div className="space-y-2 text-sm">
           <div className="flex justify-between">
             <span className="text-blue-700">Customer:</span>
             <span className="font-medium text-blue-800">{formData.customer}</span>
@@ -453,8 +751,16 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
             <span className="font-medium text-blue-800">{formData.customerEmail}</span>
           </div>
           <div className="flex justify-between">
+            <span className="text-blue-700">Items:</span>
+            <span className="font-medium text-blue-800">{quoteItems.length} item{quoteItems.length !== 1 ? 's' : ''}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-blue-700">Subtotal:</span>
+            <span className="font-medium text-blue-800">${parseFloat(formData.customerTotal || '0').toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between">
             <span className="text-blue-700">Total Amount:</span>
-            <span className="font-bold text-green-600 text-sm">${parseFloat(formData.customerTotal || '0').toFixed(2)}</span>
+            <span className="font-bold text-green-600 text-lg">${(parseFloat(formData.customerTotal || '0') * 1.085).toFixed(2)}</span>
           </div>
           {formData.inHandDate && (
             <div className="flex justify-between">
@@ -462,8 +768,39 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
               <span className="font-medium text-blue-800">{formData.inHandDate}</span>
             </div>
           )}
+          <div className="flex justify-between">
+            <span className="text-blue-700">Status:</span>
+            <span className="font-medium text-blue-800">
+              {formData.status === 'new-quote' ? 'New Quote' : 
+               formData.status === 'quote-sent-to-customer' ? 'Quote Sent' : 
+               'Converted to Order'}
+            </span>
+          </div>
         </div>
       </Card>
+
+      {isEditing && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Button
+            onClick={() => {/* Generate PDF */}}
+            variant="secondary"
+            size="sm"
+            icon={FileText}
+            className="w-full"
+          >
+            Generate PDF
+          </Button>
+          <Button
+            onClick={() => {/* Send Email */}}
+            variant="primary"
+            size="sm"
+            icon={Send}
+            className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+          >
+            Send to Customer
+          </Button>
+        </div>
+      )}
     </div>
   );
 
@@ -471,19 +808,10 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
     switch (currentStep) {
       case 'customer': return renderCustomerStep();
       case 'address': return renderAddressStep();
+      case 'items': return renderItemsStep();
       case 'quote': return renderQuoteStep();
       case 'notes': return renderNotesStep();
       default: return renderCustomerStep();
-    }
-  };
-
-  const canProceed = () => {
-    switch (currentStep) {
-      case 'customer': return !!selectedCustomer;
-      case 'address': return !!(formData.billingAddress.street && formData.shippingAddress.street);
-      case 'quote': return !!(formData.customerTotal && parseFloat(formData.customerTotal) > 0);
-      case 'notes': return true;
-      default: return false;
     }
   };
 
@@ -493,15 +821,13 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
         {renderStepIndicator()}
       </div>
 
-      <form onSubmit={handleSubmit} className="p-6 ">
+      <form onSubmit={handleSubmit} className="p-6 space-y-6">
         {renderCurrentStep()}
-
-        
       </form>
 
       {isEditing && quote && (
         <div className="border-t border-gray-200 p-6 bg-gray-50">
-          <h4 className="text-sm font-medium text-gray-700 mb-4">Quote Details</h4>
+          <h4 className="text-sm font-medium text-gray-700 mb-4">Quote Information</h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
             <div className="flex items-center gap-2">
               <FileText className="w-4 h-4 text-gray-400" />
@@ -515,7 +841,7 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
             </div>
             <div className="flex items-center gap-2">
               <DollarSign className="w-4 h-4 text-gray-400" />
-              <span className="text-gray-500">Total:</span>
+              <span className="text-gray-500">Amount:</span>
               <span className="font-medium text-green-600">${quote.customerTotal.toFixed(2)}</span>
             </div>
             {quote.inHandDate && (

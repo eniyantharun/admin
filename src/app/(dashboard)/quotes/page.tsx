@@ -150,14 +150,18 @@ const getStatusConfig = (status: iQuote["status"]) => {
         enabled: true,
         label: { enabled: "New Quote", disabled: "New Quote" },
         icon: FileText,
-        color: "text-blue-600 bg-blue-100",
+        bgGradient: "from-blue-500 to-blue-600",
+        bgSolid: "bg-blue-100",
+        textColor: "text-blue-800",
       };
     case "quote-sent-to-customer":
       return {
         enabled: true,
         label: { enabled: "Quote Sent", disabled: "Quote Sent" },
         icon: Send,
-        color: "text-orange-600 bg-orange-100",
+        bgGradient: "from-orange-500 to-orange-600",
+        bgSolid: "bg-orange-100",
+        textColor: "text-orange-800",
       };
     case "quote-converted-to-order":
       return {
@@ -167,14 +171,18 @@ const getStatusConfig = (status: iQuote["status"]) => {
           disabled: "Converted to Order",
         },
         icon: CheckCircle,
-        color: "text-green-600 bg-green-100",
+        bgGradient: "from-green-500 to-green-600",
+        bgSolid: "bg-green-100",
+        textColor: "text-green-800",
       };
     default:
       return {
         enabled: true,
         label: { enabled: "Unknown", disabled: "Unknown" },
         icon: Clock,
-        color: "text-gray-600 bg-gray-100",
+        bgGradient: "from-gray-500 to-gray-600",
+        bgSolid: "bg-gray-100",
+        textColor: "text-gray-800",
       };
   }
 };
@@ -413,8 +421,8 @@ export default function QuotesPage() {
                       <td className="px-4 py-2 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="flex-shrink-0">
-                            <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center">
-                              <FileText className="w-4 h-4 text-white" />
+                            <div className={`w-8 h-8 bg-gradient-to-br ${statusConfig.bgGradient} rounded-lg flex items-center justify-center`}>
+                              <StatusIcon className="w-4 h-4 text-white" />
                             </div>
                           </div>
                           <div className="ml-3">
@@ -425,7 +433,7 @@ export default function QuotesPage() {
                               ID: {quote.id}
                             </div>
                             <div
-                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${statusConfig.color}`}
+                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${statusConfig.bgSolid} ${statusConfig.textColor}`}
                             >
                               <StatusIcon className="w-3 h-3 mr-1" />
                               {statusConfig.label.enabled}

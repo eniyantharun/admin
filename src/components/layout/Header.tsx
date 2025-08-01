@@ -133,7 +133,7 @@ export const Header: React.FC = () => {
           </div>
         </div>
 
-        <div className="dashboard-header-right flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
+<div className="dashboard-header-right flex items-center space-x-2 sm:space-x-3 flex-shrink-0 ml-auto">
           <div className="dashboard-header-notifications">
             <Button
               variant="secondary"

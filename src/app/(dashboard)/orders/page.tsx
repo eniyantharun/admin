@@ -12,6 +12,9 @@ import {
   CreditCard,
   Package,
   X,
+  CheckCircle,
+  Clock,
+  Truck,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -48,7 +51,7 @@ const mockOrders: iOrder[] = [
     orderNumber: "ORD-6873",
     customer: "Bobbie Smith",
     customerEmail: "bobbie.smith@example.com",
-    status: "new",
+    status: "delivered",
     dateTime: "7/20/2025 7:36:38 AM",
     inHandDate: "8/6/2025",
     customerTotal: 72.0,
@@ -90,7 +93,7 @@ const mockOrders: iOrder[] = [
     orderNumber: "ORD-6870",
     customer: "Jennifer Keepes",
     customerEmail: "jennifer.keepes@example.com",
-    status: "new",
+    status: "in-production",
     dateTime: "7/18/2025 1:26:02 PM",
     inHandDate: "8/3/2025",
     customerTotal: 272.5,
@@ -174,7 +177,7 @@ const mockOrders: iOrder[] = [
     orderNumber: "ORD-6862",
     customer: "Nic Hunter",
     customerEmail: "nic.hunter@example.com",
-    status: "in-production",
+    status: "cancelled",
     dateTime: "7/15/2025 11:59:33 AM",
     inHandDate: "7/30/2025",
     customerTotal: 556.0,
@@ -191,31 +194,55 @@ const getStatusConfig = (status: iOrder["status"]) => {
       return {
         enabled: true,
         label: { enabled: "New Order", disabled: "New Order" },
+        icon: ShoppingCart,
+        bgGradient: "from-blue-500 to-blue-600",
+        bgSolid: "bg-blue-100",
+        textColor: "text-blue-800",
       };
     case "in-production":
       return {
         enabled: true,
         label: { enabled: "In Production", disabled: "In Production" },
+        icon: Package,
+        bgGradient: "from-orange-500 to-orange-600",
+        bgSolid: "bg-orange-100",
+        textColor: "text-orange-800",
       };
     case "shipped":
       return {
         enabled: true,
         label: { enabled: "Shipped", disabled: "Shipped" },
+        icon: Truck,
+        bgGradient: "from-purple-500 to-purple-600",
+        bgSolid: "bg-purple-100",
+        textColor: "text-purple-800",
       };
     case "delivered":
       return {
         enabled: true,
         label: { enabled: "Delivered", disabled: "Delivered" },
+        icon: CheckCircle,
+        bgGradient: "from-green-500 to-green-600",
+        bgSolid: "bg-green-100",
+        textColor: "text-green-800",
       };
     case "cancelled":
       return {
         enabled: false,
         label: { enabled: "Cancelled", disabled: "Cancelled" },
+        icon: X,
+        bgGradient: "from-red-500 to-red-600",
+        bgSolid: "bg-red-100",
+        textColor: "text-red-800",
       };
     default:
       return {
         enabled: true,
         label: { enabled: "Unknown", disabled: "Unknown" },
+        icon: Clock,
+        bgGradient: "from-gray-500 to-gray-600",
+        bgSolid: "bg-gray-100",
+        textColor: "text-gray-800",
       };
   }
 };
@@ -452,6 +479,7 @@ export default function OrdersPage() {
               ) : (
                 orders.map((order) => {
                   const statusConfig = getStatusConfig(order.status);
+                  const StatusIcon = statusConfig.icon;
                   return (
                     <tr
                       key={order.id}
@@ -461,8 +489,8 @@ export default function OrdersPage() {
                       <td className="px-4 py-2 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="flex-shrink-0">
-                            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
-                              <ShoppingCart className="w-4 h-4 text-white" />
+                            <div className={`w-8 h-8 bg-gradient-to-br ${statusConfig.bgGradient} rounded-lg flex items-center justify-center`}>
+                              <StatusIcon className="w-4 h-4 text-white" />
                             </div>
                           </div>
                           <div className="ml-3">
@@ -472,11 +500,12 @@ export default function OrdersPage() {
                             <div className="text-xs text-gray-500">
                               ID: {order.id}
                             </div>
-                            <StatusBadge
-                              enabled={statusConfig.enabled}
-                              label={statusConfig.label}
-                              variant="compact"
-                            />
+                            <div
+                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${statusConfig.bgSolid} ${statusConfig.textColor}`}
+                            >
+                              <StatusIcon className="w-3 h-3 mr-1" />
+                              {statusConfig.label.enabled}
+                            </div>
                           </div>
                         </div>
                       </td>

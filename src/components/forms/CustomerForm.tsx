@@ -163,7 +163,7 @@ export const CustomerForm: React.FC<iCustomerFormProps> = ({
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: any) => {
     const { name, value, type, checked } = e.target;
 
     let processedValue = value;
@@ -313,10 +313,10 @@ export const CustomerForm: React.FC<iCustomerFormProps> = ({
               name="isBusinessCustomer"
               type="checkbox"
               value={!formData.isBusinessCustomer}
-              onChange={(e) =>
+              onChange={(e:any) =>
                 setFormData((prev) => ({
                   ...prev,
-                  isBusinessCustomer: !e.target.checked,
+                  isBusinessCustomer: !e.target?.checked,
                 }))
               }
               placeholder="I am not purchasing for a business"

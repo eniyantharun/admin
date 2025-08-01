@@ -66,7 +66,7 @@ export const BrandForm: React.FC<BrandFormProps> = ({
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (e: any) => {
     const { name, value, type } = e.target;
     const checked = (e.target as HTMLInputElement).checked;
     

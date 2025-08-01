@@ -1,41 +1,39 @@
-import { iFormInputProps } from '@/types';
 import React from 'react';
 
 interface FormInputProps {
   label: string;
   name: string;
-  value: string | boolean;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  value: any;
+  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
   error?: string;
   required?: boolean;
   type?: string;
   placeholder?: string;
   helpText?: string;
-   disabled?: boolean;
-   checked?: boolean; 
+  disabled?: boolean;
 }
 
-export const FormInput: React.FC<FormInputProps> = ({ 
-  label, 
-  name, 
-  value, 
-   checked,
-   disabled,
-  onChange, 
-  error, 
-  required = false, 
-  type = "text", 
+export const FormInput: React.FC<FormInputProps> = ({
+  label,
+  name,
+  value,
+  onChange,
+  error,
+  required = false,
+  type = "text",
   placeholder,
-  helpText
+  helpText,
+  disabled
 }) => (
   <div className="form-input-group">
-    <label className="form-label block text-sm font-medium text-gray-700 mb-1">
+    <label htmlFor={name} className="form-label block text-sm font-medium text-gray-700 mb-1">
       {label} {required && <span className="text-red-500">*</span>}
     </label>
     {type === 'checkbox' ? (
       <div className="flex items-center">
         <input
           type="checkbox"
+          id={name}
           name={name}
           checked={value as boolean}
           onChange={onChange}
@@ -45,10 +43,12 @@ export const FormInput: React.FC<FormInputProps> = ({
         <span className="ml-2 text-sm text-gray-600">{placeholder}</span>
       </div>
     ) : (
+      // For all other types (text, email, number, etc.), render a standard input
       <input
         type={type}
+        id={name}
         name={name}
-        value={value as string}
+        value={value || ''}
         onChange={onChange}
         className={`form-input w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 ${
           error ? 'border-red-500' : 'border-gray-300'
