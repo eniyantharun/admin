@@ -15,7 +15,7 @@ export default function SearchesPage() {
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Searches Module</h1>
           <div className="flex items-center justify-center gap-2 text-orange-600">
             <Clock className="w-4 h-4" />
-            <span className="text-sm font-medium">Coming Soon</span>
+            <span className="text-sm font-medium">Work in Progress</span>
           </div>
         </div>
         <p className="text-gray-600">

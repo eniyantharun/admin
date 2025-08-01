@@ -125,7 +125,7 @@ export const Header: React.FC = () => {
               <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-200 max-h-96 overflow-y-auto z-50">
                 <div className="p-4 text-center">
                   <Search className="w-6 h-6 mx-auto text-gray-400 mb-2" />
-                  <p className="text-sm text-gray-500">Search functionality coming soon...</p>
+                  <p className="text-sm text-gray-500">Search functionality Work in Progress...</p>
                   <p className="text-xs text-gray-400 mt-1">This is a visual placeholder</p>
                 </div>
               </div>

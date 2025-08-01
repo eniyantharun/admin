@@ -1,18 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { Package, DollarSign, Calendar, CreditCard, User, MapPin, MessageSquare, ChevronRight, ChevronDown, CheckCircle, Plus, Trash2, ShoppingCart, ChevronLeft, Truck, FileText, Send, Mail, Phone, Building } from 'lucide-react';
+import { Package, DollarSign, Calendar, CreditCard, User, MapPin, MessageSquare, ChevronRight, ChevronDown, CheckCircle, Plus, Trash2, ShoppingCart, ChevronLeft, Truck, FileText, Send, Mail, Phone, Building, ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { FormInput } from '@/components/helpers/FormInput';
 import { CustomerSearch } from '@/components/helpers/CustomerSearch';
 import { AddressForm } from '@/components/forms/AddressForm';
 import { EntityAvatar } from '@/components/helpers/EntityAvatar';
+import { ImageGallery } from '@/components/ui/ImageGallery';
 import { iCustomer, iCustomerAddressFormData } from '@/types/customer';
 import { iOrderFormData, iOrderFormProps, iOrderItem, iOrder } from '@/types/order';
 import { showToast } from '@/components/ui/toast';
 
 type FormStep = 'customer' | 'address' | 'items' | 'details' | 'checkout' | 'notes';
 
-// Mock customer data for demonstration
+interface ExtendedOrderItem extends iOrderItem {
+  images?: string[];
+}
+
 const mockCustomer: iCustomer = {
   id: '67890',
   idNum: 12345,
@@ -52,7 +56,7 @@ const mockCustomerAddresses = {
   }
 };
 
-const mockOrderItems: iOrderItem[] = [
+const mockOrderItems: ExtendedOrderItem[] = [
   {
     id: '1',
     productName: 'Safety Helmets with Logo',
@@ -61,7 +65,12 @@ const mockOrderItems: iOrderItem[] = [
     totalPrice: 625.00,
     supplierPrice: 8.75,
     customization: 'Company logo and safety certification',
-    description: 'ANSI-approved hard hats with custom branding'
+    description: 'ANSI-approved hard hats with custom branding',
+    images: [
+      'https://images.unsplash.com/photo-1649027421785-6827863f0891??w=400&h=400&fit=crop',
+      'https://images.unsplash.com/photo-1652423790373-f113dd1aa7fc??w=400&h=400&fit=crop',
+      'https://plus.unsplash.com/premium_photo-1671808063730-a9df57b66b42?w=400&h=400&fit=crop'
+    ]
   },
   {
     id: '2',
@@ -71,7 +80,11 @@ const mockOrderItems: iOrderItem[] = [
     totalPrice: 1185.00,
     supplierPrice: 11.20,
     customization: 'Company name on back panel',
-    description: 'High-visibility safety vests Class 2'
+    description: 'High-visibility safety vests Class 2',
+    images: [
+      'https://images.unsplash.com/photo-1662121396496-5c1d6c1db0d3?w=400&h=400&fit=crop',
+      'https://plus.unsplash.com/premium_photo-1678837404794-35cd6a4a275c?w=400&h=400&fit=crop'
+    ]
   },
   {
     id: '3',
@@ -81,7 +94,11 @@ const mockOrderItems: iOrderItem[] = [
     totalPrice: 700.00,
     supplierPrice: 19.50,
     customization: 'Embroidered company logo',
-    description: 'Heavy-duty canvas tool bags'
+    description: 'Heavy-duty canvas tool bags',
+    images: [
+      'https://matohash.com/cdn/shop/products/carhartt-foundry-series-14-tool-bag-embroidery-202237.jpg?w=400&h=400&fit=crop',
+      'https://matohash.com/cdn/shop/products/carhartt-foundry-series-14-tool-bag-embroidery-750945.jpg?w=400&h=400&fit=crop'
+    ]
   }
 ];
 
@@ -95,7 +112,7 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
   const [selectedCustomer, setSelectedCustomer] = useState<iCustomer | null>(null);
   const [showBillingAddressForm, setShowBillingAddressForm] = useState(false);
   const [showShippingAddressForm, setShowShippingAddressForm] = useState(false);
-  const [orderItems, setOrderItems] = useState<iOrderItem[]>([]);
+  const [orderItems, setOrderItems] = useState<ExtendedOrderItem[]>([]);
   
   const [formData, setFormData] = useState<iOrderFormData>({
     customer: '',
@@ -128,10 +145,8 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
   
   const [formErrors, setFormErrors] = useState<Partial<iOrderFormData>>({});
 
-  // Initialize form data based on edit/create mode
   useEffect(() => {
     if (isEditing && order) {
-      // Edit mode: pre-populate with order data
       setSelectedCustomer(mockCustomer);
       setOrderItems(mockOrderItems);
       setFormData(prev => ({
@@ -146,9 +161,8 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
         notes: order.notes || '',
         items: mockOrderItems,
       }));
-      setCurrentStep('customer'); // Always start from step 1
+      setCurrentStep('customer');
     } else {
-      // Create mode: use mock data for demo purposes
       setSelectedCustomer(mockCustomer);
       setOrderItems(mockOrderItems);
       const customerTotal = mockOrderItems.reduce((sum, item) => sum + item.totalPrice, 0);
@@ -165,7 +179,6 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
     }
   }, [order, isEditing]);
 
-  // Navigation functions without validation
   const handleNextStep = () => {
     const steps: FormStep[] = ['customer', 'address', 'items', 'details', 'checkout', 'notes'];
     const currentIndex = steps.indexOf(currentStep);
@@ -182,7 +195,6 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
     }
   };
 
-  // Final validation only when submitting
   const validateForm = (): boolean => {
     const errors: Partial<iOrderFormData> = {};
     
@@ -191,7 +203,7 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
       errors.customerTotal = 'Customer total must be greater than 0';
     }
     if (orderItems.length === 0) {
-      // Add items validation
+      showToast.error('At least one item is required');
     }
 
     setFormErrors(errors);
@@ -273,7 +285,7 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
   };
 
   const addOrderItem = () => {
-    const newItem: iOrderItem = {
+    const newItem: ExtendedOrderItem = {
       id: Date.now().toString(),
       productName: '',
       quantity: 1,
@@ -281,16 +293,18 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
       totalPrice: 0,
       supplierPrice: 0,
       customization: '',
-      description: ''
+      description: '',
+      images: []
     };
     setOrderItems(prev => [...prev, newItem]);
   };
 
   const removeOrderItem = (itemId: string) => {
     setOrderItems(prev => prev.filter(item => item.id !== itemId));
+    showToast.success('Item removed from order');
   };
 
-  const updateOrderItem = (itemId: string, field: keyof iOrderItem, value: any) => {
+  const updateOrderItem = (itemId: string, field: keyof ExtendedOrderItem, value: any) => {
     setOrderItems(prev => prev.map(item => {
       if (item.id === itemId) {
         const updatedItem = { ...item, [field]: value };
@@ -303,7 +317,10 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
     }));
   };
 
-  // Update form totals when items change
+  const updateOrderItemImages = (itemId: string, images: string[]) => {
+    updateOrderItem(itemId, 'images', images);
+  };
+
   useEffect(() => {
     const customerTotal = orderItems.reduce((sum, item) => sum + item.totalPrice, 0);
     const supplierTotal = orderItems.reduce((sum, item) => sum + (item.supplierPrice * item.quantity), 0);
@@ -411,7 +428,6 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
 
   const renderCustomerStep = () => {
     if (isEditing && selectedCustomer) {
-      // Show customer details for edit mode
       return (
         <div className="space-y-4">
           <Card className="p-4 bg-blue-50 border-blue-200">
@@ -470,7 +486,6 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
       );
     }
 
-    // Show customer search for create mode
     return (
       <div className="space-y-2">
         <CustomerSearch 
@@ -498,6 +513,158 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
       </div>
     );
   };
+
+  const renderItemsStep = () => (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <h4 className="font-medium text-gray-900 text-sm">Order Items</h4>
+        <Button
+          onClick={addOrderItem}
+          variant="secondary"
+          size="sm"
+          icon={Plus}
+          className="h-6"
+        >
+          Add Item
+        </Button>
+      </div>
+
+      {orderItems.length === 0 ? (
+        <Card className="p-3 text-center">
+          <ShoppingCart className="w-6 h-6 mx-auto text-gray-400 mb-2" />
+          <p className="text-sm text-gray-500 mb-2">No items added yet</p>
+          <Button
+            onClick={addOrderItem}
+            variant="secondary"
+            size="sm"
+            icon={Plus}
+          >
+            Add First Item
+          </Button>
+        </Card>
+      ) : (
+        <div className="space-y-2">
+          {orderItems.map((item, index) => (
+            <Card key={item.id} className="p-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-gray-900">Item #{index + 1}</span>
+                <Button
+                  onClick={() => removeOrderItem(item.id)}
+                  variant="danger"
+                  size="sm"
+                  icon={Trash2}
+                  iconOnly
+                  className="w-5 h-5"
+                />
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
+                <FormInput
+                  label="Product Name"
+                  name={`product-${item.id}`}
+                  value={item.productName}
+                  onChange={(e) => updateOrderItem(item.id, 'productName', e.target.value)}
+                  placeholder="Enter product name"
+                  required
+                />
+                <FormInput
+                  label="Description"
+                  name={`description-${item.id}`}
+                  value={item.description || ''}
+                  onChange={(e) => updateOrderItem(item.id, 'description', e.target.value)}
+                  placeholder="Product description"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 mb-3">
+                <FormInput
+                  label="Quantity"
+                  name={`quantity-${item.id}`}
+                  type="number"
+                  value={item.quantity.toString()}
+                  onChange={(e) => updateOrderItem(item.id, 'quantity', parseInt(e.target.value) || 0)}
+                  placeholder="1"
+                  required
+                />
+                <FormInput
+                  label="Unit Price"
+                  name={`unitPrice-${item.id}`}
+                  type="number"
+                  value={item.unitPrice.toString()}
+                  onChange={(e) => updateOrderItem(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
+                  placeholder="0.00"
+                  required
+                />
+                <FormInput
+                  label="Supplier Price"
+                  name={`supplierPrice-${item.id}`}
+                  type="number"
+                  value={item.supplierPrice.toString()}
+                  onChange={(e) => updateOrderItem(item.id, 'supplierPrice', parseFloat(e.target.value) || 0)}
+                  placeholder="0.00"
+                />
+                <div className="form-input-group">
+                  <label className="form-label block text-sm font-medium text-gray-700 mb-1">
+                    Total Price
+                  </label>
+                  <div className="text-lg font-bold text-green-600 py-2">
+                    ${item.totalPrice.toFixed(2)}
+                  </div>
+                </div>
+                <div className="form-input-group">
+                  <label className="form-label block text-sm font-medium text-gray-700 mb-1">
+                    Profit
+                  </label>
+                  <div className="text-sm font-medium text-orange-600 py-2">
+                    ${((item.unitPrice - item.supplierPrice) * item.quantity).toFixed(2)}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mb-3">
+                <FormInput
+                  label="Customization/Notes"
+                  name={`customization-${item.id}`}
+                  value={item.customization || ''}
+                  onChange={(e) => updateOrderItem(item.id, 'customization', e.target.value)}
+                  placeholder="Special instructions or customization details"
+                />
+              </div>
+
+              <div className="border-t pt-3">
+                <ImageGallery
+                  images={item.images || []}
+                  onImagesChange={(images) => updateOrderItemImages(item.id, images)}
+                  title={`${item.productName || 'Product'} Images`}
+                  maxImages={8}
+                  editable={true}
+                />
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {orderItems.length > 0 && (
+        <Card className="p-3 bg-blue-50 border-blue-200">
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-medium text-blue-800">Order Summary</span>
+            <div className="text-right">
+              <div className="text-xl font-bold text-green-600">
+                ${orderItems.reduce((sum, item) => sum + item.totalPrice, 0).toFixed(2)}
+              </div>
+              <div className="text-xs text-blue-600">
+                {orderItems.length} item{orderItems.length !== 1 ? 's' : ''}
+              </div>
+              <div className="text-xs text-orange-600">
+                Profit: ${orderItems.reduce((sum, item) => sum + ((item.unitPrice - item.supplierPrice) * item.quantity), 0).toFixed(2)}
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
+    </div>
+  );
 
   const renderAddressStep = () => (
     <div className="space-y-3">
@@ -586,146 +753,6 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
           </div>
         )}
       </Card>
-    </div>
-  );
-
-  const renderItemsStep = () => (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <h4 className="font-medium text-gray-900 text-sm">Order Items</h4>
-        <Button
-          onClick={addOrderItem}
-          variant="secondary"
-          size="sm"
-          icon={Plus}
-          className="h-6"
-        >
-          Add Item
-        </Button>
-      </div>
-
-      {orderItems.length === 0 ? (
-        <Card className="p-3 text-center">
-          <ShoppingCart className="w-6 h-6 mx-auto text-gray-400 mb-2" />
-          <p className="text-sm text-gray-500 mb-2">No items added yet</p>
-          <Button
-            onClick={addOrderItem}
-            variant="secondary"
-            size="sm"
-            icon={Plus}
-          >
-            Add First Item
-          </Button>
-        </Card>
-      ) : (
-        <div className="space-y-2">
-          {orderItems.map((item, index) => (
-            <Card key={item.id} className="p-3">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-gray-900">Item #{index + 1}</span>
-                <Button
-                  onClick={() => removeOrderItem(item.id)}
-                  variant="danger"
-                  size="sm"
-                  icon={Trash2}
-                  iconOnly
-                  className="w-5 h-5"
-                />
-              </div>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
-                <FormInput
-                  label="Product Name"
-                  name={`product-${item.id}`}
-                  value={item.productName}
-                  onChange={(e) => updateOrderItem(item.id, 'productName', e.target.value)}
-                  placeholder="Enter product name"
-                  required
-                />
-                <FormInput
-                  label="Description"
-                  name={`description-${item.id}`}
-                  value={item.description || ''}
-                  onChange={(e) => updateOrderItem(item.id, 'description', e.target.value)}
-                  placeholder="Product description"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
-                <FormInput
-                  label="Quantity"
-                  name={`quantity-${item.id}`}
-                  type="number"
-                  value={item.quantity.toString()}
-                  onChange={(e) => updateOrderItem(item.id, 'quantity', parseInt(e.target.value) || 0)}
-                  placeholder="1"
-                  required
-                />
-                <FormInput
-                  label="Unit Price"
-                  name={`unitPrice-${item.id}`}
-                  type="number"
-                  value={item.unitPrice.toString()}
-                  onChange={(e) => updateOrderItem(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
-                  placeholder="0.00"
-                  required
-                />
-                <FormInput
-                  label="Supplier Price"
-                  name={`supplierPrice-${item.id}`}
-                  type="number"
-                  value={item.supplierPrice.toString()}
-                  onChange={(e) => updateOrderItem(item.id, 'supplierPrice', parseFloat(e.target.value) || 0)}
-                  placeholder="0.00"
-                />
-                <div className="form-input-group">
-                  <label className="form-label block text-sm font-medium text-gray-700 mb-1">
-                    Total Price
-                  </label>
-                  <div className="text-lg font-bold text-green-600 py-2">
-                    ${item.totalPrice.toFixed(2)}
-                  </div>
-                </div>
-                <div className="form-input-group">
-                  <label className="form-label block text-sm font-medium text-gray-700 mb-1">
-                    Profit
-                  </label>
-                  <div className="text-sm font-medium text-orange-600 py-2">
-                    ${((item.unitPrice - item.supplierPrice) * item.quantity).toFixed(2)}
-                  </div>
-                </div>
-              </div>
-
-              <FormInput
-                label="Customization/Notes"
-                name={`customization-${item.id}`}
-                value={item.customization || ''}
-                onChange={(e) => updateOrderItem(item.id, 'customization', e.target.value)}
-                placeholder="Special instructions or customization details"
-              />
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {orderItems.length > 0 && (
-        <Card className="p-3 bg-blue-50 border-blue-200">
-          <div className="flex justify-between items-center">
-            <span className="text-sm font-medium text-blue-800">Order Summary</span>
-            <div className="text-right">
-              <div className="text-xl font-bold text-green-600">
-                ${orderItems.reduce((sum, item) => sum + item.totalPrice, 0).toFixed(2)}
-              </div>
-              <div className="text-xs text-blue-600">
-                {orderItems.length} item{orderItems.length !== 1 ? 's' : ''}
-              </div>
-              <div className="text-xs text-orange-600">
-                Profit: ${orderItems.reduce((sum, item) => sum + ((item.unitPrice - item.supplierPrice) * item.quantity), 0).toFixed(2)}
-              </div>
-            </div>
-          </div>
-        </Card>
-      )}
     </div>
   );
 
@@ -973,6 +1000,10 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
             <span className="font-medium text-blue-800">{orderItems.length} item{orderItems.length !== 1 ? 's' : ''}</span>
           </div>
           <div className="flex justify-between">
+            <span className="text-blue-700">Images:</span>
+            <span className="font-medium text-blue-800">{orderItems.reduce((sum, item) => sum + (item.images?.length || 0), 0)} total</span>
+          </div>
+          <div className="flex justify-between">
             <span className="text-blue-700">Subtotal:</span>
             <span className="font-medium text-blue-800">${parseFloat(formData.customerTotal || '0').toFixed(2)}</span>
           </div>
@@ -1088,6 +1119,11 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
               <CreditCard className="w-3 h-3 text-gray-400" />
               <span className="text-gray-500">Payment:</span>
               <span className="font-medium">{order.paymentMethod}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <ImageIcon className="w-3 h-3 text-gray-400" />
+              <span className="text-gray-500">Images:</span>
+              <span className="font-medium">{orderItems.reduce((sum, item) => sum + (item.images?.length || 0), 0)} total</span>
             </div>
           </div>
         </div>

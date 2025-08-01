@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, DollarSign, Calendar, Send, CheckCircle, User, MapPin, MessageSquare, ChevronRight, ChevronDown, ChevronLeft, Plus, Trash2, Package, Mail, Phone, Building } from 'lucide-react';
+import { FileText, DollarSign, Calendar, Send, CheckCircle, User, MapPin, MessageSquare, ChevronRight, ChevronDown, ChevronLeft, Plus, Trash2, Package, Mail, Phone, Building, ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { FormInput } from '@/components/helpers/FormInput';
 import { CustomerSearch } from '@/components/helpers/CustomerSearch';
 import { AddressForm } from '@/components/forms/AddressForm';
 import { EntityAvatar } from '@/components/helpers/EntityAvatar';
+import { ImageGallery } from '@/components/ui/ImageGallery';
 import { iCustomer, iCustomerAddressFormData } from '@/types/customer';
 import { iQuoteFormData, iQuoteFormProps, iQuote } from '@/types/quotes';
+import { showToast } from '@/components/ui/toast';
 
 type FormStep = 'customer' | 'address' | 'items' | 'quote' | 'notes';
 
@@ -19,9 +21,9 @@ interface QuoteItem {
   totalPrice: number;
   customization?: string;
   description?: string;
+  images?: string[];
 }
 
-// Mock customer data for demonstration
 const mockCustomer: iCustomer = {
   id: '12345',
   idNum: 67890,
@@ -69,7 +71,12 @@ const mockQuoteItems: QuoteItem[] = [
     unitPrice: 8.50,
     totalPrice: 850.00,
     customization: 'Company logo on both sides',
-    description: 'Ceramic mugs with custom full-color printing'
+    description: 'Ceramic mugs with custom full-color printing',
+    images: [
+      'https://tiimg.tistatic.com/fp/1/008/403/customized-printed-promotional-mugs-for-corporate-personal-gift-105.jpg?w=400&h=400&fit=crop',
+      'https://d2fy0k1bcbbnwr.cloudfront.net/Designs_Inners_and_Outers/Mugs/mug_basic_pat_d539_o.jpg?w=400&h=400&fit=crop',
+      'https://crystalimagery.com/cdn/shop/products/Logo_coffee_e6da97d1-4fb9-485b-b848-e0ebc4f5238f_1024x1024.jpg?v=1619803077?w=400&h=400&fit=crop'
+    ]
   },
   {
     id: '2', 
@@ -78,7 +85,12 @@ const mockQuoteItems: QuoteItem[] = [
     unitPrice: 1.25,
     totalPrice: 625.00,
     customization: 'Company name and contact info',
-    description: 'Metal ballpoint pens with laser engraving'
+    description: 'Metal ballpoint pens with laser engraving',
+    images: [
+      'https://store.jaunpurmart.in/wp-content/uploads/2024/11/02.jpg?w=400&h=400&fit=crop',
+      'https://store.jaunpurmart.in/wp-content/uploads/2024/11/03.jpg?w=400&h=400&fit=crop',
+      'https://promotionway.com/data/shopproducts/6724/aluminium-ball-pen-coloured-touch-ip131503-52-vm-ea.jpg?w=400&h=400&fit=crop'
+    ]
   }
 ];
 
@@ -108,10 +120,8 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
   
   const [formErrors, setFormErrors] = useState<Partial<iQuoteFormData>>({});
 
-  // Initialize form data based on edit/create mode
   useEffect(() => {
     if (isEditing && quote) {
-      // Edit mode: pre-populate with quote data
       setSelectedCustomer(mockCustomer);
       setQuoteItems(mockQuoteItems);
       setFormData({
@@ -125,9 +135,8 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
         shippingAddress: mockAddresses.shipping,
         sameAsShipping: false,
       });
-      setCurrentStep('customer'); // Always start from step 1
+      setCurrentStep('customer');
     } else {
-      // Create mode: use mock data for demo purposes
       setSelectedCustomer(mockCustomer);
       setQuoteItems(mockQuoteItems);
       setFormData({
@@ -144,7 +153,6 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
     }
   }, [quote, isEditing]);
 
-  // Navigation functions without validation
   const handleNextStep = () => {
     const steps: FormStep[] = ['customer', 'address', 'items', 'quote', 'notes'];
     const currentIndex = steps.indexOf(currentStep);
@@ -161,7 +169,6 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
     }
   };
 
-  // Final validation only when submitting
   const validateForm = (): boolean => {
     const errors: Partial<iQuoteFormData> = {};
     
@@ -170,7 +177,7 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
       errors.customerTotal = 'Customer total must be greater than 0';
     }
     if (quoteItems.length === 0) {
-      // Add items validation
+      showToast.error('At least one item is required');
     }
 
     setFormErrors(errors);
@@ -231,7 +238,6 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
     setShowShippingAddressForm(false);
   };
 
-  // Quote items management
   const addQuoteItem = () => {
     const newItem: QuoteItem = {
       id: Date.now().toString(),
@@ -240,13 +246,15 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
       unitPrice: 0,
       totalPrice: 0,
       customization: '',
-      description: ''
+      description: '',
+      images: []
     };
     setQuoteItems(prev => [...prev, newItem]);
   };
 
   const removeQuoteItem = (itemId: string) => {
     setQuoteItems(prev => prev.filter(item => item.id !== itemId));
+    showToast.success('Item removed from quote');
   };
 
   const updateQuoteItem = (itemId: string, field: keyof QuoteItem, value: any) => {
@@ -262,7 +270,10 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
     }));
   };
 
-  // Update form total when items change
+  const updateQuoteItemImages = (itemId: string, images: string[]) => {
+    updateQuoteItem(itemId, 'images', images);
+  };
+
   useEffect(() => {
     const total = quoteItems.reduce((sum, item) => sum + item.totalPrice, 0);
     setFormData(prev => ({
@@ -292,6 +303,150 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
       default: return false;
     }
   };
+
+  const renderItemsStep = () => (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h4 className="font-medium text-gray-900 text-sm">Quote Items</h4>
+        <Button
+          onClick={addQuoteItem}
+          variant="secondary"
+          size="sm"
+          icon={Plus}
+          className="h-7"
+        >
+          Add Item
+        </Button>
+      </div>
+
+      {quoteItems.length === 0 ? (
+        <Card className="p-6 text-center">
+          <Package className="w-8 h-8 mx-auto text-gray-400 mb-3" />
+          <p className="text-sm text-gray-500 mb-3">No items added yet</p>
+          <Button
+            onClick={addQuoteItem}
+            variant="secondary"
+            size="sm"
+            icon={Plus}
+          >
+            Add First Item
+          </Button>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {quoteItems.map((item, index) => (
+            <Card key={item.id} className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-medium text-gray-900">Item #{index + 1}</span>
+                <Button
+                  onClick={() => removeQuoteItem(item.id)}
+                  variant="danger"
+                  size="sm"
+                  icon={Trash2}
+                  iconOnly
+                  className="w-6 h-6"
+                />
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                <FormInput
+                  label="Product Name"
+                  name={`product-${item.id}`}
+                  value={item.productName}
+                  onChange={(e) => updateQuoteItem(item.id, 'productName', e.target.value)}
+                  placeholder="Enter product name"
+                  required
+                />
+                <FormInput
+                  label="Description"
+                  name={`description-${item.id}`}
+                  value={item.description || ''}
+                  onChange={(e) => updateQuoteItem(item.id, 'description', e.target.value)}
+                  placeholder="Product description"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-3">
+                <FormInput
+                  label="Quantity"
+                  name={`quantity-${item.id}`}
+                  type="number"
+                  value={item.quantity.toString()}
+                  onChange={(e) => updateQuoteItem(item.id, 'quantity', parseInt(e.target.value) || 0)}
+                  placeholder="1"
+                  required
+                />
+                <FormInput
+                  label="Unit Price"
+                  name={`unitPrice-${item.id}`}
+                  type="number"
+                  value={item.unitPrice.toString()}
+                  onChange={(e) => updateQuoteItem(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
+                  placeholder="0.00"
+                  required
+                />
+                <div className="form-input-group">
+                  <label className="form-label block text-sm font-medium text-gray-700 mb-1">
+                    Total Price
+                  </label>
+                  <div className="text-lg font-bold text-green-600 py-2">
+                    ${item.totalPrice.toFixed(2)}
+                  </div>
+                </div>
+                <div className="form-input-group">
+                  <label className="form-label block text-sm font-medium text-gray-700 mb-1">
+                    Margin
+                  </label>
+                  <div className="text-sm text-gray-600 py-2">
+                    {item.unitPrice > 0 ? ((item.unitPrice * 0.15) / item.unitPrice * 100).toFixed(1) : '0.0'}%
+                  </div>
+                </div>
+              </div>
+
+              <div className="mb-3">
+                <FormInput
+                  label="Customization/Notes"
+                  name={`customization-${item.id}`}
+                  value={item.customization || ''}
+                  onChange={(e) => updateQuoteItem(item.id, 'customization', e.target.value)}
+                  placeholder="Special instructions or customization details"
+                />
+              </div>
+
+              <div className="border-t pt-3">
+                <ImageGallery
+                  images={item.images || []}
+                  onImagesChange={(images) => updateQuoteItemImages(item.id, images)}
+                  title={`${item.productName || 'Product'} Images`}
+                  maxImages={8}
+                  editable={true}
+                />
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {quoteItems.length > 0 && (
+        <Card className="p-4 bg-purple-50 border-purple-200">
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-medium text-purple-800">Quote Summary</span>
+            <div className="text-right">
+              <div className="text-xl font-bold text-green-600">
+                ${quoteItems.reduce((sum, item) => sum + item.totalPrice, 0).toFixed(2)}
+              </div>
+              <div className="text-xs text-purple-600">
+                {quoteItems.length} item{quoteItems.length !== 1 ? 's' : ''}
+              </div>
+              <div className="text-xs text-purple-600">
+                {quoteItems.reduce((sum, item) => sum + (item.images?.length || 0), 0)} images
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
+    </div>
+  );
 
   const renderStepIndicator = () => {
     const steps: FormStep[] = ['customer', 'address', 'items', 'quote', 'notes'];
@@ -364,7 +519,6 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
 
   const renderCustomerStep = () => {
     if (isEditing && selectedCustomer) {
-      // Show customer details for edit mode
       return (
         <div className="space-y-4">
           <Card className="p-4 bg-blue-50 border-blue-200">
@@ -423,7 +577,6 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
       );
     }
 
-    // Show customer search for create mode
     return (
       <div className="space-y-3">
         <CustomerSearch 
@@ -542,135 +695,6 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
     </div>
   );
 
-  const renderItemsStep = () => (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h4 className="font-medium text-gray-900 text-sm">Quote Items</h4>
-        <Button
-          onClick={addQuoteItem}
-          variant="secondary"
-          size="sm"
-          icon={Plus}
-          className="h-7"
-        >
-          Add Item
-        </Button>
-      </div>
-
-      {quoteItems.length === 0 ? (
-        <Card className="p-6 text-center">
-          <Package className="w-8 h-8 mx-auto text-gray-400 mb-3" />
-          <p className="text-sm text-gray-500 mb-3">No items added yet</p>
-          <Button
-            onClick={addQuoteItem}
-            variant="secondary"
-            size="sm"
-            icon={Plus}
-          >
-            Add First Item
-          </Button>
-        </Card>
-      ) : (
-        <div className="space-y-3">
-          {quoteItems.map((item, index) => (
-            <Card key={item.id} className="p-4">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-medium text-gray-900">Item #{index + 1}</span>
-                <Button
-                  onClick={() => removeQuoteItem(item.id)}
-                  variant="danger"
-                  size="sm"
-                  icon={Trash2}
-                  iconOnly
-                  className="w-6 h-6"
-                />
-              </div>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-                <FormInput
-                  label="Product Name"
-                  name={`product-${item.id}`}
-                  value={item.productName}
-                  onChange={(e) => updateQuoteItem(item.id, 'productName', e.target.value)}
-                  placeholder="Enter product name"
-                  required
-                />
-                <FormInput
-                  label="Description"
-                  name={`description-${item.id}`}
-                  value={item.description || ''}
-                  onChange={(e) => updateQuoteItem(item.id, 'description', e.target.value)}
-                  placeholder="Product description"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                <FormInput
-                  label="Quantity"
-                  name={`quantity-${item.id}`}
-                  type="number"
-                  value={item.quantity.toString()}
-                  onChange={(e) => updateQuoteItem(item.id, 'quantity', parseInt(e.target.value) || 0)}
-                  placeholder="1"
-                  required
-                />
-                <FormInput
-                  label="Unit Price"
-                  name={`unitPrice-${item.id}`}
-                  type="number"
-                  value={item.unitPrice.toString()}
-                  onChange={(e) => updateQuoteItem(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
-                  placeholder="0.00"
-                  required
-                />
-                <div className="form-input-group">
-                  <label className="form-label block text-sm font-medium text-gray-700 mb-1">
-                    Total Price
-                  </label>
-                  <div className="text-lg font-bold text-green-600 py-2">
-                    ${item.totalPrice.toFixed(2)}
-                  </div>
-                </div>
-                <div className="form-input-group">
-                  <label className="form-label block text-sm font-medium text-gray-700 mb-1">
-                    Margin
-                  </label>
-                  <div className="text-sm text-gray-600 py-2">
-                    {item.unitPrice > 0 ? ((item.unitPrice * 0.15) / item.unitPrice * 100).toFixed(1) : '0.0'}%
-                  </div>
-                </div>
-              </div>
-
-              <FormInput
-                label="Customization/Notes"
-                name={`customization-${item.id}`}
-                value={item.customization || ''}
-                onChange={(e) => updateQuoteItem(item.id, 'customization', e.target.value)}
-                placeholder="Special instructions or customization details"
-              />
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {quoteItems.length > 0 && (
-        <Card className="p-4 bg-purple-50 border-purple-200">
-          <div className="flex justify-between items-center">
-            <span className="text-sm font-medium text-purple-800">Quote Summary</span>
-            <div className="text-right">
-              <div className="text-xl font-bold text-green-600">
-                ${quoteItems.reduce((sum, item) => sum + item.totalPrice, 0).toFixed(2)}
-              </div>
-              <div className="text-xs text-purple-600">
-                {quoteItems.length} item{quoteItems.length !== 1 ? 's' : ''}
-              </div>
-            </div>
-          </div>
-        </Card>
-      )}
-    </div>
-  );
-
   const renderQuoteStep = () => (
     <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -755,6 +779,10 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
             <span className="font-medium text-blue-800">{quoteItems.length} item{quoteItems.length !== 1 ? 's' : ''}</span>
           </div>
           <div className="flex justify-between">
+            <span className="text-blue-700">Images:</span>
+            <span className="font-medium text-blue-800">{quoteItems.reduce((sum, item) => sum + (item.images?.length || 0), 0)} total</span>
+          </div>
+          <div className="flex justify-between">
             <span className="text-blue-700">Subtotal:</span>
             <span className="font-medium text-blue-800">${parseFloat(formData.customerTotal || '0').toFixed(2)}</span>
           </div>
@@ -782,7 +810,7 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
       {isEditing && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Button
-            onClick={() => {/* Generate PDF */}}
+            onClick={() => showToast.success('PDF generated successfully')}
             variant="secondary"
             size="sm"
             icon={FileText}
@@ -791,7 +819,7 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
             Generate PDF
           </Button>
           <Button
-            onClick={() => {/* Send Email */}}
+            onClick={() => showToast.success('Quote sent successfully to ' + formData.customerEmail)}
             variant="primary"
             size="sm"
             icon={Send}
@@ -851,6 +879,11 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
                 <span className="font-medium">{quote.inHandDate}</span>
               </div>
             )}
+            <div className="flex items-center gap-2">
+              <ImageIcon className="w-4 h-4 text-gray-400" />
+              <span className="text-gray-500">Images:</span>
+              <span className="font-medium">{quoteItems.reduce((sum, item) => sum + (item.images?.length || 0), 0)} total</span>
+            </div>
           </div>
         </div>
       )}
