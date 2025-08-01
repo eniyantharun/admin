@@ -1,6 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { X, ZoomIn, ZoomOut, RotateCw, Download, ChevronLeft, ChevronRight } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
+import React, { useState, useEffect } from "react";
+import {
+  X,
+  ZoomIn,
+  ZoomOut,
+  RotateCw,
+  Download,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
+import { Button } from "@/components/ui/Button";
 
 interface ImageViewerProps {
   isOpen: boolean;
@@ -17,7 +25,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
   images,
   currentIndex,
   onIndexChange,
-  title
+  title,
 }) => {
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
@@ -27,61 +35,61 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      document.body.style.overflow = 'hidden';
+      document.body.style.overflow = "hidden";
       setZoom(1);
       setRotation(0);
       setPosition({ x: 0, y: 0 });
     } else {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = "unset";
     }
 
     return () => {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = "unset";
     };
   }, [isOpen]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isOpen) return;
-      
+
       switch (e.key) {
-        case 'Escape':
+        case "Escape":
           onClose();
           break;
-        case 'ArrowLeft':
+        case "ArrowLeft":
           handlePrevImage();
           break;
-        case 'ArrowRight':
+        case "ArrowRight":
           handleNextImage();
           break;
-        case '+':
-        case '=':
+        case "+":
+        case "=":
           handleZoomIn();
           break;
-        case '-':
+        case "-":
           handleZoomOut();
           break;
-        case 'r':
-        case 'R':
+        case "r":
+        case "R":
           handleRotate();
           break;
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, currentIndex]);
 
   const handleZoomIn = () => {
-    setZoom(prev => Math.min(prev * 1.2, 5));
+    setZoom((prev) => Math.min(prev * 1.2, 5));
   };
 
   const handleZoomOut = () => {
-    setZoom(prev => Math.max(prev / 1.2, 0.1));
+    setZoom((prev) => Math.max(prev / 1.2, 0.1));
   };
 
   const handleRotate = () => {
-    setRotation(prev => (prev + 90) % 360);
+    setRotation((prev) => (prev + 90) % 360);
   };
 
   const handleReset = () => {
@@ -109,7 +117,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
       setIsDragging(true);
       setDragStart({
         x: e.clientX - position.x,
-        y: e.clientY - position.y
+        y: e.clientY - position.y,
       });
     }
   };
@@ -118,7 +126,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
     if (isDragging && zoom > 1) {
       setPosition({
         x: e.clientX - dragStart.x,
-        y: e.clientY - dragStart.y
+        y: e.clientY - dragStart.y,
       });
     }
   };
@@ -126,7 +134,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
     const delta = e.deltaY > 0 ? 0.9 : 1.1;
-    setZoom(prev => Math.min(Math.max(prev * delta, 0.1), 5));
+    setZoom((prev) => Math.min(Math.max(prev * delta, 0.1), 5));
   };
 
   const handleMouseUp = () => {
@@ -138,7 +146,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
       const response = await fetch(images[currentIndex]);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = url;
       link.download = `image-${currentIndex + 1}.jpg`;
       document.body.appendChild(link);
@@ -245,7 +253,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
           onWheel={handleWheel}
           style={{
             transform: `scale(${zoom}) rotate(${rotation}deg) translate(${position.x}px, ${position.y}px)`,
-            transition: isDragging ? 'none' : 'transform 0.2s ease-out'
+            transition: isDragging ? "none" : "transform 0.2s ease-out",
           }}
         >
           <img
@@ -269,8 +277,8 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
                 }}
                 className={`w-2 h-2 rounded-full transition-all duration-200 ${
                   index === currentIndex
-                    ? 'bg-white scale-125'
-                    : 'bg-white/50 hover:bg-white/75'
+                    ? "bg-white scale-125"
+                    : "bg-white/50 hover:bg-white/75"
                 }`}
               />
             ))}

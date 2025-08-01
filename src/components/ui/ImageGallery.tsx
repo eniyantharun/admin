@@ -212,35 +212,35 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
               </div>
 
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all duration-200 rounded-lg flex items-center justify-center">
-  <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center space-x-2">
-    <Button
-      onClick={(e) => {
-        e.stopPropagation();
-        e.preventDefault();
-        handleImageClick(index);
-      }}
-      variant="secondary"
-      size="sm"
-      icon={Eye}
-      iconOnly
-      className="bg-white/90 border-gray-200 text-gray-700 hover:bg-white shadow-lg"
-    />
-    {editable && (
-      <Button
-        onClick={(e) => {
-          e.stopPropagation();
-          e.preventDefault();
-          handleRemoveImage(index);
-        }}
-        variant="danger"
-        size="sm"
-        icon={X}
-        iconOnly
-        className="bg-red-500 border-red-500 text-white hover:bg-red-600 shadow-lg"
-      />
-    )}
-  </div>
-</div>
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center space-x-2">
+                  <Button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      handleImageClick(index);
+                    }}
+                    variant="secondary"
+                    size="sm"
+                    icon={Eye}
+                    iconOnly
+                    className="bg-white/90 border-gray-200 text-gray-700 hover:bg-white shadow-lg"
+                  />
+                  {editable && (
+                    <Button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        handleRemoveImage(index);
+                      }}
+                      variant="danger"
+                      size="sm"
+                      icon={X}
+                      iconOnly
+                      className="bg-red-500 border-red-500 text-white hover:bg-red-600 shadow-lg"
+                    />
+                  )}
+                </div>
+              </div>
 
               <div className="absolute top-1 right-1 bg-black/50 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                 {index + 1}
