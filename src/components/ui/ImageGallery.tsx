@@ -28,18 +28,25 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
   const [newImageUrl, setNewImageUrl] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
 
-  const handleImageClick = (index: number) => {
+  const handleImageClick = (index: number, e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
     setCurrentImageIndex(index);
     setShowModal(true);
   };
 
-  const handleRemoveImage = (index: number) => {
+  const handleRemoveImage = (index: number, e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
     const updatedImages = images.filter((_, i) => i !== index);
     onImagesChange(updatedImages);
     showToast.success("Image removed successfully");
   };
 
-  const handleAddImage = () => {
+  const handleAddImage = (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    
     if (!newImageUrl.trim()) {
       showToast.error("Please enter a valid image URL");
       return;
@@ -68,18 +75,42 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
     img.src = newImageUrl;
   };
 
+  const handleShowAddForm = (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    setShowAddForm(!showAddForm);
+  };
+
+  const handleCancelAddForm = (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    setShowAddForm(false);
+    setNewImageUrl("");
+  };
+
+  const handleModalClose = () => {
+    setShowModal(false);
+  };
+
+  const handleIndexChange = (newIndex: number) => {
+    setCurrentImageIndex(newIndex);
+  };
+
   const handleDragStart = (e: React.DragEvent, index: number) => {
+    e.stopPropagation();
     setDraggedIndex(index);
     e.dataTransfer.effectAllowed = "move";
   };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     e.dataTransfer.dropEffect = "move";
   };
 
   const handleDrop = (e: React.DragEvent, dropIndex: number) => {
     e.preventDefault();
+    e.stopPropagation();
 
     if (draggedIndex === null || draggedIndex === dropIndex) {
       setDraggedIndex(null);
@@ -96,7 +127,9 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
     showToast.success("Images reordered");
   };
 
-  const handleDragEnd = () => {
+  const handleDragEnd = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     setDraggedIndex(null);
   };
 
@@ -109,16 +142,15 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
             <span className="text-xs text-gray-500">
               {images.length}/{maxImages}
             </span>
-            <Button
-              onClick={() => setShowAddForm(!showAddForm)}
-              variant="secondary"
-              size="sm"
-              icon={Plus}
-              className="h-6"
+            <button
+              onClick={handleShowAddForm}
               disabled={images.length >= maxImages}
+              className="px-3 py-2 h-6 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg shadow-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
+              title="Add Image"
             >
+              <Plus className="w-3 h-3" />
               Add Image
-            </Button>
+            </button>
           </div>
         )}
       </div>
@@ -133,30 +165,36 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
                 onChange={(e) => setNewImageUrl(e.target.value)}
                 placeholder="Enter image URL (https://example.com/image.jpg)"
                 className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-              />
-              <Button
-                onClick={handleAddImage}
-                variant="primary"
-                size="sm"
-                icon={Upload}
-                disabled={!newImageUrl.trim()}
-              >
-                Add
-              </Button>
-              <Button
-                onClick={() => {
-                  setShowAddForm(false);
-                  setNewImageUrl("");
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddImage();
+                  }
+                  if (e.key === 'Escape') {
+                    e.preventDefault();
+                    handleCancelAddForm();
+                  }
                 }}
-                variant="secondary"
-                size="sm"
-                icon={X}
-                iconOnly
               />
+              <button
+                onClick={handleAddImage}
+                disabled={!newImageUrl.trim()}
+                className="px-3 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                title="Add Image"
+              >
+                <Upload className="w-4 h-4" />
+                Add
+              </button>
+              <button
+                onClick={handleCancelAddForm}
+                className="p-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg shadow-sm transition-all duration-200"
+                title="Cancel"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
             <p className="text-xs text-blue-600">
-              Supported formats: JPG, PNG, GIF, WebP. Maximum {maxImages}{" "}
-              images.
+              Supported formats: JPG, PNG, GIF, WebP. Maximum {maxImages} images.
             </p>
           </div>
         </Card>
@@ -167,14 +205,13 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
           <ImageIcon className="w-8 h-8 mx-auto text-gray-400 mb-2" />
           <p className="text-sm text-gray-500 mb-2">No images added yet</p>
           {editable && (
-            <Button
-              onClick={() => setShowAddForm(true)}
-              variant="secondary"
-              size="sm"
-              icon={Plus}
+            <button
+              onClick={handleShowAddForm}
+              className="px-3 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg shadow-sm transition-all duration-200 flex items-center gap-2 text-sm"
             >
+              <Plus className="w-4 h-4" />
               Add First Image
-            </Button>
+            </button>
           )}
         </Card>
       ) : (
@@ -182,7 +219,7 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
           {images.map((image, index) => (
             <div
               key={`${image}-${index}`}
-              className={`relative group cursor-pointer transition-all duration-200 ${
+              className={`relative group transition-all duration-200 ${
                 draggedIndex === index
                   ? "opacity-50 scale-95"
                   : "hover:scale-105"
@@ -193,16 +230,12 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
               onDrop={(e) => handleDrop(e, index)}
               onDragEnd={handleDragEnd}
             >
-              <div className="aspect-square rounded-lg overflow-hidden bg-gray-100 border border-gray-200 shadow-sm group-hover:shadow-md transition-shadow duration-200">
+              <div className="aspect-square rounded-lg overflow-hidden bg-gray-100 border border-gray-200 shadow-sm group-hover:shadow-md transition-shadow duration-200 cursor-pointer">
                 <img
                   src={image}
                   alt={`Image ${index + 1}`}
                   className="w-full h-full object-cover"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    handleImageClick(index);
-                  }}
+                  onClick={(e) => handleImageClick(index, e)}
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
                     target.src =
@@ -211,51 +244,57 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
                 />
               </div>
 
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all duration-200 rounded-lg flex items-center justify-center">
-                <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center space-x-2">
-                  <Button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      handleImageClick(index);
-                    }}
-                    variant="secondary"
-                    size="sm"
-                    icon={Eye}
-                    iconOnly
-                    className="bg-white/90 border-gray-200 text-gray-700 hover:bg-white shadow-lg"
-                  />
+              {/* Hover Overlay with Actions */}
+              <div 
+                className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all duration-200 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100"
+                style={{ pointerEvents: 'none' }}
+              >
+                <div 
+                  className="flex items-center space-x-2"
+                  style={{ pointerEvents: 'auto' }}
+                >
+                  <button
+                    onClick={(e) => handleImageClick(index, e)}
+                    className="p-2 bg-white/90 backdrop-blur-sm border border-gray-200 text-gray-700 hover:bg-white shadow-lg rounded-lg transition-all duration-200"
+                    title="View Image"
+                  >
+                    <Eye className="w-4 h-4" />
+                  </button>
                   {editable && (
-                    <Button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        handleRemoveImage(index);
-                      }}
-                      variant="danger"
-                      size="sm"
-                      icon={X}
-                      iconOnly
-                      className="bg-red-500 border-red-500 text-white hover:bg-red-600 shadow-lg"
-                    />
+                    <button
+                      onClick={(e) => handleRemoveImage(index, e)}
+                      className="p-2 bg-red-500/90 backdrop-blur-sm border border-red-500 text-white hover:bg-red-600 shadow-lg rounded-lg transition-all duration-200"
+                      title="Remove Image"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
                   )}
                 </div>
               </div>
 
-              <div className="absolute top-1 right-1 bg-black/50 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              {/* Image Index */}
+              <div className="absolute top-1 right-1 bg-black/70 backdrop-blur-sm text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
                 {index + 1}
               </div>
+
+              {/* Drag Indicator */}
+              {editable && (
+                <div className="absolute top-1 left-1 bg-black/70 backdrop-blur-sm text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                  ⋮⋮
+                </div>
+              )}
             </div>
           ))}
         </div>
       )}
 
+      {/* Image Viewer Modal */}
       <ImageViewer
         isOpen={showModal}
-        onClose={() => setShowModal(false)}
+        onClose={handleModalClose}
         images={images}
         currentIndex={currentImageIndex}
-        onIndexChange={setCurrentImageIndex}
+        onIndexChange={handleIndexChange}
         title={`${title} - Image ${currentImageIndex + 1}`}
       />
     </div>
