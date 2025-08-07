@@ -1,33 +1,21 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, memo, useRef } from "react";
-import {
-  Search,
-  Plus,
-  Edit2,
-  Phone,
-  Mail,
-  Building,
-  X,
-  User,
-  Calendar,
-  Filter,
-} from "lucide-react";
+import { Edit2, Phone, Mail, Building, User, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useApi } from "@/hooks/useApi";
 import { EntityAvatar } from "@/components/helpers/EntityAvatar";
 import { DateDisplay } from "@/components/helpers/DateDisplay";
-import {
-  EmptyState,
-  LoadingState,
-} from "@/components/helpers/EmptyLoadingStates";
+import { EmptyState, LoadingState } from "@/components/helpers/EmptyLoadingStates";
 import { PaginationControls } from "@/components/helpers/PaginationControls";
 import { EntityDrawer } from "@/components/helpers/EntityDrawer";
 import { CustomerForm } from "@/components/forms/CustomerForm";
+import { useCustomersHeaderContext } from "@/hooks/useHeaderContext";
 import { iCustomer, iCustomerFormData, iApiCustomer } from "@/types/customer";
 import { googleMapsUtils } from "@/lib/googleMaps";
 import { showToast } from "@/components/ui/toast";
+import { Header } from "@/components/layout/Header";
 
 const ContactInfo = memo<{ customer: iCustomer }>(({ customer }) => (
   <>
@@ -51,13 +39,10 @@ ContactInfo.displayName = "ContactInfo";
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<iCustomer[]>([]);
   const [totalCount, setTotalCount] = useState(0);
-  const [localSearchTerm, setLocalSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [businessFilter, setBusinessFilter] = useState<string>("all");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState<iCustomer | null>(
-    null
-  );
+  const [selectedCustomer, setSelectedCustomer] = useState<iCustomer | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(20);
@@ -75,6 +60,18 @@ export default function CustomersPage() {
   const submitApi = useApi({
     cancelOnUnmount: false,
     dedupe: false,
+  });
+
+  // Header context with filters and actions
+  const { contextData, searchTerm } = useCustomersHeaderContext({
+    totalCount,
+    onAddNew: () => openNewCustomerDrawer(),
+    statusFilter,
+    onStatusFilterChange: setStatusFilter,
+    businessFilter,
+    onBusinessFilterChange: setBusinessFilter,
+    onRefresh: () => fetchCustomers(),
+    onExport: () => showToast.success('Export feature coming soon!')
   });
 
   const transformApiCustomer = useCallback(
@@ -112,7 +109,7 @@ export default function CustomersPage() {
 
       try {
         const queryParams = new URLSearchParams({
-          Search: localSearchTerm || "",
+          Search: searchTerm || "",
           Count: rowsPerPage.toString(),
           Index: ((currentPage - 1) * rowsPerPage).toString(),
           Website: "promotional_product_inc",
@@ -161,7 +158,7 @@ export default function CustomersPage() {
       }
     }, 300);
   }, [
-    localSearchTerm,
+    searchTerm,
     statusFilter,
     businessFilter,
     currentPage,
@@ -189,7 +186,7 @@ export default function CustomersPage() {
     if (currentPage !== 1) {
       setCurrentPage(1);
     }
-  }, [localSearchTerm, statusFilter, businessFilter]);
+  }, [searchTerm, statusFilter, businessFilter]);
 
   const paginationData = {
     totalPages: Math.ceil(totalCount / rowsPerPage),
@@ -290,17 +287,6 @@ export default function CustomersPage() {
     setIsEditing(false);
   }, []);
 
-  const handleLocalSearchChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setLocalSearchTerm(e.target.value);
-    },
-    []
-  );
-
-  const clearLocalSearch = useCallback(() => {
-    setLocalSearchTerm("");
-  }, []);
-
   const sendResetPasswordEmail = useCallback(
     async (email: string) => {
       try {
@@ -308,7 +294,7 @@ export default function CustomersPage() {
           email: email,
           website: "PromotionalProductInc",
         });
-        showToast.error("Failed to send reset password email");
+        showToast.success("Reset password email sent successfully");
       } catch (error: any) {
         if (error?.name !== "CanceledError" && error?.code !== "ERR_CANCELED") {
           showToast.error("Failed to send reset password email");
@@ -343,234 +329,178 @@ export default function CustomersPage() {
   }, [fetchCustomers, mainApi]);
 
   return (
-    <div className="customers-page space-y-6">
-      <Card className="overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
-          <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Customer List ({totalCount.toLocaleString()})
-            </h3>
-
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="w-4 h-4 text-gray-400" />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Search customers..."
-                  value={localSearchTerm}
-                  onChange={handleLocalSearchChange}
-                  className="w-full sm:w-64 pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                />
-                {localSearchTerm && (
-                  <button
-                    onClick={clearLocalSearch}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  >
-                    <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
-                  </button>
-                )}
-              </div>
-
-              <div className="flex items-center gap-2">
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                >
-                  <option value="all">All Status</option>
-                  <option value="active">Active</option>
-                  <option value="disabled">Disabled</option>
-                </select>
-
-                <select
-                  value={businessFilter}
-                  onChange={(e) => setBusinessFilter(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                >
-                  <option value="all">All Types</option>
-                  <option value="business">Business</option>
-                  <option value="individual">Individual</option>
-                </select>
-              </div>
-
-              <Button
-                onClick={openNewCustomerDrawer}
-                icon={Plus}
-                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg whitespace-nowrap"
-              >
-                Add Customer
-              </Button>
-            </div>
-          </div>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Customer
-                </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Contact
-                </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Company
-                </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Type
-                </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Joined
-                </th>
-                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {mainApi.loading && isInitialLoad ? (
+    <div className="customers-page">
+      <Header contextData={contextData} />
+      
+      <div className="p-6 space-y-6">
+        <Card className="overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
                 <tr>
-                  <td colSpan={7} className="px-4 py-8">
-                    <LoadingState message="Loading customers..." />
-                  </td>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Customer
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Contact
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Company
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Type
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Joined
+                  </th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
-              ) : customers.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-4 py-8">
-                    <EmptyState
-                      icon={User}
-                      title="No customers found"
-                      description="Get started by adding your first customer."
-                      hasSearch={
-                        !!localSearchTerm ||
-                        statusFilter !== "all" ||
-                        businessFilter !== "all"
-                      }
-                    />
-                  </td>
-                </tr>
-              ) : (
-                customers.map((customer) => (
-                  <tr
-                    key={customer.id}
-                    className="hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
-                    onClick={() => openEditCustomerDrawer(customer)}
-                  >
-                    <td className="px-4 py-2 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <EntityAvatar
-                          name={`${customer.firstName} ${customer.lastName}`}
-                          id={customer.idNum}
-                          type="customer"
-                        />
-                        <div className="ml-3">
-                          <div className="text-sm font-medium text-gray-900">
-                            {customer.firstName} {customer.lastName}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            ID: {customer.idNum}
-                          </div>
-                        </div>
-                      </div>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {mainApi.loading && isInitialLoad ? (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-8">
+                      <LoadingState message="Loading customers..." />
                     </td>
-                    <td className="px-4 py-2 whitespace-nowrap">
-                      <ContactInfo customer={customer} />
-                    </td>
-                    <td className="px-4 py-2 whitespace-nowrap">
-                      <div className="text-sm text-gray-900 flex items-center gap-1">
-                        <Building className="w-4 h-4 text-gray-400" />
-                        <span className="truncate max-w-xs">
-                          {customer.companyName || "No company"}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-2 whitespace-nowrap">
-                      <span
-                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          customer.isBusinessCustomer
-                            ? "bg-blue-100 text-blue-800"
-                            : "bg-gray-100 text-gray-800"
-                        }`}
-                      >
-                        {customer.isBusinessCustomer
-                          ? "Business"
-                          : "Individual"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 whitespace-nowrap">
-                      <span
-                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          customer.isBlocked
-                            ? "bg-red-100 text-red-800"
-                            : "bg-green-100 text-green-800"
-                        }`}
-                      >
-                        {customer.isBlocked ? "Disabled" : "Active"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 whitespace-nowrap">
-                      <DateDisplay date={customer.createdAt} />
-                    </td>
-                    <td className="px-4 py-2 whitespace-nowrap text-right">
-                      <Button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openEditCustomerDrawer(customer);
-                        }}
-                        variant="secondary"
-                        size="sm"
-                        icon={Edit2}
-                        iconOnly
+                  </tr>
+                ) : customers.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-8">
+                      <EmptyState
+                        icon={User}
+                        title="No customers found"
+                        description="Get started by adding your first customer."
+                        hasSearch={
+                          !!searchTerm ||
+                          statusFilter !== "all" ||
+                          businessFilter !== "all"
+                        }
                       />
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-
-      {totalCount > 0 && !mainApi.loading && (
-        <Card>
-          <PaginationControls
-            currentPage={currentPage}
-            totalPages={paginationData.totalPages}
-            totalCount={totalCount}
-            rowsPerPage={rowsPerPage}
-            onPageChange={setCurrentPage}
-            onRowsPerPageChange={(rows) => {
-              setRowsPerPage(rows);
-              setCurrentPage(1);
-            }}
-            startIndex={paginationData.startIndex}
-            endIndex={paginationData.endIndex}
-          />
+                ) : (
+                  customers.map((customer) => (
+                    <tr
+                      key={customer.id}
+                      className="hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
+                      onClick={() => openEditCustomerDrawer(customer)}
+                    >
+                      <td className="px-4 py-2 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <EntityAvatar
+                            name={`${customer.firstName} ${customer.lastName}`}
+                            id={customer.idNum}
+                            type="customer"
+                          />
+                          <div className="ml-3">
+                            <div className="text-sm font-medium text-gray-900">
+                              {customer.firstName} {customer.lastName}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              ID: {customer.idNum}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-2 whitespace-nowrap">
+                        <ContactInfo customer={customer} />
+                      </td>
+                      <td className="px-4 py-2 whitespace-nowrap">
+                        <div className="text-sm text-gray-900 flex items-center gap-1">
+                          <Building className="w-4 h-4 text-gray-400" />
+                          <span className="truncate max-w-xs">
+                            {customer.companyName || "No company"}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-2 whitespace-nowrap">
+                        <span
+                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                            customer.isBusinessCustomer
+                              ? "bg-blue-100 text-blue-800"
+                              : "bg-gray-100 text-gray-800"
+                          }`}
+                        >
+                          {customer.isBusinessCustomer
+                            ? "Business"
+                            : "Individual"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 whitespace-nowrap">
+                        <span
+                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                            customer.isBlocked
+                              ? "bg-red-100 text-red-800"
+                              : "bg-green-100 text-green-800"
+                          }`}
+                        >
+                          {customer.isBlocked ? "Disabled" : "Active"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 whitespace-nowrap">
+                        <DateDisplay date={customer.createdAt} />
+                      </td>
+                      <td className="px-4 py-2 whitespace-nowrap text-right">
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEditCustomerDrawer(customer);
+                          }}
+                          variant="secondary"
+                          size="sm"
+                          icon={Edit2}
+                          iconOnly
+                        />
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </Card>
-      )}
 
-      <EntityDrawer
-        isOpen={isDrawerOpen}
-        onClose={closeDrawer}
-        title={isEditing ? "Edit Customer" : "Add New Customer"}
-        size="xl"
-        loading={submitApi.loading}
-      >
-        <CustomerForm
-          customer={selectedCustomer}
-          isEditing={isEditing}
-          onSubmit={handleSubmit}
-          onSendResetPassword={sendResetPasswordEmail}
-          onSendNewAccount={sendNewAccountEmail}
-          onCustomerUpdated={handleCustomerUpdated}
+        {totalCount > 0 && !mainApi.loading && (
+          <Card>
+            <PaginationControls
+              currentPage={currentPage}
+              totalPages={paginationData.totalPages}
+              totalCount={totalCount}
+              rowsPerPage={rowsPerPage}
+              onPageChange={setCurrentPage}
+              onRowsPerPageChange={(rows) => {
+                setRowsPerPage(rows);
+                setCurrentPage(1);
+              }}
+              startIndex={paginationData.startIndex}
+              endIndex={paginationData.endIndex}
+            />
+          </Card>
+        )}
+
+        <EntityDrawer
+          isOpen={isDrawerOpen}
+          onClose={closeDrawer}
+          title={isEditing ? "Edit Customer" : "Add New Customer"}
+          size="xl"
           loading={submitApi.loading}
-        />
-      </EntityDrawer>
+        >
+          <CustomerForm
+            customer={selectedCustomer}
+            isEditing={isEditing}
+            onSubmit={handleSubmit}
+            onSendResetPassword={sendResetPasswordEmail}
+            onSendNewAccount={sendNewAccountEmail}
+            onCustomerUpdated={handleCustomerUpdated}
+            loading={submitApi.loading}
+          />
+        </EntityDrawer>
+      </div>
     </div>
   );
 }

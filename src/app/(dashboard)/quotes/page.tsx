@@ -1,34 +1,20 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import {
-  Search,
-  Plus,
-  Eye,
-  Calendar,
-  DollarSign,
-  User,
-  FileText,
-  Mail,
-  X,
-  CheckCircle,
-  Clock,
-  Send,
-} from "lucide-react";
+import { Eye, Calendar, DollarSign, User, FileText, Mail, CheckCircle, Clock, Send } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useApi } from "@/hooks/useApi";
 import { StatusBadge } from "@/components/helpers/StatusBadge";
 import { DateDisplay } from "@/components/helpers/DateDisplay";
-import {
-  EmptyState,
-  LoadingState,
-} from "@/components/helpers/EmptyLoadingStates";
+import { EmptyState, LoadingState } from "@/components/helpers/EmptyLoadingStates";
 import { PaginationControls } from "@/components/helpers/PaginationControls";
 import { EntityDrawer } from "@/components/helpers/EntityDrawer";
 import { QuoteForm } from "@/components/forms/QuoteForm";
+import { useQuotesHeaderContext } from "@/hooks/useHeaderContext";
 import { iQuote, iQuoteFormData } from "@/types/quotes";
 import { showToast } from "@/components/ui/toast";
+import { Header } from "@/components/layout/Header";
 
 const mockQuotes: iQuote[] = [
   {
@@ -81,66 +67,6 @@ const mockQuotes: iQuote[] = [
     inHandDate: "7/30/2025",
     customerTotal: 556.0,
   },
-  {
-    id: 10674,
-    quoteNumber: "QUO-10674",
-    customer: "Rosalie Poulin",
-    customerEmail: "rosalie.poulin@example.com",
-    status: "quote-sent-to-customer",
-    dateTime: "7/11/2025 11:09:41 AM",
-    inHandDate: null,
-    customerTotal: 2580.0,
-  },
-  {
-    id: 10672,
-    quoteNumber: "QUO-10672",
-    customer: "Kaitlin Zull",
-    customerEmail: "kaitlin.zull@example.com",
-    status: "quote-sent-to-customer",
-    dateTime: "7/10/2025 1:21:10 PM",
-    inHandDate: "8/28/2025",
-    customerTotal: 598.0,
-  },
-  {
-    id: 10671,
-    quoteNumber: "QUO-10671",
-    customer: "Natalia Valerin Jimenez",
-    customerEmail: "natalia.jimenez@example.com",
-    status: "quote-sent-to-customer",
-    dateTime: "7/9/2025 3:44:42 PM",
-    inHandDate: null,
-    customerTotal: 1350.0,
-  },
-  {
-    id: 10670,
-    quoteNumber: "QUO-10670",
-    customer: "Taylor Bullock",
-    customerEmail: "taylor.bullock@example.com",
-    status: "quote-sent-to-customer",
-    dateTime: "7/9/2025 11:07:58 AM",
-    inHandDate: null,
-    customerTotal: 745.0,
-  },
-  {
-    id: 10669,
-    quoteNumber: "QUO-10669",
-    customer: "Thomas Washburn",
-    customerEmail: "thomas.washburn@example.com",
-    status: "quote-converted-to-order",
-    dateTime: "7/9/2025 9:47:36 AM",
-    inHandDate: null,
-    customerTotal: 1435.0,
-  },
-  {
-    id: 10667,
-    quoteNumber: "QUO-10667",
-    customer: "Nick Ganz",
-    customerEmail: "nick.ganz@example.com",
-    status: "quote-converted-to-order",
-    dateTime: "7/8/2025 9:49:11 PM",
-    inHandDate: "8/23/2025",
-    customerTotal: 302.9,
-  },
 ];
 
 const getStatusConfig = (status: iQuote["status"]) => {
@@ -190,7 +116,6 @@ const getStatusConfig = (status: iQuote["status"]) => {
 export default function QuotesPage() {
   const [quotes, setQuotes] = useState<iQuote[]>([]);
   const [totalCount, setTotalCount] = useState(0);
-  const [localSearchTerm, setLocalSearchTerm] = useState("");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState<iQuote | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -202,24 +127,34 @@ export default function QuotesPage() {
   const { get, post, put, loading } = useApi();
   const submitApi = useApi();
 
+  // Header context with filters and actions
+  const { contextData, searchTerm } = useQuotesHeaderContext({
+    totalCount,
+    onAddNew: () => openNewQuoteDrawer(),
+    statusFilter,
+    onStatusFilterChange: setStatusFilter,
+    onRefresh: () => fetchQuotes(),
+    onExport: () => showToast.success('Export feature coming soon!')
+  });
+
   const fetchQuotes = useCallback(async () => {
     if (!isInitialLoad && loading) return;
 
     try {
       let filteredQuotes = [...mockQuotes];
 
-      if (localSearchTerm) {
+      if (searchTerm) {
         filteredQuotes = filteredQuotes.filter(
           (quote: iQuote) =>
             quote.quoteNumber
               .toLowerCase()
-              .includes(localSearchTerm.toLowerCase()) ||
+              .includes(searchTerm.toLowerCase()) ||
             quote.customer
               .toLowerCase()
-              .includes(localSearchTerm.toLowerCase()) ||
+              .includes(searchTerm.toLowerCase()) ||
             quote.customerEmail
               .toLowerCase()
-              .includes(localSearchTerm.toLowerCase())
+              .includes(searchTerm.toLowerCase())
         );
       }
 
@@ -245,7 +180,7 @@ export default function QuotesPage() {
       setIsInitialLoad(false);
     }
   }, [
-    localSearchTerm,
+    searchTerm,
     statusFilter,
     currentPage,
     rowsPerPage,
@@ -261,7 +196,7 @@ export default function QuotesPage() {
     if (currentPage !== 1) {
       setCurrentPage(1);
     }
-  }, [localSearchTerm, statusFilter]);
+  }, [searchTerm, statusFilter]);
 
   const totalPages = Math.ceil(totalCount / rowsPerPage);
   const startIndex = (currentPage - 1) * rowsPerPage;
@@ -302,225 +237,168 @@ export default function QuotesPage() {
     setIsEditing(false);
   };
 
-  const handleLocalSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setLocalSearchTerm(e.target.value);
-  };
-
-  const clearLocalSearch = () => {
-    setLocalSearchTerm("");
-  };
-
   return (
-    <div className="quotes-page space-y-4">
-      <Card className="overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Quotes ({totalCount.toLocaleString()})
-            </h3>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
-              <div className="relative w-full sm:w-auto">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="w-4 h-4 text-gray-400" />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Search quotes..."
-                  value={localSearchTerm}
-                  onChange={handleLocalSearchChange}
-                  className="w-full sm:w-64 pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
-                />
-                {localSearchTerm && (
-                  <button
-                    onClick={clearLocalSearch}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  >
-                    <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
-                  </button>
+    <div className="quotes-page">
+      <Header contextData={contextData} />
+      
+      <div className="p-6 space-y-4">
+        <Card className="overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Quote
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Customer
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Date & Time
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    In-Hand Date
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Customer Total
+                  </th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {loading && isInitialLoad ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-6">
+                      <LoadingState message="Loading quotes..." />
+                    </td>
+                  </tr>
+                ) : quotes.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-6">
+                      <EmptyState
+                        icon={FileText}
+                        title="No quotes found"
+                        description="Get started by creating your first quote."
+                        hasSearch={!!searchTerm || statusFilter !== "all"}
+                      />
+                    </td>
+                  </tr>
+                ) : (
+                  quotes.map((quote) => {
+                    const statusConfig = getStatusConfig(quote.status);
+                    const StatusIcon = statusConfig.icon;
+                    return (
+                      <tr
+                        key={quote.id}
+                        className="hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
+                        onClick={() => openEditQuoteDrawer(quote)}
+                      >
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0">
+                              <div className={`w-8 h-8 bg-gradient-to-br ${statusConfig.bgGradient} rounded-lg flex items-center justify-center`}>
+                                <StatusIcon className="w-4 h-4 text-white" />
+                              </div>
+                            </div>
+                            <div className="ml-3">
+                              <div className="text-sm font-medium text-gray-900">
+                                {quote.quoteNumber}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                ID: {quote.id}
+                              </div>
+                              <div
+                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${statusConfig.bgSolid} ${statusConfig.textColor}`}
+                              >
+                                <StatusIcon className="w-3 h-3 mr-1" />
+                                {statusConfig.label.enabled}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          <div className="text-sm text-gray-900 flex items-center gap-1">
+                            <User className="w-3 h-3 text-gray-400" />
+                            <span className="font-medium">{quote.customer}</span>
+                          </div>
+                          <div className="text-xs text-gray-500 ml-4 flex items-center gap-1">
+                            <Mail className="w-3 h-3" />
+                            {quote.customerEmail}
+                          </div>
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          <div className="text-xs text-gray-900 flex items-center gap-1">
+                            <Calendar className="w-3 h-3 text-gray-400" />
+                            <span>{quote.dateTime}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          <div className="text-xs text-gray-900">
+                            {quote.inHandDate || "N/A"}
+                          </div>
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          <div className="text-sm font-medium text-green-600 flex items-center gap-1">
+                            ${quote.customerTotal.toFixed(2)}
+                          </div>
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap text-right">
+                          <Button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openEditQuoteDrawer(quote);
+                            }}
+                            variant="secondary"
+                            size="sm"
+                            icon={Eye}
+                            iconOnly
+                            title="View quote"
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
-              </div>
-              <div className="flex items-center gap-2">
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
-                >
-                  <option value="all">All Quotes</option>
-                  <option value="new-quote">New Quotes</option>
-                  <option value="quote-sent-to-customer">
-                    Sent to Customer
-                  </option>
-                  <option value="quote-converted-to-order">
-                    Converted to Order
-                  </option>
-                </select>
-              </div>
-
-              <Button
-                onClick={openNewQuoteDrawer}
-                icon={Plus}
-                className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-lg"
-              >
-                Add Quote
-              </Button>
-            </div>
+              </tbody>
+            </table>
           </div>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Quote
-                </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Customer
-                </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date & Time
-                </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  In-Hand Date
-                </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Customer Total
-                </th>
-                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {loading && isInitialLoad ? (
-                <tr>
-                  <td colSpan={6} className="px-4 py-6">
-                    <LoadingState message="Loading quotes..." />
-                  </td>
-                </tr>
-              ) : quotes.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-4 py-6">
-                    <EmptyState
-                      icon={FileText}
-                      title="No quotes found"
-                      description="Get started by creating your first quote."
-                      hasSearch={!!localSearchTerm || statusFilter !== "all"}
-                    />
-                  </td>
-                </tr>
-              ) : (
-                quotes.map((quote) => {
-                  const statusConfig = getStatusConfig(quote.status);
-                  const StatusIcon = statusConfig.icon;
-                  return (
-                    <tr
-                      key={quote.id}
-                      className="hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
-                      onClick={() => openEditQuoteDrawer(quote)}
-                    >
-                      <td className="px-4 py-2 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0">
-                            <div className={`w-8 h-8 bg-gradient-to-br ${statusConfig.bgGradient} rounded-lg flex items-center justify-center`}>
-                              <StatusIcon className="w-4 h-4 text-white" />
-                            </div>
-                          </div>
-                          <div className="ml-3">
-                            <div className="text-sm font-medium text-gray-900">
-                              {quote.quoteNumber}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              ID: {quote.id}
-                            </div>
-                            <div
-                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${statusConfig.bgSolid} ${statusConfig.textColor}`}
-                            >
-                              <StatusIcon className="w-3 h-3 mr-1" />
-                              {statusConfig.label.enabled}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap">
-                        <div className="text-sm text-gray-900 flex items-center gap-1">
-                          <User className="w-3 h-3 text-gray-400" />
-                          <span className="font-medium">{quote.customer}</span>
-                        </div>
-                        <div className="text-xs text-gray-500 ml-4 flex items-center gap-1">
-                          <Mail className="w-3 h-3" />
-                          {quote.customerEmail}
-                        </div>
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap">
-                        <div className="text-xs text-gray-900 flex items-center gap-1">
-                          <Calendar className="w-3 h-3 text-gray-400" />
-                          <span>{quote.dateTime}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap">
-                        <div className="text-xs text-gray-900">
-                          {quote.inHandDate || "N/A"}
-                        </div>
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap">
-                        <div className="text-sm font-medium text-green-600 flex items-center gap-1">
-                          ${quote.customerTotal.toFixed(2)}
-                        </div>
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap text-right">
-                        <Button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openEditQuoteDrawer(quote);
-                          }}
-                          variant="secondary"
-                          size="sm"
-                          icon={Eye}
-                          iconOnly
-                          title="View quote"
-                        />
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-
-      {totalCount > 0 && !loading && (
-        <Card>
-          <PaginationControls
-            currentPage={currentPage}
-            totalPages={totalPages}
-            totalCount={totalCount}
-            rowsPerPage={rowsPerPage}
-            onPageChange={setCurrentPage}
-            onRowsPerPageChange={(rows) => {
-              setRowsPerPage(rows);
-              setCurrentPage(1);
-            }}
-            startIndex={startIndex}
-            endIndex={endIndex}
-          />
         </Card>
-      )}
 
-      <EntityDrawer
-        isOpen={isDrawerOpen}
-        onClose={closeDrawer}
-        title={isEditing ? "Edit Quote" : "Create New Quote"}
-        size="xxl"
-        loading={submitApi.loading}
-      >
-        <QuoteForm
-          quote={selectedQuote}
-          isEditing={isEditing}
-          onSubmit={handleSubmit}
+        {totalCount > 0 && !loading && (
+          <Card>
+            <PaginationControls
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalCount={totalCount}
+              rowsPerPage={rowsPerPage}
+              onPageChange={setCurrentPage}
+              onRowsPerPageChange={(rows) => {
+                setRowsPerPage(rows);
+                setCurrentPage(1);
+              }}
+              startIndex={startIndex}
+              endIndex={endIndex}
+            />
+          </Card>
+        )}
+
+        <EntityDrawer
+          isOpen={isDrawerOpen}
+          onClose={closeDrawer}
+          title={isEditing ? "Edit Quote" : "Create New Quote"}
+          size="xxl"
           loading={submitApi.loading}
-        />
-      </EntityDrawer>
+        >
+          <QuoteForm
+            quote={selectedQuote}
+            isEditing={isEditing}
+            onSubmit={handleSubmit}
+            loading={submitApi.loading}
+          />
+        </EntityDrawer>
+      </div>
     </div>
   );
 }

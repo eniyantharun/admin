@@ -2,7 +2,6 @@
 
 import React, { memo } from "react";
 import { AuthGuard } from "@/components/layout/AuthGuard";
-import { Header } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
 
 interface DashboardLayoutProps {
@@ -49,7 +48,6 @@ FloatingElements.displayName = "FloatingElements";
 const ContentWrapper = memo(({ children }: { children: React.ReactNode }) => (
   <div className="dashboard-content-container h-full relative min-h-0">
     <div className="absolute inset-0 bg-white/30 rounded-2xl border border-white/40 shadow-sm pointer-events-none"></div>
-
     <div className="relative z-10 h-full min-h-0 overflow-auto">{children}</div>
   </div>
 ));
@@ -63,7 +61,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
         <DashboardBackground />
         <Sidebar />
         <div className="dashboard-layout-main flex-1 flex flex-col overflow-hidden relative min-w-0">
-          <Header />
           <main className="dashboard-layout-content flex-1 overflow-y-auto relative bg-transparent">
             <div className="dashboard-layout-page-wrapper h-full min-h-0">
               <ContentWrapper>{children}</ContentWrapper>

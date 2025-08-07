@@ -1,35 +1,20 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import {
-  Search,
-  Plus,
-  Eye,
-  Calendar,
-  DollarSign,
-  User,
-  ShoppingCart,
-  CreditCard,
-  Package,
-  X,
-  CheckCircle,
-  Clock,
-  Truck,
-} from "lucide-react";
+import { Eye, Calendar, DollarSign, User, ShoppingCart, CreditCard, Package, CheckCircle, Clock, Truck, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useApi } from "@/hooks/useApi";
 import { StatusBadge } from "@/components/helpers/StatusBadge";
 import { DateDisplay } from "@/components/helpers/DateDisplay";
-import {
-  EmptyState,
-  LoadingState,
-} from "@/components/helpers/EmptyLoadingStates";
+import { EmptyState, LoadingState } from "@/components/helpers/EmptyLoadingStates";
 import { PaginationControls } from "@/components/helpers/PaginationControls";
 import { EntityDrawer } from "@/components/helpers/EntityDrawer";
 import { OrderForm } from "@/components/forms/OrderForm";
+import { useOrdersHeaderContext } from "@/hooks/useHeaderContext";
 import { iOrder, iOrderFormData } from "@/types/order";
 import { showToast } from "@/components/ui/toast";
+import { Header } from "@/components/layout/Header";
 
 const mockOrders: iOrder[] = [
   {
@@ -250,7 +235,6 @@ const getStatusConfig = (status: iOrder["status"]) => {
 export default function OrdersPage() {
   const [orders, setOrders] = useState<iOrder[]>([]);
   const [totalCount, setTotalCount] = useState(0);
-  const [localSearchTerm, setLocalSearchTerm] = useState("");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<iOrder | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -262,24 +246,34 @@ export default function OrdersPage() {
   const { get, post, put, loading } = useApi();
   const submitApi = useApi();
 
+  // Header context with filters and actions
+  const { contextData, searchTerm } = useOrdersHeaderContext({
+    totalCount,
+    onAddNew: () => openNewOrderDrawer(),
+    statusFilter,
+    onStatusFilterChange: setStatusFilter,
+    onRefresh: () => fetchOrders(),
+    onExport: () => showToast.success('Export feature coming soon!')
+  });
+
   const fetchOrders = useCallback(async () => {
     if (!isInitialLoad && loading) return;
 
     try {
       let filteredOrders = [...mockOrders];
 
-      if (localSearchTerm) {
+      if (searchTerm) {
         filteredOrders = filteredOrders.filter(
           (order: iOrder) =>
             order.orderNumber
               .toLowerCase()
-              .includes(localSearchTerm.toLowerCase()) ||
+              .includes(searchTerm.toLowerCase()) ||
             order.customer
               .toLowerCase()
-              .includes(localSearchTerm.toLowerCase()) ||
+              .includes(searchTerm.toLowerCase()) ||
             order.customerEmail
               .toLowerCase()
-              .includes(localSearchTerm.toLowerCase())
+              .includes(searchTerm.toLowerCase())
         );
       }
 
@@ -305,7 +299,7 @@ export default function OrdersPage() {
       setIsInitialLoad(false);
     }
   }, [
-    localSearchTerm,
+    searchTerm,
     statusFilter,
     currentPage,
     rowsPerPage,
@@ -321,7 +315,7 @@ export default function OrdersPage() {
     if (currentPage !== 1) {
       setCurrentPage(1);
     }
-  }, [localSearchTerm, statusFilter]);
+  }, [searchTerm, statusFilter]);
 
   const totalPages = Math.ceil(totalCount / rowsPerPage);
   const startIndex = (currentPage - 1) * rowsPerPage;
@@ -362,260 +356,204 @@ export default function OrdersPage() {
     setIsEditing(false);
   };
 
-  const handleLocalSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setLocalSearchTerm(e.target.value);
-  };
-
-  const clearLocalSearch = () => {
-    setLocalSearchTerm("");
-  };
-
   return (
-    <div className="orders-page space-y-4">
-      <Card className="overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Orders ({totalCount.toLocaleString()})
-            </h3>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
-              <div className="relative w-full sm:w-auto">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="w-4 h-4 text-gray-400" />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Search orders..."
-                  value={localSearchTerm}
-                  onChange={handleLocalSearchChange}
-                  className="w-full sm:w-64 pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                />
-                {localSearchTerm && (
-                  <button
-                    onClick={clearLocalSearch}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  >
-                    <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
-                  </button>
+    <div className="orders-page">
+      <Header contextData={contextData} />
+      
+      <div className="p-6 space-y-4">
+        <Card className="overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Order
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Customer
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Date & Time
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    In-Hand Date
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Customer Total
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Supplier Total
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Profit
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Payment Method
+                  </th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {loading && isInitialLoad ? (
+                  <tr>
+                    <td colSpan={9} className="px-4 py-6">
+                      <LoadingState message="Loading orders..." />
+                    </td>
+                  </tr>
+                ) : orders.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="px-4 py-6">
+                      <EmptyState
+                        icon={ShoppingCart}
+                        title="No orders found"
+                        description="Get started by creating your first order."
+                        hasSearch={!!searchTerm || statusFilter !== "all"}
+                      />
+                    </td>
+                  </tr>
+                ) : (
+                  orders.map((order) => {
+                    const statusConfig = getStatusConfig(order.status);
+                    const StatusIcon = statusConfig.icon;
+                    return (
+                      <tr
+                        key={order.id}
+                        className="hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
+                        onClick={() => openEditOrderDrawer(order)}
+                      >
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0">
+                              <div className={`w-8 h-8 bg-gradient-to-br ${statusConfig.bgGradient} rounded-lg flex items-center justify-center`}>
+                                <StatusIcon className="w-4 h-4 text-white" />
+                              </div>
+                            </div>
+                            <div className="ml-3">
+                              <div className="text-sm font-medium text-gray-900">
+                                {order.orderNumber}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                ID: {order.id}
+                              </div>
+                              <div
+                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${statusConfig.bgSolid} ${statusConfig.textColor}`}
+                              >
+                                <StatusIcon className="w-3 h-3 mr-1" />
+                                {statusConfig.label.enabled}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          <div className="text-sm text-gray-900 flex items-center gap-1">
+                            <User className="w-3 h-3 text-gray-400" />
+                            <span className="font-medium">{order.customer}</span>
+                          </div>
+                          <div className="text-xs text-gray-500 ml-4">
+                            {order.customerEmail}
+                          </div>
+                          {order.itemCount && (
+                            <div className="text-xs text-blue-600 ml-4">
+                              <Package className="w-3 h-3 inline mr-1" />
+                              {order.itemCount} items
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          <div className="text-xs text-gray-900 flex items-center gap-1">
+                            <Calendar className="w-3 h-3 text-gray-400" />
+                            <span>{order.dateTime}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          <div className="text-xs text-gray-900">
+                            {order.inHandDate || "N/A"}
+                          </div>
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          <div className="text-sm font-medium text-green-600 flex items-center gap-1">
+                            ${order.customerTotal.toFixed(2)}
+                          </div>
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          <div className="text-sm text-gray-900 flex items-center gap-1">
+                            ${order.supplierTotal.toFixed(2)}
+                          </div>
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          <div
+                            className={`text-sm font-medium flex items-center gap-1 ${
+                              order.profit > 0
+                                ? "text-green-600"
+                                : "text-gray-500"
+                            }`}
+                          >
+                            ${order.profit.toFixed(2)}
+                          </div>
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          <div className="text-xs text-gray-900 flex items-center gap-1">
+                            <CreditCard className="w-3 h-3 text-gray-400" />
+                            {order.paymentMethod}
+                          </div>
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap text-right">
+                          <Button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openEditOrderDrawer(order);
+                            }}
+                            variant="secondary"
+                            size="sm"
+                            icon={Eye}
+                            iconOnly
+                            title="View order"
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
-              </div>
-
-              <div className="flex items-center gap-2">
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                >
-                  <option value="all">All Orders</option>
-                  <option value="new">New Orders</option>
-                  <option value="in-production">In Production</option>
-                  <option value="shipped">Shipped</option>
-                  <option value="delivered">Delivered</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
-              </div>
-
-              <Button
-                onClick={openNewOrderDrawer}
-                icon={Plus}
-                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg"
-              >
-                Add Order
-              </Button>
-            </div>
+              </tbody>
+            </table>
           </div>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Order
-                </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Customer
-                </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date & Time
-                </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  In-Hand Date
-                </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Customer Total
-                </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Supplier Total
-                </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Profit
-                </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Payment Method
-                </th>
-                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {loading && isInitialLoad ? (
-                <tr>
-                  <td colSpan={9} className="px-4 py-6">
-                    <LoadingState message="Loading orders..." />
-                  </td>
-                </tr>
-              ) : orders.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="px-4 py-6">
-                    <EmptyState
-                      icon={ShoppingCart}
-                      title="No orders found"
-                      description="Get started by creating your first order."
-                      hasSearch={!!localSearchTerm || statusFilter !== "all"}
-                    />
-                  </td>
-                </tr>
-              ) : (
-                orders.map((order) => {
-                  const statusConfig = getStatusConfig(order.status);
-                  const StatusIcon = statusConfig.icon;
-                  return (
-                    <tr
-                      key={order.id}
-                      className="hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
-                      onClick={() => openEditOrderDrawer(order)}
-                    >
-                      <td className="px-4 py-2 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0">
-                            <div className={`w-8 h-8 bg-gradient-to-br ${statusConfig.bgGradient} rounded-lg flex items-center justify-center`}>
-                              <StatusIcon className="w-4 h-4 text-white" />
-                            </div>
-                          </div>
-                          <div className="ml-3">
-                            <div className="text-sm font-medium text-gray-900">
-                              {order.orderNumber}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              ID: {order.id}
-                            </div>
-                            <div
-                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${statusConfig.bgSolid} ${statusConfig.textColor}`}
-                            >
-                              <StatusIcon className="w-3 h-3 mr-1" />
-                              {statusConfig.label.enabled}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap">
-                        <div className="text-sm text-gray-900 flex items-center gap-1">
-                          <User className="w-3 h-3 text-gray-400" />
-                          <span className="font-medium">{order.customer}</span>
-                        </div>
-                        <div className="text-xs text-gray-500 ml-4">
-                          {order.customerEmail}
-                        </div>
-                        {order.itemCount && (
-                          <div className="text-xs text-blue-600 ml-4">
-                            <Package className="w-3 h-3 inline mr-1" />
-                            {order.itemCount} items
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap">
-                        <div className="text-xs text-gray-900 flex items-center gap-1">
-                          <Calendar className="w-3 h-3 text-gray-400" />
-                          <span>{order.dateTime}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap">
-                        <div className="text-xs text-gray-900">
-                          {order.inHandDate || "N/A"}
-                        </div>
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap">
-                        <div className="text-sm font-medium text-green-600 flex items-center gap-1">
-                          ${order.customerTotal.toFixed(2)}
-                        </div>
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap">
-                        <div className="text-sm text-gray-900 flex items-center gap-1">
-                          ${order.supplierTotal.toFixed(2)}
-                        </div>
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap">
-                        <div
-                          className={`text-sm font-medium flex items-center gap-1 ${
-                            order.profit > 0
-                              ? "text-green-600"
-                              : "text-gray-500"
-                          }`}
-                        >
-                          ${order.profit.toFixed(2)}
-                        </div>
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap">
-                        <div className="text-xs text-gray-900 flex items-center gap-1">
-                          <CreditCard className="w-3 h-3 text-gray-400" />
-                          {order.paymentMethod}
-                        </div>
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap text-right">
-                        <Button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openEditOrderDrawer(order);
-                          }}
-                          variant="secondary"
-                          size="sm"
-                          icon={Eye}
-                          iconOnly
-                          title="View order"
-                        />
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-
-      {totalCount > 0 && !loading && (
-        <Card>
-          <PaginationControls
-            currentPage={currentPage}
-            totalPages={totalPages}
-            totalCount={totalCount}
-            rowsPerPage={rowsPerPage}
-            onPageChange={setCurrentPage}
-            onRowsPerPageChange={(rows) => {
-              setRowsPerPage(rows);
-              setCurrentPage(1);
-            }}
-            startIndex={startIndex}
-            endIndex={endIndex}
-          />
         </Card>
-      )}
 
-      <EntityDrawer
-        isOpen={isDrawerOpen}
-        onClose={closeDrawer}
-        title={isEditing ? "Edit Order" : "Create New Order"}
-        size="xxl"
-        loading={submitApi.loading}
-      >
-        <OrderForm
-          order={selectedOrder}
-          isEditing={isEditing}
-          onSubmit={handleSubmit}
+        {totalCount > 0 && !loading && (
+          <Card>
+            <PaginationControls
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalCount={totalCount}
+              rowsPerPage={rowsPerPage}
+              onPageChange={setCurrentPage}
+              onRowsPerPageChange={(rows) => {
+                setRowsPerPage(rows);
+                setCurrentPage(1);
+              }}
+              startIndex={startIndex}
+              endIndex={endIndex}
+            />
+          </Card>
+        )}
+
+        <EntityDrawer
+          isOpen={isDrawerOpen}
+          onClose={closeDrawer}
+          title={isEditing ? "Edit Order" : "Create New Order"}
+          size="xxl"
           loading={submitApi.loading}
-        />
-      </EntityDrawer>
+        >
+          <OrderForm
+            order={selectedOrder}
+            isEditing={isEditing}
+            onSubmit={handleSubmit}
+            loading={submitApi.loading}
+          />
+        </EntityDrawer>
+      </div>
     </div>
   );
 }
