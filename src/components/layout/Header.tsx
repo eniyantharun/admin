@@ -303,15 +303,15 @@ export const Header: React.FC<HeaderProps> = ({ contextData }) => {
 
   return (
     <>
-      <header className="dashboard-header bg-white border-b border-gray-200 w-full relative z-30">
+      <header className="dashboard-header bg-white border-b border-gray-200 w-full sticky top-0 z-50 flex-shrink-0">
         <div className="dashboard-header-content px-4 sm:px-6 lg:px-8">
           <div className="flex items-center h-16 gap-3 lg:gap-4">
             
             {/* Left Section - Page Title (Responsive) */}
             <div className="dashboard-header-left flex-shrink-0 min-w-0">
-              <h6 className="text-base sm:text-md lg:text-md font-bold text-gray-900 truncate">
+              <h1 className="text-base sm:text-md lg:text-md font-bold text-gray-900 truncate">
                 {pageConfig.title}
-              </h6>
+              </h1>
             </div>
 
             {/* Center Section - Search (Desktop) */}

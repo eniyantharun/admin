@@ -45,30 +45,14 @@ const FloatingElements = memo(() => (
 
 FloatingElements.displayName = "FloatingElements";
 
-const ContentWrapper = memo(({ children }: { children: React.ReactNode }) => (
-  <div className="dashboard-content-container h-full relative min-h-0">
-    <div className="absolute inset-0 bg-white/30 rounded-2xl border border-white/40 shadow-sm pointer-events-none"></div>
-    <div className="relative z-10 h-full min-h-0 overflow-auto">
-      {children}
-    </div>
-  </div>
-));
-
-ContentWrapper.displayName = "ContentWrapper";
-
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   return (
     <AuthGuard>
       <div className="dashboard-layout-container flex h-screen bg-gradient-to-br from-gray-50 via-blue-50/50 to-indigo-50 relative overflow-hidden">
         <DashboardBackground />
         <Sidebar />
-        <div className="dashboard-layout-main flex-1 flex flex-col overflow-hidden relative min-w-0">
-          <main className="dashboard-layout-content flex-1 overflow-y-auto relative bg-transparent">
-            <div className="dashboard-layout-page-wrapper h-full min-h-0">
-              <ContentWrapper>{children}</ContentWrapper>
-            </div>
-            <div className="dashboard-layout-scroll-indicator absolute top-14 right-0 w-1 bg-gradient-to-b from-blue-400/20 via-indigo-400/20 to-purple-400/20 rounded-full transition-opacity duration-300"></div>
-          </main>
+        <div className="dashboard-layout-main flex-1 flex flex-col overflow-auto relative min-w-0">
+          {children}
         </div>
         <FloatingElements />
       </div>
