@@ -133,8 +133,6 @@ export default function QuotesPage() {
     onAddNew: () => openNewQuoteDrawer(),
     statusFilter,
     onStatusFilterChange: setStatusFilter,
-    onRefresh: () => fetchQuotes(),
-    onExport: () => showToast.success('Export feature coming soon!')
   });
 
   const fetchQuotes = useCallback(async () => {

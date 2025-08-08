@@ -154,7 +154,7 @@ export const SupplierForm: React.FC<SupplierFormProps> = ({
 
   return (
     <div className="space-y-6">
-      <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-6">
+      <form onSubmit={handleSubmit} className="p-4 sm:p-2 space-y-2">
 
         {/* Company Information */}
         <div className="space-y-4">

@@ -849,7 +849,7 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
         {renderStepIndicator()}
       </div>
 
-      <form onSubmit={handleSubmit} className="p-6 space-y-6">
+      <form onSubmit={handleSubmit} className="p-2 space-y-2">
         {renderCurrentStep()}
       </form>
 

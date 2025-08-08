@@ -124,10 +124,7 @@ export default function SuppliersPage() {
   // Header context
   const { contextData, searchTerm } = useSuppliersHeaderContext({
     totalCount,
-    onAddNew: () => openNewSupplierDrawer(),
-    onRefresh: () => fetchSuppliers(),
-    onExport: () => showToast.success('Export feature coming soon!'),
-    onImport: () => showToast.success('Import feature coming soon!')
+    onAddNew: () => openNewSupplierDrawer(),  
   });
 
   const fetchSuppliers = useCallback(async () => {
@@ -274,7 +271,7 @@ export default function SuppliersPage() {
     <div className="suppliers-page">
       <Header contextData={contextData} />
       
-      <div className="p-6 space-y-6">
+      <div className="p-2 space-y-2">
         <Card className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">

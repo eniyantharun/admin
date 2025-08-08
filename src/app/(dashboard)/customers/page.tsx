@@ -70,8 +70,6 @@ export default function CustomersPage() {
     onStatusFilterChange: setStatusFilter,
     businessFilter,
     onBusinessFilterChange: setBusinessFilter,
-    onRefresh: () => fetchCustomers(),
-    onExport: () => showToast.success('Export feature coming soon!')
   });
 
   const transformApiCustomer = useCallback(
@@ -332,7 +330,7 @@ export default function CustomersPage() {
     <div className="customers-page">
       <Header contextData={contextData} />
       
-      <div className="p-6 space-y-6">
+      <div className="p-2 space-y-2">
         <Card className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">

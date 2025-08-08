@@ -252,8 +252,7 @@ export default function OrdersPage() {
     onAddNew: () => openNewOrderDrawer(),
     statusFilter,
     onStatusFilterChange: setStatusFilter,
-    onRefresh: () => fetchOrders(),
-    onExport: () => showToast.success('Export feature coming soon!')
+   
   });
 
   const fetchOrders = useCallback(async () => {

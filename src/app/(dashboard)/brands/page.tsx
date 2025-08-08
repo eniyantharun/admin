@@ -325,7 +325,7 @@ export default function BrandsPage() {
     <div className="brands-page">
       <Header contextData={contextData} />
       
-      <div className="p-6 space-y-6">
+      <div className="p-2 space-y-2">
         <Card className="p-4">
           {loading && isInitialLoad ? (
             <div className="py-12">
