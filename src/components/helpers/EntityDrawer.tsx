@@ -50,7 +50,7 @@ export const EntityDrawer: React.FC<iEntityDrawerProps> = ({
     <>
       <div
         className="fixed bg-black/50 z-40 transition-opacity duration-300"
-        style={{top: "32px", left: "0", right: "0", bottom: "0", }}
+        style={{top: "64px", left: "0", right: "0", bottom: "0"}}
         onClick={onClose}
       />
 
@@ -58,10 +58,10 @@ export const EntityDrawer: React.FC<iEntityDrawerProps> = ({
         className={`fixed z-50 w-full ${sizeClasses[size]} transform transition-transform duration-300 ease-in-out ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
-        style={{ top: "32px", right: "0", bottom: "0", }}
+        style={{ top: "64px", right: "0", bottom: "0" }}
       >
         <div className="h-full flex flex-col bg-white shadow-2xl">
-          <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 bg-gray-50">
+          <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 bg-gray-50 flex-shrink-0">
             <h2 className="text-lg font-semibold text-gray-900 truncate">{title}</h2>
             <Button
               onClick={onClose}
@@ -74,10 +74,10 @@ export const EntityDrawer: React.FC<iEntityDrawerProps> = ({
             />
           </div>
 
-          <div className="flex-1 overflow-y-auto">{children}</div>
+          <div className="flex-1 overflow-y-auto min-h-0">{children}</div>
 
           {footer && (
-            <div className="border-t border-gray-200 p-4 sm:p-6 bg-gray-50">
+            <div className="border-t border-gray-200 p-4 sm:p-6 bg-gray-50 flex-shrink-0">
               {footer}
             </div>
           )}
