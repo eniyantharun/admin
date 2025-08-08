@@ -48,7 +48,9 @@ FloatingElements.displayName = "FloatingElements";
 const ContentWrapper = memo(({ children }: { children: React.ReactNode }) => (
   <div className="dashboard-content-container h-full relative min-h-0">
     <div className="absolute inset-0 bg-white/30 rounded-2xl border border-white/40 shadow-sm pointer-events-none"></div>
-    <div className="relative z-10 h-full min-h-0 overflow-auto">{children}</div>
+    <div className="relative z-10 h-full min-h-0 overflow-auto">
+      {children}
+    </div>
   </div>
 ));
 
@@ -65,7 +67,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             <div className="dashboard-layout-page-wrapper h-full min-h-0">
               <ContentWrapper>{children}</ContentWrapper>
             </div>
-            <div className="dashboard-layout-scroll-indicator absolute top-0 right-0 w-1 bg-gradient-to-b from-blue-400/20 via-indigo-400/20 to-purple-400/20 rounded-full transition-opacity duration-300"></div>
+            <div className="dashboard-layout-scroll-indicator absolute top-14 right-0 w-1 bg-gradient-to-b from-blue-400/20 via-indigo-400/20 to-purple-400/20 rounded-full transition-opacity duration-300"></div>
           </main>
         </div>
         <FloatingElements />

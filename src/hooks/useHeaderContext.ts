@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
-import { Download, Upload, RefreshCw, FileText, Mail, BarChart3, LayoutGrid, List } from 'lucide-react';
+import { Download, RefreshCw, FileText, Mail, BarChart3, LayoutGrid, List } from 'lucide-react';
 
 interface FilterConfig {
   key: string;
@@ -32,7 +32,6 @@ interface UseHeaderContextProps {
   onAddNew: () => void;
   onRefresh?: () => void;
   onExport?: () => void;
-  onImport?: () => void;
   customActions?: ActionConfig[];
 }
 
@@ -41,7 +40,6 @@ export const useHeaderContext = ({
   onAddNew,
   onRefresh,
   onExport,
-  onImport,
   customActions = []
 }: UseHeaderContextProps) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -73,18 +71,8 @@ export const useHeaderContext = ({
       });
     }
 
-    if (onImport) {
-      actions.push({
-        key: 'import',
-        label: 'Import',
-        icon: Upload,
-        onClick: onImport,
-        variant: 'secondary'
-      });
-    }
-
     return [...actions, ...customActions];
-  }, [onRefresh, onExport, onImport, customActions]);
+  }, [onRefresh, onExport, customActions]);
 
   const contextData: HeaderContextData = useMemo(() => ({
     totalCount,
@@ -427,14 +415,12 @@ export const useSuppliersHeaderContext = ({
   totalCount,
   onAddNew,
   onRefresh,
-  onExport,
-  onImport
+  onExport
 }: {
   totalCount: number;
   onAddNew: () => void;
   onRefresh?: () => void;
   onExport?: () => void;
-  onImport?: () => void;
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -456,16 +442,6 @@ export const useSuppliersHeaderContext = ({
       label: 'Export',
       icon: Download,
       onClick: onExport,
-      variant: 'secondary'
-    });
-  }
-
-  if (onImport) {
-    actions.push({
-      key: 'import',
-      label: 'Import',
-      icon: Upload,
-      onClick: onImport,
       variant: 'secondary'
     });
   }
