@@ -19,39 +19,10 @@ import {
   List,
   Menu,
 } from "lucide-react";
+import { IHeaderProps, IPageConfig } from "@/types/header";
 
-interface PageConfig {
-  title: string;
-  searchPlaceholder: string;
-  addButtonAction: () => void;
-  filters?: FilterConfig[];
-  showFilters?: boolean;
-  showSearch?: boolean;
-  showAddButton?: boolean;
-}
 
-interface FilterConfig {
-  key: string;
-  label: string;
-  type: "select" | "toggle";
-  options?: { value: string; label: string }[];
-  value: string | boolean;
-  onChange: (value: string | boolean) => void;
-}
-
-interface HeaderContextData {
-  totalCount: number;
-  searchTerm: string;
-  onSearchChange: (term: string) => void;
-  onAddNew: () => void;
-  filters: FilterConfig[];
-}
-
-interface HeaderProps {
-  contextData?: HeaderContextData;
-}
-
-export const Header: React.FC<HeaderProps> = ({ contextData }) => {
+export const Header: React.FC<IHeaderProps> = ({ contextData }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
   const [searchValue, setSearchValue] = useState("");
@@ -112,10 +83,10 @@ export const Header: React.FC<HeaderProps> = ({ contextData }) => {
     }
   };
 
-  const getPageConfig = (): PageConfig => {
+  const getPageConfig = (): IPageConfig => {
     const basePath = pathname.split("/")[1];
 
-    const configs: Record<string, PageConfig> = {
+    const configs: Record<string, IPageConfig> = {
       dashboard: {
         title: "Dashboard",
         searchPlaceholder: "Search dashboard...",

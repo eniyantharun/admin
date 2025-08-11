@@ -1,39 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { Download, RefreshCw, FileText, Mail, BarChart3, LayoutGrid, List } from 'lucide-react';
+import { IActionConfig, IFilterConfig, IHeaderContextData, IUseHeaderContextProps } from '@/types/headerContext';
 
-interface FilterConfig {
-  key: string;
-  label: string;
-  type: 'select' | 'toggle';
-  options?: { value: string; label: string }[];
-  value: string | boolean;
-  onChange: (value: string | boolean) => void;
-}
-
-interface ActionConfig {
-  key: string;
-  label: string;
-  icon: React.ComponentType<any>;
-  onClick: () => void;
-  variant?: 'primary' | 'secondary' | 'danger';
-}
-
-interface HeaderContextData {
-  totalCount: number;
-  searchTerm: string;
-  onSearchChange: (term: string) => void;
-  onAddNew: () => void;
-  filters: FilterConfig[];
-  actions: ActionConfig[];
-}
-
-interface UseHeaderContextProps {
-  totalCount: number;
-  onAddNew: () => void;
-  onRefresh?: () => void;
-  onExport?: () => void;
-  customActions?: ActionConfig[];
-}
 
 export const useHeaderContext = ({
   totalCount,
@@ -41,7 +9,7 @@ export const useHeaderContext = ({
   onRefresh,
   onExport,
   customActions = []
-}: UseHeaderContextProps) => {
+}: IUseHeaderContextProps) => {
   const [searchTerm, setSearchTerm] = useState('');
 
   const handleSearchChange = useCallback((term: string) => {
@@ -49,7 +17,7 @@ export const useHeaderContext = ({
   }, []);
 
   const defaultActions = useMemo(() => {
-    const actions: ActionConfig[] = [];
+    const actions: IActionConfig[] = [];
 
     if (onRefresh) {
       actions.push({
@@ -74,7 +42,7 @@ export const useHeaderContext = ({
     return [...actions, ...customActions];
   }, [onRefresh, onExport, customActions]);
 
-  const contextData: HeaderContextData = useMemo(() => ({
+  const contextData: IHeaderContextData = useMemo(() => ({
     totalCount,
     searchTerm,
     onSearchChange: handleSearchChange,
@@ -113,7 +81,7 @@ export const useCustomersHeaderContext = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
-  const filters: FilterConfig[] = [
+  const filters: IFilterConfig[] = [
     {
       key: 'status',
       label: 'Status',
@@ -148,7 +116,7 @@ export const useCustomersHeaderContext = ({
     }
   ];
 
-  const actions: ActionConfig[] = [];
+  const actions: IActionConfig[] = [];
   
   if (onRefresh) {
     actions.push({
@@ -170,7 +138,7 @@ export const useCustomersHeaderContext = ({
     });
   }
 
-  const contextData: HeaderContextData = {
+  const contextData: IHeaderContextData = {
     totalCount,
     searchTerm,
     onSearchChange: setSearchTerm,
@@ -201,7 +169,7 @@ export const useBrandsHeaderContext = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
-  const filters: FilterConfig[] = [
+  const filters: IFilterConfig[] = [
     {
       key: 'enabled',
       label: 'Status',
@@ -235,7 +203,7 @@ export const useBrandsHeaderContext = ({
     }
   ];
 
-  const actions: ActionConfig[] = [];
+  const actions: IActionConfig[] = [];
   
   if (onRefresh) {
     actions.push({
@@ -247,7 +215,7 @@ export const useBrandsHeaderContext = ({
     });
   }
 
-  const contextData: HeaderContextData = {
+  const contextData: IHeaderContextData = {
     totalCount,
     searchTerm,
     onSearchChange: setSearchTerm,
@@ -276,7 +244,7 @@ export const useOrdersHeaderContext = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
-  const filters: FilterConfig[] = [
+  const filters: IFilterConfig[] = [
     {
       key: 'status',
       label: 'Status',
@@ -298,7 +266,7 @@ export const useOrdersHeaderContext = ({
     }
   ];
 
-  const actions: ActionConfig[] = [];
+  const actions: IActionConfig[] = [];
   
   if (onRefresh) {
     actions.push({
@@ -320,7 +288,7 @@ export const useOrdersHeaderContext = ({
     });
   }
 
-  const contextData: HeaderContextData = {
+  const contextData: IHeaderContextData = {
     totalCount,
     searchTerm,
     onSearchChange: setSearchTerm,
@@ -349,7 +317,7 @@ export const useQuotesHeaderContext = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
-  const filters: FilterConfig[] = [
+  const filters: IFilterConfig[] = [
     {
       key: 'status',
       label: 'Status',
@@ -369,7 +337,7 @@ export const useQuotesHeaderContext = ({
     }
   ];
 
-  const actions: ActionConfig[] = [];
+  const actions: IActionConfig[] = [];
   
   if (onRefresh) {
     actions.push({
@@ -399,7 +367,7 @@ export const useQuotesHeaderContext = ({
     variant: 'secondary'
   });
 
-  const contextData: HeaderContextData = {
+  const contextData: IHeaderContextData = {
     totalCount,
     searchTerm,
     onSearchChange: setSearchTerm,
@@ -424,7 +392,7 @@ export const useSuppliersHeaderContext = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
-  const actions: ActionConfig[] = [];
+  const actions: IActionConfig[] = [];
   
   if (onRefresh) {
     actions.push({
@@ -446,7 +414,7 @@ export const useSuppliersHeaderContext = ({
     });
   }
 
-  const contextData: HeaderContextData = {
+  const contextData: IHeaderContextData = {
     totalCount,
     searchTerm,
     onSearchChange: setSearchTerm,
