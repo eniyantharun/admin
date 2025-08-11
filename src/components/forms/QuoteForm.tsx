@@ -11,7 +11,7 @@ import { iCustomer, iCustomerAddressFormData } from '@/types/customer';
 import { iQuoteFormData, iQuoteFormProps, iQuote } from '@/types/quotes';
 import { showToast } from '@/components/ui/toast';
 
-type FormStep = 'customer' | 'address' | 'items' | 'quote' | 'notes';
+type FormStep = 'customer-address' | 'items' | 'quote' | 'notes';
 
 interface QuoteItem {
   id: string;
@@ -100,7 +100,7 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
   onSubmit,
   loading = false
 }) => {
-  const [currentStep, setCurrentStep] = useState<FormStep>('customer');
+  const [currentStep, setCurrentStep] = useState<FormStep>('customer-address');
   const [selectedCustomer, setSelectedCustomer] = useState<iCustomer | null>(null);
   const [showBillingAddressForm, setShowBillingAddressForm] = useState(false);
   const [showShippingAddressForm, setShowShippingAddressForm] = useState(false);
@@ -135,7 +135,7 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
         shippingAddress: mockAddresses.shipping,
         sameAsShipping: false,
       });
-      setCurrentStep('customer');
+      setCurrentStep('customer-address');
     } else {
       setSelectedCustomer(mockCustomer);
       setQuoteItems(mockQuoteItems);
@@ -154,7 +154,7 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
   }, [quote, isEditing]);
 
   const handleNextStep = () => {
-    const steps: FormStep[] = ['customer', 'address', 'items', 'quote', 'notes'];
+    const steps: FormStep[] = ['customer-address', 'items', 'quote', 'notes'];
     const currentIndex = steps.indexOf(currentStep);
     if (currentIndex < steps.length - 1) {
       setCurrentStep(steps[currentIndex + 1]);
@@ -162,7 +162,7 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
   };
 
   const handlePrevStep = () => {
-    const steps: FormStep[] = ['customer', 'address', 'items', 'quote', 'notes'];
+    const steps: FormStep[] = ['customer-address', 'items', 'quote', 'notes'];
     const currentIndex = steps.indexOf(currentStep);
     if (currentIndex > 0) {
       setCurrentStep(steps[currentIndex - 1]);
@@ -284,8 +284,7 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
 
   const getStepTitle = (step: FormStep) => {
     switch (step) {
-      case 'customer': return 'Customer';
-      case 'address': return 'Addresses';
+      case 'customer-address': return 'Customer & Address';
       case 'items': return 'Items';
       case 'quote': return 'Quote Details';
       case 'notes': return 'Notes';
@@ -295,13 +294,237 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
 
   const isStepCompleted = (step: FormStep) => {
     switch (step) {
-      case 'customer': return !!selectedCustomer;
-      case 'address': return !!(formData.billingAddress.street && formData.shippingAddress.street);
+      case 'customer-address': return !!(selectedCustomer && formData.billingAddress.street && formData.shippingAddress.street);
       case 'items': return quoteItems.length > 0;
       case 'quote': return !!(formData.customerTotal && parseFloat(formData.customerTotal) > 0);
       case 'notes': return true;
       default: return false;
     }
+  };
+
+  const renderStepIndicator = () => {
+    const steps: FormStep[] = ['customer-address', 'items', 'quote', 'notes'];
+    
+    return (
+      <div className="flex items-center justify-between mb-4 bg-gray-50 p-3 rounded-lg">
+        <Button
+          type="button"
+          onClick={handlePrevStep}
+          variant="secondary"
+          size="sm"
+          icon={ChevronLeft}
+          iconOnly
+          disabled={currentStep === 'customer-address'}
+          className="w-8 h-8"
+        />
+        
+        <div className="flex items-center space-x-1 flex-1 justify-center">
+          {steps.map((step, index) => {
+            const isActive = step === currentStep;
+            const isCompleted = isStepCompleted(step);
+            
+            return (
+              <React.Fragment key={step}>
+                <div className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 cursor-pointer ${
+                  isActive 
+                    ? 'bg-purple-500 text-white' 
+                    : isCompleted 
+                    ? 'bg-green-500 text-white' 
+                    : 'bg-gray-200 text-gray-600'
+                }`}
+                onClick={() => setCurrentStep(step)}
+                >
+                  {getStepTitle(step)}
+                </div>
+                {index < steps.length - 1 && (
+                  <div className={`w-6 h-0.5 ${
+                    isStepCompleted(steps[index]) ? 'bg-green-300' : 'bg-gray-200'
+                  }`} />
+                )}
+              </React.Fragment>
+            );
+          })}
+        </div>
+
+        {currentStep === 'notes' ? (
+          <Button
+            type="submit"
+            loading={loading}
+            size="sm"
+            icon={CheckCircle}
+            iconOnly
+            className="w-8 h-8 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+            title={isEditing ? "Update Quote" : "Create Quote"}
+          />
+        ) : (
+          <Button
+            type="button"
+            onClick={handleNextStep}
+            variant="primary"
+            size="sm"
+            icon={ChevronRight}
+            iconOnly
+            className="w-8 h-8"
+          />
+        )}
+      </div>
+    );
+  };
+
+  const renderCustomerAndAddressStep = () => {
+    return (
+      <div className="space-y-6">
+        <Card className="p-4">
+          <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
+            <User className="w-5 h-5 text-blue-500" />
+            Customer Selection
+          </h3>
+          
+          {isEditing && selectedCustomer ? (
+            <Card className="p-4 bg-blue-50 border-blue-200">
+              <div className="flex items-center space-x-4">
+                <EntityAvatar
+                  name={`${selectedCustomer.firstName} ${selectedCustomer.lastName}`}
+                  id={selectedCustomer.idNum}
+                  type="customer"
+                  size="lg"
+                />
+                <div className="flex-1">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <h3 className="text-lg font-semibold text-blue-800">
+                      {selectedCustomer.firstName} {selectedCustomer.lastName}
+                    </h3>
+                    {selectedCustomer.isBusinessCustomer && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        Business Customer
+                      </span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                    <div className="flex items-center gap-2 text-blue-700">
+                      <Mail className="w-4 h-4" />
+                      <span>{selectedCustomer.email}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-blue-700">
+                      <Phone className="w-4 h-4" />
+                      <span>{selectedCustomer.phone}</span>
+                    </div>
+                    {selectedCustomer.companyName && (
+                      <div className="flex items-center gap-2 text-blue-700 sm:col-span-2">
+                        <Building className="w-4 h-4" />
+                        <span>{selectedCustomer.companyName}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <CheckCircle className="w-6 h-6 text-green-500" />
+              </div>
+            </Card>
+          ) : (
+            <CustomerSearch 
+              onCustomerSelect={handleCustomerSelect}
+              selectedCustomer={selectedCustomer}
+              onNewCustomer={() => {}}
+            />
+          )}
+        </Card>
+
+        <Card className="p-4">
+          <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
+            <MapPin className="w-5 h-5 text-green-500" />
+            Billing & Shipping Addresses
+          </h3>
+          
+          <div className="space-y-4">
+            <Card className="p-4 border-l-4 border-l-purple-500">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-medium text-gray-900 text-sm">Billing Address</h4>
+                <Button
+                  onClick={() => setShowBillingAddressForm(!showBillingAddressForm)}
+                  variant="secondary"
+                  size="sm"
+                  icon={showBillingAddressForm ? ChevronDown : ChevronRight}
+                  className="h-7"
+                >
+                  {formData.billingAddress.street ? 'Edit' : 'Add'}
+                </Button>
+              </div>
+              
+              {formData.billingAddress.street && (
+                <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg mb-3">
+                  <p className="font-medium text-gray-900">{formData.billingAddress.name}</p>
+                  <p>{formData.billingAddress.street}</p>
+                  <p>{formData.billingAddress.city}, {formData.billingAddress.state} {formData.billingAddress.zipCode}</p>
+                  <p className="text-xs text-purple-600 mt-1">{formData.billingAddress.label}</p>
+                </div>
+              )}
+              
+              {showBillingAddressForm && (
+                <div className="border-t pt-3 mt-3">
+                  <AddressForm
+                    address={formData.billingAddress}
+                    onSubmit={handleBillingAddressSubmit}
+                    onCancel={() => setShowBillingAddressForm(false)}
+                  />
+                </div>
+              )}
+            </Card>
+
+            <Card className="p-4 border-l-4 border-l-green-500">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-medium text-gray-900 text-sm">Shipping Address</h4>
+                <div className="flex items-center space-x-2">
+                  <label className="flex items-center text-xs">
+                    <input
+                      type="checkbox"
+                      checked={formData.sameAsShipping}
+                      onChange={(e) => {
+                        setFormData(prev => ({
+                          ...prev,
+                          sameAsShipping: e.target.checked,
+                          shippingAddress: e.target.checked ? prev.billingAddress : prev.shippingAddress
+                        }));
+                      }}
+                      className="mr-1 w-3 h-3"
+                    />
+                    Same as billing
+                  </label>
+                  <Button
+                    onClick={() => setShowShippingAddressForm(!showShippingAddressForm)}
+                    variant="secondary"
+                    size="sm"
+                    icon={showShippingAddressForm ? ChevronDown : ChevronRight}
+                    disabled={formData.sameAsShipping}
+                    className="h-7"
+                  >
+                    {formData.shippingAddress.street ? 'Edit' : 'Add'}
+                  </Button>
+                </div>
+              </div>
+              
+              {formData.shippingAddress.street && (
+                <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg mb-3">
+                  <p className="font-medium text-gray-900">{formData.shippingAddress.name}</p>
+                  <p>{formData.shippingAddress.street}</p>
+                  <p>{formData.shippingAddress.city}, {formData.shippingAddress.state} {formData.shippingAddress.zipCode}</p>
+                  <p className="text-xs text-purple-600 mt-1">{formData.shippingAddress.label}</p>
+                </div>
+              )}
+              
+              {showShippingAddressForm && !formData.sameAsShipping && (
+                <div className="border-t pt-3 mt-3">
+                  <AddressForm
+                    address={formData.shippingAddress}
+                    onSubmit={handleShippingAddressSubmit}
+                    onCancel={() => setShowShippingAddressForm(false)}
+                  />
+                </div>
+              )}
+            </Card>
+          </div>
+        </Card>
+      </div>
+    );
   };
 
   const renderItemsStep = () => (
@@ -448,253 +671,6 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
     </div>
   );
 
-  const renderStepIndicator = () => {
-    const steps: FormStep[] = ['customer', 'address', 'items', 'quote', 'notes'];
-    
-    return (
-      <div className="flex items-center justify-between mb-4 bg-gray-50 p-3 rounded-lg">
-        <Button
-          type="button"
-          onClick={handlePrevStep}
-          variant="secondary"
-          size="sm"
-          icon={ChevronLeft}
-          iconOnly
-          disabled={currentStep === 'customer'}
-          className="w-8 h-8"
-        />
-        
-        <div className="flex items-center space-x-1 flex-1 justify-center">
-          {steps.map((step, index) => {
-            const isActive = step === currentStep;
-            const isCompleted = isStepCompleted(step);
-            
-            return (
-              <React.Fragment key={step}>
-                <div className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 cursor-pointer ${
-                  isActive 
-                    ? 'bg-purple-500 text-white' 
-                    : isCompleted 
-                    ? 'bg-green-500 text-white' 
-                    : 'bg-gray-200 text-gray-600'
-                }`}
-                onClick={() => setCurrentStep(step)}
-                >
-                  {getStepTitle(step)}
-                </div>
-                {index < steps.length - 1 && (
-                  <div className={`w-6 h-0.5 ${
-                    isStepCompleted(steps[index]) ? 'bg-green-300' : 'bg-gray-200'
-                  }`} />
-                )}
-              </React.Fragment>
-            );
-          })}
-        </div>
-
-        {currentStep === 'notes' ? (
-          <Button
-            type="submit"
-            loading={loading}
-            size="sm"
-            icon={CheckCircle}
-            iconOnly
-            className="w-8 h-8 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
-            title={isEditing ? "Update Quote" : "Create Quote"}
-          />
-        ) : (
-          <Button
-            type="button"
-            onClick={handleNextStep}
-            variant="primary"
-            size="sm"
-            icon={ChevronRight}
-            iconOnly
-            className="w-8 h-8"
-          />
-        )}
-      </div>
-    );
-  };
-
-  const renderCustomerStep = () => {
-    if (isEditing && selectedCustomer) {
-      return (
-        <div className="space-y-4">
-          <Card className="p-4 bg-blue-50 border-blue-200">
-            <div className="flex items-center space-x-4">
-              <EntityAvatar
-                name={`${selectedCustomer.firstName} ${selectedCustomer.lastName}`}
-                id={selectedCustomer.idNum}
-                type="customer"
-                size="lg"
-              />
-              <div className="flex-1">
-                <div className="flex items-center space-x-2 mb-2">
-                  <h3 className="text-lg font-semibold text-blue-800">
-                    {selectedCustomer.firstName} {selectedCustomer.lastName}
-                  </h3>
-                  {selectedCustomer.isBusinessCustomer && (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      Business Customer
-                    </span>
-                  )}
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                  <div className="flex items-center gap-2 text-blue-700">
-                    <Mail className="w-4 h-4" />
-                    <span>{selectedCustomer.email}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-blue-700">
-                    <Phone className="w-4 h-4" />
-                    <span>{selectedCustomer.phone}</span>
-                  </div>
-                  {selectedCustomer.companyName && (
-                    <div className="flex items-center gap-2 text-blue-700 sm:col-span-2">
-                      <Building className="w-4 h-4" />
-                      <span>{selectedCustomer.companyName}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-              <CheckCircle className="w-6 h-6 text-green-500" />
-            </div>
-          </Card>
-          
-          <div className="text-center">
-            <p className="text-sm text-gray-600 mb-3">
-              This quote is associated with the customer shown above.
-            </p>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setCurrentStep('address')}
-            >
-              Continue to Addresses
-            </Button>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="space-y-3">
-        <CustomerSearch 
-          onCustomerSelect={handleCustomerSelect}
-          selectedCustomer={selectedCustomer}
-          onNewCustomer={() => {}}
-        />
-        
-        {selectedCustomer && (
-          <Card className="p-3 bg-green-50 border-green-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium text-green-800 text-sm">
-                  {selectedCustomer.firstName} {selectedCustomer.lastName}
-                </p>
-                <p className="text-xs text-green-600">{selectedCustomer.email}</p>
-                {selectedCustomer.companyName && (
-                  <p className="text-xs text-green-600">{selectedCustomer.companyName}</p>
-                )}
-              </div>
-              <CheckCircle className="w-4 h-4 text-green-500" />
-            </div>
-          </Card>
-        )}
-      </div>
-    );
-  };
-
-  const renderAddressStep = () => (
-    <div className="space-y-4">
-      <Card className="p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h4 className="font-medium text-gray-900 text-sm">Billing Address</h4>
-          <Button
-            onClick={() => setShowBillingAddressForm(!showBillingAddressForm)}
-            variant="secondary"
-            size="sm"
-            icon={showBillingAddressForm ? ChevronDown : ChevronRight}
-            className="h-7"
-          >
-            {formData.billingAddress.street ? 'Edit' : 'Add'}
-          </Button>
-        </div>
-        
-        {formData.billingAddress.street && (
-          <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
-            <p className="font-medium text-gray-900">{formData.billingAddress.name}</p>
-            <p>{formData.billingAddress.street}</p>
-            <p>{formData.billingAddress.city}, {formData.billingAddress.state} {formData.billingAddress.zipCode}</p>
-            <p className="text-xs text-blue-600 mt-1">{formData.billingAddress.label}</p>
-          </div>
-        )}
-        
-        {showBillingAddressForm && (
-          <div className="border-t pt-3 mt-3">
-            <AddressForm
-              address={formData.billingAddress}
-              onSubmit={handleBillingAddressSubmit}
-              onCancel={() => setShowBillingAddressForm(false)}
-            />
-          </div>
-        )}
-      </Card>
-
-      <Card className="p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h4 className="font-medium text-gray-900 text-sm">Shipping Address</h4>
-          <div className="flex items-center space-x-2">
-            <label className="flex items-center text-xs">
-              <input
-                type="checkbox"
-                checked={formData.sameAsShipping}
-                onChange={(e) => {
-                  setFormData(prev => ({
-                    ...prev,
-                    sameAsShipping: e.target.checked,
-                    shippingAddress: e.target.checked ? prev.billingAddress : prev.shippingAddress
-                  }));
-                }}
-                className="mr-1 w-3 h-3"
-              />
-              Same as billing
-            </label>
-            <Button
-              onClick={() => setShowShippingAddressForm(!showShippingAddressForm)}
-              variant="secondary"
-              size="sm"
-              icon={showShippingAddressForm ? ChevronDown : ChevronRight}
-              disabled={formData.sameAsShipping}
-              className="h-7"
-            >
-              {formData.shippingAddress.street ? 'Edit' : 'Add'}
-            </Button>
-          </div>
-        </div>
-        
-        {formData.shippingAddress.street && (
-          <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
-            <p className="font-medium text-gray-900">{formData.shippingAddress.name}</p>
-            <p>{formData.shippingAddress.street}</p>
-            <p>{formData.shippingAddress.city}, {formData.shippingAddress.state} {formData.shippingAddress.zipCode}</p>
-            <p className="text-xs text-blue-600 mt-1">{formData.shippingAddress.label}</p>
-          </div>
-        )}
-        
-        {showShippingAddressForm && !formData.sameAsShipping && (
-          <div className="border-t pt-3 mt-3">
-            <AddressForm
-              address={formData.shippingAddress}
-              onSubmit={handleShippingAddressSubmit}
-              onCancel={() => setShowShippingAddressForm(false)}
-            />
-          </div>
-        )}
-      </Card>
-    </div>
-  );
-
   const renderQuoteStep = () => (
     <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -834,12 +810,11 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
 
   const renderCurrentStep = () => {
     switch (currentStep) {
-      case 'customer': return renderCustomerStep();
-      case 'address': return renderAddressStep();
+      case 'customer-address': return renderCustomerAndAddressStep();
       case 'items': return renderItemsStep();
       case 'quote': return renderQuoteStep();
       case 'notes': return renderNotesStep();
-      default: return renderCustomerStep();
+      default: return renderCustomerAndAddressStep();
     }
   };
 
