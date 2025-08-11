@@ -24,6 +24,7 @@ import {
 import { googleMapsUtils } from "@/lib/googleMaps";
 import { iCustomerFormProps } from "./../../types/customer"
 import { showToast } from "@/components/ui/toast";
+import { CustomerComments } from "@/components/helpers/CustomerComments";
 
 
 export const CustomerForm: React.FC<iCustomerFormProps> = ({
@@ -362,6 +363,13 @@ export const CustomerForm: React.FC<iCustomerFormProps> = ({
             Email will be sent to: {currentCustomer.email}
           </p>
         </div>
+      )}
+
+      {isEditing && currentCustomer && (
+        <CustomerComments
+          customerId={currentCustomer.id}
+          customerName={`${currentCustomer.firstName} ${currentCustomer.lastName}`}
+        />
       )}
 
       {isEditing && currentCustomer && (
