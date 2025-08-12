@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { Eye, Calendar, DollarSign, ShoppingCart, CreditCard, Package, CheckCircle, Clock, Truck, X, Mail } from "lucide-react";
+import React, { useState, useEffect, useCallback, useMemo, useRef, memo } from "react";
+import { Eye, Calendar, DollarSign, ShoppingCart, CreditCard, Package, CheckCircle, Clock, Truck, X, Mail, Edit2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/helpers/StatusBadge";
@@ -127,18 +127,57 @@ const getStatusConfig = (status: OrderStatus) => {
   }
 };
 
+const CustomerInfo = memo<{ order: iOrder }>(({ order }) => (
+  <>
+    <div className="text-sm text-gray-900 flex items-center gap-1">
+      <span className="truncate max-w-xs">{order.customer.name}</span>
+    </div>
+    <div className="text-xs text-gray-500 flex items-center gap-1 mt-1">
+      <Mail className="w-3 h-3 text-gray-400" />
+      <span className="truncate max-w-xs">{order.customer.email}</span>
+    </div>
+    {order.customer.companyName && (
+      <div className="text-xs text-gray-500 mt-1">
+        <span className="truncate max-w-xs">{order.customer.companyName}</span>
+      </div>
+    )}
+  </>
+));
+
+CustomerInfo.displayName = "CustomerInfo";
+
+const OrderAmounts = memo<{ order: iOrder }>(({ order }) => (
+  <>
+    <div className="text-sm text-gray-900 flex items-center gap-1">
+      <DollarSign className="w-3 h-3 text-gray-400" />
+      <span className="font-medium">${formatCurrency(order.customerEstimates.total)}</span>
+    </div>
+    <div className="text-xs text-gray-500 mt-1">
+      Profit: ${formatCurrency(order.profit)}
+    </div>
+    {order.supplierEstimates.total > 0 && (
+      <div className="text-xs text-gray-500">
+        Cost: ${formatCurrency(order.supplierEstimates.total)}
+      </div>
+    )}
+  </>
+));
+
+OrderAmounts.displayName = "OrderAmounts";
+
 export default function OrdersPage() {
   const [orders, setOrders] = useState<iOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [rowsPerPage, setRowsPerPage] = useState(20);
   const [selectedOrder, setSelectedOrder] = useState<iOrder | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<OrderStatus | 'all'>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   
   // Use ref to prevent infinite re-renders
   const mountedRef = useRef(true);
@@ -155,7 +194,9 @@ export default function OrdersPage() {
   }, []);
 
   const fetchOrders = useCallback(async () => {
-    if (!mountedRef.current) return;
+    if (!mountedRef.current || (!isInitialLoad && loading)) {
+      return;
+    }
 
     // Clear any existing timeout
     if (fetchTimeoutRef.current) {
@@ -179,11 +220,7 @@ export default function OrdersPage() {
           ...(searchTerm && { search: searchTerm })
         };
 
-        console.log('Fetching orders with params:', requestBody);
-
         const response = await api.post('/Admin/SaleList/GetSalesList', requestBody);
-        
-        console.log('Orders API response:', response);
 
         if (!mountedRef.current) return;
 
@@ -196,7 +233,6 @@ export default function OrdersPage() {
           setOrders(transformedOrders);
           setTotalCount(response.count || 0);
         } else {
-          console.error('Invalid response structure:', response);
           setOrders([]);
           setTotalCount(0);
           showToast.error('Invalid response from server');
@@ -210,10 +246,11 @@ export default function OrdersPage() {
       } finally {
         if (mountedRef.current) {
           setLoading(false);
+          setIsInitialLoad(false);
         }
       }
     }, 300); // 300ms debounce
-  }, [rowsPerPage, currentPage, selectedStatus, searchTerm]); // Removed 'post' from dependencies
+  }, [rowsPerPage, currentPage, selectedStatus, searchTerm, isInitialLoad]);
 
   // Memoize context data to prevent unnecessary re-renders
   const contextData = useMemo(() => ({
@@ -253,13 +290,6 @@ export default function OrdersPage() {
         icon: () => null,
         onClick: fetchOrders,
         variant: 'secondary' as const
-      },
-      {
-        key: 'export',
-        label: 'Export',
-        icon: () => null,
-        onClick: () => showToast.info('Export functionality coming soon'),
-        variant: 'secondary' as const
       }
     ]
   }), [totalCount, searchTerm, selectedStatus, openNewOrderDrawer, fetchOrders]);
@@ -275,32 +305,17 @@ export default function OrdersPage() {
     };
   }, []);
 
-  // Fetch orders when dependencies change - but only once per mount
+  // Fetch orders when dependencies change
   useEffect(() => {
-    let isInitialMount = true;
-    
-    const timeoutId = setTimeout(() => {
-      if (isInitialMount && mountedRef.current) {
-        fetchOrders();
-      }
-    }, 100); // Small delay to ensure component is fully mounted
+    fetchOrders();
+  }, [fetchOrders]);
 
-    return () => {
-      isInitialMount = false;
-      clearTimeout(timeoutId);
-    };
-  }, []); // Only run on mount
-
-  // Separate effect for when filters/pagination change
+  // Reset page when filters change
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      if (mountedRef.current) {
-        fetchOrders();
-      }
-    }, 100);
-
-    return () => clearTimeout(timeoutId);
-  }, [rowsPerPage, currentPage, selectedStatus, searchTerm]); // Dependencies that should trigger refetch
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    }
+  }, [searchTerm, selectedStatus]);
 
   const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
@@ -347,114 +362,144 @@ export default function OrdersPage() {
   const endIndex = Math.min(startIndex + rowsPerPage, totalCount);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="orders-page">
       <Header contextData={contextData} />
 
       <div className="p-2 space-y-2">
-        <Card className="p-4">
-          {loading ? (
-            <div className="py-12">
-              <LoadingState message="Loading orders..." />
-            </div>
-          ) : orders.length === 0 ? (
-            <div className="py-12">
-              <EmptyState
-                icon={ShoppingCart}
-                title="No orders found"
-                description={
-                  searchTerm || selectedStatus !== 'all'
-                    ? "Try adjusting your search terms or filters to find orders."
-                    : "Get started by creating your first order."
-                }
-                hasSearch={!!searchTerm || selectedStatus !== 'all'}
-              />
-            </div>
-          ) : (
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {orders.map((order) => {
-                const statusConfig = getStatusConfig(order.status);
-                const customerName = order.customer?.name || 'Unknown Customer';
-                const customerEmail = order.customer?.email || 'No email';
-                
-                // Safe number conversion for all monetary values
-                const customerTotal = order.customerEstimates?.total || 0;
-                const supplierTotal = order.supplierEstimates?.total || 0;
-                const profit = order.profit || 0;
-                
-                const inHandDate = order.inHandDate;
-                const createdAt = order.createdAt;
-                const paymentMethod = order.paymentMethod || 'Unknown';
-
-                return (
-                  <Card key={order.saleId} className="p-6 hover:shadow-lg transition-shadow">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                          #{order.id}
-                        </h3>
-                        <p className="text-sm text-gray-600 mb-2">{customerName}</p>
-                        <p className="text-xs text-gray-500 mb-3">{customerEmail}</p>
-                      </div>
-                      <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${statusConfig.bgSolid} ${statusConfig.textColor}`}>
-                        <statusConfig.icon className="w-4 h-4 mr-2" />
-                        {statusConfig.label.enabled}
-                      </div>
-                    </div>
-
-                    <div className="space-y-3 mb-4">
-                      <div className="flex items-center text-sm text-gray-600">
-                        <Calendar className="w-4 h-4 mr-2" />
-                        <DateDisplay date={createdAt} />
-                      </div>
-                      {inHandDate && (
-                        <div className="flex items-center text-sm text-gray-600">
-                          <Clock className="w-4 h-4 mr-2" />
-                          <span>In Hand: {new Date(inHandDate).toLocaleDateString()}</span>
-                        </div>
-                      )}
-                      <div className="flex items-center text-sm text-gray-600">
-                        <DollarSign className="w-4 h-4 mr-2" />
-                        <span>Customer: ${formatCurrency(customerTotal)}</span>
-                      </div>
-                      <div className="flex items-center text-sm text-gray-600">
-                        <Package className="w-4 h-4 mr-2" />
-                        <span>Supplier: ${formatCurrency(supplierTotal)}</span>
-                      </div>
-                      <div className="flex items-center text-sm text-gray-600">
-                        <CreditCard className="w-4 h-4 mr-2" />
-                        <span>Profit: ${formatCurrency(profit)}</span>
-                      </div>
-                      <div className="flex items-center text-sm text-gray-600">
-                        <CreditCard className="w-4 h-4 mr-2" />
-                        <span>Payment: {paymentMethod}</span>
-                      </div>
-                    </div>
-
-                    <div className="flex space-x-2">
-                      <Button
-                        variant="secondary"
-                        size="sm"
+        <Card className="overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Order
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Customer
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Amount & Profit
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Payment
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Created
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    In-Hand Date
+                  </th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {loading && isInitialLoad ? (
+                  <tr>
+                    <td colSpan={8} className="px-4 py-8">
+                      <LoadingState message="Loading orders..." />
+                    </td>
+                  </tr>
+                ) : orders.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="px-4 py-8">
+                      <EmptyState
+                        icon={ShoppingCart}
+                        title="No orders found"
+                        description={
+                          searchTerm || selectedStatus !== 'all'
+                            ? "Try adjusting your search terms or filters to find orders."
+                            : "Get started by creating your first order."
+                        }
+                        hasSearch={!!searchTerm || selectedStatus !== 'all'}
+                      />
+                    </td>
+                  </tr>
+                ) : (
+                  orders.map((order) => {
+                    const statusConfig = getStatusConfig(order.status);
+                    
+                    return (
+                      <tr
+                        key={order.saleId}
+                        className="hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
                         onClick={() => openEditOrderDrawer(order)}
-                        className="flex-1"
                       >
-                        <Eye className="w-4 h-4 mr-2" />
-                        View
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => openEditOrderDrawer(order)}
-                        className="flex-1"
-                      >
-                        <Mail className="w-4 h-4 mr-2" />
-                        Edit
-                      </Button>
-                    </div>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                              <ShoppingCart className="w-5 h-5 text-blue-600" />
+                            </div>
+                            <div className="ml-3">
+                              <div className="text-sm font-medium text-gray-900">
+                                Order #{order.id}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                Sale ID: {order.saleId}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          <CustomerInfo order={order} />
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          <OrderAmounts order={order} />
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${statusConfig.bgSolid} ${statusConfig.textColor}`}>
+                            <statusConfig.icon className="w-3 h-3 mr-1" />
+                            {statusConfig.label.enabled}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          <div className="text-sm text-gray-900 flex items-center gap-1">
+                            <CreditCard className="w-3 h-3 text-gray-400" />
+                            <span>{order.paymentMethod || 'Unknown'}</span>
+                          </div>
+                          {order.isPaid && (
+                            <div className="text-xs text-green-600 mt-1">
+                              <CheckCircle className="w-3 h-3 inline mr-1" />
+                              Paid
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          <DateDisplay date={order.createdAt} />
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          {order.inHandDate ? (
+                            <div className="text-sm text-gray-900 flex items-center gap-1">
+                              <Calendar className="w-3 h-3 text-gray-400" />
+                              <span>{new Date(order.inHandDate).toLocaleDateString()}</span>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-gray-500">Not set</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap text-right">
+                          <Button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openEditOrderDrawer(order);
+                            }}
+                            variant="secondary"
+                            size="sm"
+                            icon={Edit2}
+                            iconOnly
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </Card>
 
         {totalCount > 0 && !loading && (

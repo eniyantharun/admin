@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { Eye, Calendar, DollarSign, User, FileText, Mail, CheckCircle, Clock, Send } from "lucide-react";
+import React, { useState, useEffect, useCallback, useMemo, useRef, memo } from "react";
+import { Eye, Calendar, DollarSign, User, FileText, Mail, CheckCircle, Clock, Send, Edit2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useApi } from "@/hooks/useApi";
@@ -77,7 +77,6 @@ const getStatusConfig = (status: QuoteStatus) => {
         enabled: true,
         label: { enabled: "New Quote", disabled: "New Quote" },
         icon: FileText,
-        bgGradient: "from-blue-500 to-blue-600",
         bgSolid: "bg-blue-100",
         textColor: "text-blue-800",
       };
@@ -86,7 +85,6 @@ const getStatusConfig = (status: QuoteStatus) => {
         enabled: true,
         label: { enabled: "Quote Sent", disabled: "Quote Sent" },
         icon: Send,
-        bgGradient: "from-orange-500 to-orange-600",
         bgSolid: "bg-orange-100",
         textColor: "text-orange-800",
       };
@@ -98,7 +96,6 @@ const getStatusConfig = (status: QuoteStatus) => {
           disabled: "Converted to Order",
         },
         icon: CheckCircle,
-        bgGradient: "from-green-500 to-green-600",
         bgSolid: "bg-green-100",
         textColor: "text-green-800",
       };
@@ -107,25 +104,63 @@ const getStatusConfig = (status: QuoteStatus) => {
         enabled: false,
         label: { enabled: "Unknown", disabled: "Unknown" },
         icon: Clock,
-        bgGradient: "from-gray-500 to-gray-600",
         bgSolid: "bg-gray-100",
         textColor: "text-gray-800",
       };
   }
 };
 
+const CustomerInfo = memo<{ quote: iQuote }>(({ quote }) => (
+  <>
+    <div className="text-sm text-gray-900 flex items-center gap-1">
+      <span className="truncate max-w-xs">{quote.customer.name}</span>
+    </div>
+    <div className="text-xs text-gray-500 flex items-center gap-1 mt-1">
+      <Mail className="w-3 h-3 text-gray-400" />
+      <span className="truncate max-w-xs">{quote.customer.email}</span>
+    </div>
+    {quote.customer.companyName && (
+      <div className="text-xs text-gray-500 mt-1">
+        <span className="truncate max-w-xs">{quote.customer.companyName}</span>
+      </div>
+    )}
+  </>
+));
+
+CustomerInfo.displayName = "CustomerInfo";
+
+const QuoteAmounts = memo<{ quote: iQuote }>(({ quote }) => (
+  <>
+    <div className="text-sm text-gray-900 flex items-center gap-1">
+      <DollarSign className="w-3 h-3 text-gray-400" />
+      <span className="font-medium">${formatCurrency(quote.customerEstimates.total)}</span>
+    </div>
+    <div className="text-xs text-gray-500 mt-1">
+      Profit: ${formatCurrency(quote.profit)}
+    </div>
+    {quote.supplierEstimates.total > 0 && (
+      <div className="text-xs text-gray-500">
+        Cost: ${formatCurrency(quote.supplierEstimates.total)}
+      </div>
+    )}
+  </>
+));
+
+QuoteAmounts.displayName = "QuoteAmounts";
+
 export default function QuotesPage() {
   const [quotes, setQuotes] = useState<iQuote[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [rowsPerPage, setRowsPerPage] = useState(20);
   const [selectedQuote, setSelectedQuote] = useState<iQuote | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<QuoteStatus | 'all'>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   // Use ref to prevent infinite re-renders
   const mountedRef = useRef(true);
@@ -142,7 +177,9 @@ export default function QuotesPage() {
   }, []);
 
   const fetchQuotes = useCallback(async () => {
-    if (!mountedRef.current) return;
+    if (!mountedRef.current || (!isInitialLoad && loading)) {
+      return;
+    }
 
     // Clear any existing timeout
     if (fetchTimeoutRef.current) {
@@ -166,11 +203,7 @@ export default function QuotesPage() {
           ...(searchTerm && { search: searchTerm })
         };
 
-        console.log('Fetching quotes with params:', requestBody);
-
         const response = await api.post('/Admin/SaleList/GetSalesList', requestBody);
-        
-        console.log('Quotes API response:', response);
 
         if (!mountedRef.current) return;
 
@@ -183,7 +216,6 @@ export default function QuotesPage() {
           setQuotes(transformedQuotes);
           setTotalCount(response.count || 0);
         } else {
-          console.error('Invalid response structure:', response);
           setQuotes([]);
           setTotalCount(0);
           showToast.error('Invalid response from server');
@@ -197,10 +229,11 @@ export default function QuotesPage() {
       } finally {
         if (mountedRef.current) {
           setLoading(false);
+          setIsInitialLoad(false);
         }
       }
     }, 300); // 300ms debounce
-  }, [rowsPerPage, currentPage, selectedStatus, searchTerm]); // Removed 'post' from dependencies
+  }, [rowsPerPage, currentPage, selectedStatus, searchTerm, isInitialLoad]);
 
   // Memoize context data to prevent unnecessary re-renders
   const contextData = useMemo(() => ({
@@ -238,13 +271,6 @@ export default function QuotesPage() {
         icon: () => null,
         onClick: fetchQuotes,
         variant: 'secondary' as const
-      },
-      {
-        key: 'export',
-        label: 'Export',
-        icon: () => null,
-        onClick: () => showToast.info('Export functionality coming soon'),
-        variant: 'secondary' as const
       }
     ]
   }), [totalCount, searchTerm, selectedStatus, openNewQuoteDrawer, fetchQuotes]);
@@ -260,32 +286,17 @@ export default function QuotesPage() {
     };
   }, []);
 
-  // Fetch quotes when dependencies change - but only once per mount
+  // Fetch quotes when dependencies change
   useEffect(() => {
-    let isInitialMount = true;
-    
-    const timeoutId = setTimeout(() => {
-      if (isInitialMount && mountedRef.current) {
-        fetchQuotes();
-      }
-    }, 100); // Small delay to ensure component is fully mounted
+    fetchQuotes();
+  }, [fetchQuotes]);
 
-    return () => {
-      isInitialMount = false;
-      clearTimeout(timeoutId);
-    };
-  }, []); // Only run on mount
-
-  // Separate effect for when filters/pagination change
+  // Reset page when filters change
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      if (mountedRef.current) {
-        fetchQuotes();
-      }
-    }, 100);
-
-    return () => clearTimeout(timeoutId);
-  }, [rowsPerPage, currentPage, selectedStatus, searchTerm]); // Dependencies that should trigger refetch
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    }
+  }, [searchTerm, selectedStatus]);
 
   const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
@@ -332,99 +343,129 @@ export default function QuotesPage() {
   const endIndex = Math.min(startIndex + rowsPerPage, totalCount);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="quotes-page">
       <Header contextData={contextData} />
 
       <div className="p-2 space-y-2">
-        <Card className="p-4">
-          {loading ? (
-            <div className="py-12">
-              <LoadingState message="Loading quotes..." />
-            </div>
-          ) : quotes.length === 0 ? (
-            <div className="py-12">
-              <EmptyState
-                icon={FileText}
-                title="No quotes found"
-                description={
-                  searchTerm || selectedStatus !== 'all'
-                    ? "Try adjusting your search terms or filters to find quotes."
-                    : "Get started by creating your first quote."
-                }
-                hasSearch={!!searchTerm || selectedStatus !== 'all'}
-              />
-            </div>
-          ) : (
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {quotes.map((quote) => {
-                const statusConfig = getStatusConfig(quote.status);
-                const customerName = quote.customer?.name || 'Unknown Customer';
-                const customerEmail = quote.customer?.email || 'No email';
-                
-                // Safe number conversion for monetary values
-                const customerTotal = quote.customerEstimates?.total || 0;
-                
-                const inHandDate = quote.inHandDate;
-                const createdAt = quote.createdAt;
-
-                return (
-                  <Card key={quote.saleId} className="p-6 hover:shadow-lg transition-shadow">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                          #{quote.id}
-                        </h3>
-                        <p className="text-sm text-gray-600 mb-2">{customerName}</p>
-                        <p className="text-xs text-gray-500 mb-3">{customerEmail}</p>
-                      </div>
-                      <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${statusConfig.bgSolid} ${statusConfig.textColor}`}>
-                        <statusConfig.icon className="w-4 h-4 mr-2" />
-                        {statusConfig.label.enabled}
-                      </div>
-                    </div>
-
-                    <div className="space-y-3 mb-4">
-                      <div className="flex items-center text-sm text-gray-600">
-                        <Calendar className="w-4 h-4 mr-2" />
-                        <DateDisplay date={createdAt} />
-                      </div>
-                      {inHandDate && (
-                        <div className="flex items-center text-sm text-gray-600">
-                          <Clock className="w-4 h-4 mr-2" />
-                          <span>In Hand: {new Date(inHandDate).toLocaleDateString()}</span>
-                        </div>
-                      )}
-                      <div className="flex items-center text-sm text-gray-600">
-                        <DollarSign className="w-4 h-4 mr-2" />
-                        <span>${formatCurrency(customerTotal)}</span>
-                      </div>
-                    </div>
-
-                    <div className="flex space-x-2">
-                      <Button
-                        variant="secondary"
-                        size="sm"
+        <Card className="overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Quote
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Customer
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Amount & Profit
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Created
+                  </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    In-Hand Date
+                  </th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {loading && isInitialLoad ? (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-8">
+                      <LoadingState message="Loading quotes..." />
+                    </td>
+                  </tr>
+                ) : quotes.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-8">
+                      <EmptyState
+                        icon={FileText}
+                        title="No quotes found"
+                        description={
+                          searchTerm || selectedStatus !== 'all'
+                            ? "Try adjusting your search terms or filters to find quotes."
+                            : "Get started by creating your first quote."
+                        }
+                        hasSearch={!!searchTerm || selectedStatus !== 'all'}
+                      />
+                    </td>
+                  </tr>
+                ) : (
+                  quotes.map((quote) => {
+                    const statusConfig = getStatusConfig(quote.status);
+                    
+                    return (
+                      <tr
+                        key={quote.saleId}
+                        className="hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
                         onClick={() => openEditQuoteDrawer(quote)}
-                        className="flex-1"
                       >
-                        <Eye className="w-4 h-4 mr-2" />
-                        View
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => openEditQuoteDrawer(quote)}
-                        className="flex-1"
-                      >
-                        <Mail className="w-4 h-4 mr-2" />
-                        Edit
-                      </Button>
-                    </div>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                              <FileText className="w-5 h-5 text-purple-600" />
+                            </div>
+                            <div className="ml-3">
+                              <div className="text-sm font-medium text-gray-900">
+                                Quote #{quote.id}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                Sale ID: {quote.saleId}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          <CustomerInfo quote={quote} />
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          <QuoteAmounts quote={quote} />
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${statusConfig.bgSolid} ${statusConfig.textColor}`}>
+                            <statusConfig.icon className="w-3 h-3 mr-1" />
+                            {statusConfig.label.enabled}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          <DateDisplay date={quote.createdAt} />
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          {quote.inHandDate ? (
+                            <div className="text-sm text-gray-900 flex items-center gap-1">
+                              <Calendar className="w-3 h-3 text-gray-400" />
+                              <span>{new Date(quote.inHandDate).toLocaleDateString()}</span>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-gray-500">Not set</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap text-right">
+                          <Button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openEditQuoteDrawer(quote);
+                            }}
+                            variant="secondary"
+                            size="sm"
+                            icon={Edit2}
+                            iconOnly
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </Card>
 
         {totalCount > 0 && !loading && (
