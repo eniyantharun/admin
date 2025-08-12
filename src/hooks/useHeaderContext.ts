@@ -1,7 +1,7 @@
-import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { Download, RefreshCw, FileText, Mail, BarChart3, LayoutGrid, List } from 'lucide-react';
 import { IActionConfig, IFilterConfig, IHeaderContextData, IUseHeaderContextProps } from '@/types/headerContext';
-import { OrderStatus, QuoteStatus } from '@/types/enums';
+
 
 export const useHeaderContext = ({
   totalCount,
@@ -81,7 +81,7 @@ export const useCustomersHeaderContext = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
-  const filters: IFilterConfig[] = useMemo(() => [
+  const filters: IFilterConfig[] = [
     {
       key: 'status',
       label: 'Status',
@@ -114,42 +114,38 @@ export const useCustomersHeaderContext = ({
         { value: 'individual', label: 'Individual' }
       ]
     }
-  ], [statusFilter, onStatusFilterChange, businessFilter, onBusinessFilterChange]);
+  ];
 
-  const actions: IActionConfig[] = useMemo(() => {
-    const actionList: IActionConfig[] = [];
-    
-    if (onRefresh) {
-      actionList.push({
-        key: 'refresh',
-        label: 'Refresh',
-        icon: RefreshCw,
-        onClick: onRefresh,
-        variant: 'secondary'
-      });
-    }
+  const actions: IActionConfig[] = [];
+  
+  if (onRefresh) {
+    actions.push({
+      key: 'refresh',
+      label: 'Refresh',
+      icon: RefreshCw,
+      onClick: onRefresh,
+      variant: 'secondary'
+    });
+  }
 
-    if (onExport) {
-      actionList.push({
-        key: 'export',
-        label: 'Export',
-        icon: Download,
-        onClick: onExport,
-        variant: 'secondary'
-      });
-    }
+  if (onExport) {
+    actions.push({
+      key: 'export',
+      label: 'Export',
+      icon: Download,
+      onClick: onExport,
+      variant: 'secondary'
+    });
+  }
 
-    return actionList;
-  }, [onRefresh, onExport]);
-
-  const contextData: IHeaderContextData = useMemo(() => ({
+  const contextData: IHeaderContextData = {
     totalCount,
     searchTerm,
     onSearchChange: setSearchTerm,
     onAddNew,
     filters,
     actions
-  }), [totalCount, searchTerm, onAddNew, filters, actions]);
+  };
 
   return { contextData, searchTerm };
 };
@@ -173,7 +169,7 @@ export const useBrandsHeaderContext = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
-  const filters: IFilterConfig[] = useMemo(() => [
+  const filters: IFilterConfig[] = [
     {
       key: 'enabled',
       label: 'Status',
@@ -205,32 +201,28 @@ export const useBrandsHeaderContext = ({
         { value: 'list', label: 'List' }
       ]
     }
-  ], [enabledFilter, onEnabledFilterChange, viewMode, onViewModeChange]);
+  ];
 
-  const actions: IActionConfig[] = useMemo(() => {
-    const actionList: IActionConfig[] = [];
-    
-    if (onRefresh) {
-      actionList.push({
-        key: 'refresh',
-        label: 'Refresh',
-        icon: RefreshCw,
-        onClick: onRefresh,
-        variant: 'secondary'
-      });
-    }
+  const actions: IActionConfig[] = [];
+  
+  if (onRefresh) {
+    actions.push({
+      key: 'refresh',
+      label: 'Refresh',
+      icon: RefreshCw,
+      onClick: onRefresh,
+      variant: 'secondary'
+    });
+  }
 
-    return actionList;
-  }, [onRefresh]);
-
-  const contextData: IHeaderContextData = useMemo(() => ({
+  const contextData: IHeaderContextData = {
     totalCount,
     searchTerm,
     onSearchChange: setSearchTerm,
     onAddNew,
     filters,
     actions
-  }), [totalCount, searchTerm, onAddNew, filters, actions]);
+  };
 
   return { contextData, searchTerm };
 };
@@ -245,14 +237,14 @@ export const useOrdersHeaderContext = ({
 }: {
   totalCount: number;
   onAddNew: () => void;
-  statusFilter: OrderStatus | 'all';
-  onStatusFilterChange: (value: OrderStatus | 'all') => void;
+  statusFilter: string;
+  onStatusFilterChange: (value: string) => void;
   onRefresh?: () => void;
   onExport?: () => void;
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
-  const filters: IFilterConfig[] = useMemo(() => [
+  const filters: IFilterConfig[] = [
     {
       key: 'status',
       label: 'Status',
@@ -260,54 +252,50 @@ export const useOrdersHeaderContext = ({
       value: statusFilter,
       onChange: (value: string | boolean) => {
         if (typeof value === 'string') {
-          onStatusFilterChange(value as OrderStatus | 'all');
+          onStatusFilterChange(value);
         }
       },
       options: [
         { value: 'all', label: 'All Orders' },
-        { value: OrderStatus.NEW_ORDER, label: 'New Orders' },
-        { value: OrderStatus.IN_PRODUCTION, label: 'In Production' },
-        { value: OrderStatus.SHIPPED, label: 'Shipped' },
-        { value: OrderStatus.COMPLETED, label: 'Completed' },
-        { value: OrderStatus.CANCELLED, label: 'Cancelled' }
+        { value: 'new', label: 'New Orders' },
+        { value: 'in-production', label: 'In Production' },
+        { value: 'shipped', label: 'Shipped' },
+        { value: 'delivered', label: 'Delivered' },
+        { value: 'cancelled', label: 'Cancelled' }
       ]
     }
-  ], [statusFilter, onStatusFilterChange]);
+  ];
 
-  const actions: IActionConfig[] = useMemo(() => {
-    const actionList: IActionConfig[] = [];
-    
-    if (onRefresh) {
-      actionList.push({
-        key: 'refresh',
-        label: 'Refresh',
-        icon: RefreshCw,
-        onClick: onRefresh,
-        variant: 'secondary'
-      });
-    }
+  const actions: IActionConfig[] = [];
+  
+  if (onRefresh) {
+    actions.push({
+      key: 'refresh',
+      label: 'Refresh',
+      icon: RefreshCw,
+      onClick: onRefresh,
+      variant: 'secondary'
+    });
+  }
 
-    if (onExport) {
-      actionList.push({
-        key: 'export',
-        label: 'Export',
-        icon: Download,
-        onClick: onExport,
-        variant: 'secondary'
-      });
-    }
+  if (onExport) {
+    actions.push({
+      key: 'export',
+      label: 'Export',
+      icon: Download,
+      onClick: onExport,
+      variant: 'secondary'
+    });
+  }
 
-    return actionList;
-  }, [onRefresh, onExport]);
-
-  const contextData: IHeaderContextData = useMemo(() => ({
+  const contextData: IHeaderContextData = {
     totalCount,
     searchTerm,
     onSearchChange: setSearchTerm,
     onAddNew,
     filters,
     actions
-  }), [totalCount, searchTerm, onAddNew, filters, actions]);
+  };
 
   return { contextData, searchTerm };
 };
@@ -322,14 +310,14 @@ export const useQuotesHeaderContext = ({
 }: {
   totalCount: number;
   onAddNew: () => void;
-  statusFilter: QuoteStatus | 'all';
-  onStatusFilterChange: (value: QuoteStatus | 'all') => void;
+  statusFilter: string;
+  onStatusFilterChange: (value: string) => void;
   onRefresh?: () => void;
   onExport?: () => void;
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
-  const filters: IFilterConfig[] = useMemo(() => [
+  const filters: IFilterConfig[] = [
     {
       key: 'status',
       label: 'Status',
@@ -337,60 +325,56 @@ export const useQuotesHeaderContext = ({
       value: statusFilter,
       onChange: (value: string | boolean) => {
         if (typeof value === 'string') {
-          onStatusFilterChange(value as QuoteStatus | 'all');
+          onStatusFilterChange(value);
         }
       },
       options: [
         { value: 'all', label: 'All Quotes' },
-        { value: QuoteStatus.NEW_QUOTE, label: 'New Quotes' },
-        { value: QuoteStatus.QUOTE_SENT_TO_CUSTOMER, label: 'Sent to Customer' },
-        { value: QuoteStatus.QUOTE_CONVERTED_TO_ORDER, label: 'Converted to Order' }
+        { value: 'new-quote', label: 'New Quotes' },
+        { value: 'quote-sent-to-customer', label: 'Sent to Customer' },
+        { value: 'quote-converted-to-order', label: 'Converted to Order' }
       ]
     }
-  ], [statusFilter, onStatusFilterChange]);
+  ];
 
-  const actions: IActionConfig[] = useMemo(() => {
-    const actionList: IActionConfig[] = [];
-    
-    if (onRefresh) {
-      actionList.push({
-        key: 'refresh',
-        label: 'Refresh',
-        icon: RefreshCw,
-        onClick: onRefresh,
-        variant: 'secondary'
-      });
-    }
-
-    if (onExport) {
-      actionList.push({
-        key: 'export',
-        label: 'Export',
-        icon: Download,
-        onClick: onExport,
-        variant: 'secondary'
-      });
-    }
-
-    actionList.push({
-      key: 'reports',
-      label: 'Reports',
-      icon: BarChart3,
-      onClick: () => console.log('Generate reports'),
+  const actions: IActionConfig[] = [];
+  
+  if (onRefresh) {
+    actions.push({
+      key: 'refresh',
+      label: 'Refresh',
+      icon: RefreshCw,
+      onClick: onRefresh,
       variant: 'secondary'
     });
+  }
 
-    return actionList;
-  }, [onRefresh, onExport]);
+  if (onExport) {
+    actions.push({
+      key: 'export',
+      label: 'Export',
+      icon: Download,
+      onClick: onExport,
+      variant: 'secondary'
+    });
+  }
 
-  const contextData: IHeaderContextData = useMemo(() => ({
+  actions.push({
+    key: 'reports',
+    label: 'Reports',
+    icon: BarChart3,
+    onClick: () => console.log('Generate reports'),
+    variant: 'secondary'
+  });
+
+  const contextData: IHeaderContextData = {
     totalCount,
     searchTerm,
     onSearchChange: setSearchTerm,
     onAddNew,
     filters,
     actions
-  }), [totalCount, searchTerm, onAddNew, filters, actions]);
+  };
 
   return { contextData, searchTerm };
 };
@@ -408,40 +392,36 @@ export const useSuppliersHeaderContext = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
-  const actions: IActionConfig[] = useMemo(() => {
-    const actionList: IActionConfig[] = [];
-    
-    if (onRefresh) {
-      actionList.push({
-        key: 'refresh',
-        label: 'Refresh',
-        icon: RefreshCw,
-        onClick: onRefresh,
-        variant: 'secondary'
-      });
-    }
+  const actions: IActionConfig[] = [];
+  
+  if (onRefresh) {
+    actions.push({
+      key: 'refresh',
+      label: 'Refresh',
+      icon: RefreshCw,
+      onClick: onRefresh,
+      variant: 'secondary'
+    });
+  }
 
-    if (onExport) {
-      actionList.push({
-        key: 'export',
-        label: 'Export',
-        icon: Download,
-        onClick: onExport,
-        variant: 'secondary'
-      });
-    }
+  if (onExport) {
+    actions.push({
+      key: 'export',
+      label: 'Export',
+      icon: Download,
+      onClick: onExport,
+      variant: 'secondary'
+    });
+  }
 
-    return actionList;
-  }, [onRefresh, onExport]);
-
-  const contextData: IHeaderContextData = useMemo(() => ({
+  const contextData: IHeaderContextData = {
     totalCount,
     searchTerm,
     onSearchChange: setSearchTerm,
     onAddNew,
     filters: [],
     actions
-  }), [totalCount, searchTerm, onAddNew, actions]);
+  };
 
   return { contextData, searchTerm };
 };

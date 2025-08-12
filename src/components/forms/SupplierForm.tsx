@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FormInput } from '@/components/helpers/FormInput';
 import { Button } from '../ui/Button';
-import { WebsiteType } from '@/types/enums';
 
 interface SupplierFormProps {
   supplier?: Partial<IFSupplier> | null;
@@ -22,7 +21,7 @@ export const SupplierForm: React.FC<SupplierFormProps> = ({
     contactLastName: '',
     email: '',
     phone: '',
-            website: WebsiteType.PROMOTIONAL_PRODUCT_INC,
+    website: 'promotional_product_inc',
     isActive: true,
     address: {
       street: '',
@@ -44,7 +43,7 @@ export const SupplierForm: React.FC<SupplierFormProps> = ({
         contactLastName: supplier.contactLastName || '',
         email: supplier.email || supplier.emailAddress || '',
         phone: supplier.phone || supplier.telephoneNumber || '',
-        website: supplier.website || supplier.webUrl || WebsiteType.PROMOTIONAL_PRODUCT_INC,
+        website: supplier.website || supplier.webUrl || 'promotional_product_inc',
         isActive:
           supplier.isActive !== undefined
             ? supplier.isActive
@@ -66,7 +65,7 @@ export const SupplierForm: React.FC<SupplierFormProps> = ({
         contactLastName: '',
         email: '',
         phone: '',
-        website: WebsiteType.PROMOTIONAL_PRODUCT_INC,
+        website: 'promotional_product_inc',
         isActive: true,
         address: {
           street: '',

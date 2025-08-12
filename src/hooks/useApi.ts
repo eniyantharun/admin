@@ -1,6 +1,5 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { api } from '@/lib/api';
-import { showToast } from '@/components/ui/toast';
 
 interface UseApiOptions {
   onSuccess?: (data: any) => void;
@@ -81,7 +80,7 @@ export const useApi = (options: UseApiOptions = {}) => {
     if (!isMounted()) return;
 
     if (err.name === 'AbortError' || (err.name === 'CanceledError' && cancelOnUnmount)) {
-      showToast.info('Request was canceled/aborted - this is expected behavior');
+      console.log('Request was canceled/aborted - this is expected behavior');
       return;
     }
 

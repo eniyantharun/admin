@@ -16,7 +16,6 @@ import { iCustomer, iCustomerFormData, iApiCustomer } from "@/types/customer";
 import { googleMapsUtils } from "@/lib/googleMaps";
 import { showToast } from "@/components/ui/toast";
 import { Header } from "@/components/layout/Header";
-import { WebsiteType } from "@/types/enums";
 
 const ContactInfo = memo<{ customer: iCustomer }>(({ customer }) => (
   <>
@@ -111,7 +110,7 @@ export default function CustomersPage() {
           Search: searchTerm || "",
           Count: rowsPerPage.toString(),
           Index: ((currentPage - 1) * rowsPerPage).toString(),
-          Website: WebsiteType.PROMOTIONAL_PRODUCT_INC,
+          Website: "promotional_product_inc",
         });
 
         const response = await mainApi.get(

@@ -16,7 +16,6 @@ import { ConfirmationModal } from "@/components/helpers/confirmationModal";
 import { useSuppliersHeaderContext } from "@/hooks/useHeaderContext";
 import { showToast } from "@/components/ui/toast";
 import { Header } from "@/components/layout/Header";
-import { WebsiteType } from "@/types/enums";
 
 const transformApiSupplier = (apiSupplier: IApiSupplier): ISupplier => ({
   id: apiSupplier.id,
@@ -65,7 +64,7 @@ const ContactInfo = memo(({ supplier }: { supplier: ISupplier }) => (
       <div className="text-xs text-blue-600 flex items-center gap-1 mt-1">
         <Globe className="w-3 h-3 text-blue-400" />
         <a
-          href={supplier.webUrl.startsWith("http") ? supplier.webUrl : WebsiteType.PROMOTIONAL_PRODUCT_INC}
+          href={supplier.webUrl.startsWith("http") ? supplier.webUrl : `promotional_product_inc`}
           target="_blank"
           rel="noopener noreferrer"
           className="truncate max-w-xs hover:underline"
@@ -142,7 +141,7 @@ export default function SuppliersPage() {
 
       try {
         const queryParams = new URLSearchParams({
-          website: WebsiteType.PROMOTIONAL_PRODUCT_INC,
+          website: "promotional_product_inc",
           search: searchTerm
         });
 

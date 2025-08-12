@@ -15,7 +15,6 @@ import { IBrand, IBrandFormData } from "@/types/brand";
 import toast from "react-hot-toast";
 import { Header } from "@/components/layout/Header";
 import { useBrandsHeaderContext } from "@/hooks/useHeaderContext";
-import { WebsiteType } from "@/types/enums";
 
 export default function BrandsPage() {
   const [brands, setBrands] = useState<IBrand[]>([]);
@@ -98,7 +97,7 @@ export default function BrandsPage() {
         const updatePayload = {
           brandId: selectedBrand.id,
           description: formData.description,
-          website: WebsiteType.PROMOTIONAL_PRODUCT_INC,
+          website: "promotional_product_inc",
           logoUrl: formData.imageUrl,
           isActive: formData.enabled,
         };
@@ -110,7 +109,7 @@ export default function BrandsPage() {
         const createPayload = {
           name: formData.name,
           description: formData.description,
-          website: WebsiteType.PROMOTIONAL_PRODUCT_INC,
+          website: "promotional_product_inc",
           logoUrl: formData.imageUrl,
           isActive: formData.enabled,
         };

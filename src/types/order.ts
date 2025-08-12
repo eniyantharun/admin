@@ -1,248 +1,80 @@
 import { iCustomerAddressFormData } from './customer';
-import { OrderStatus, PaymentMethod, WebsiteType } from './enums';
 
 export interface iOrder {
   id: number;
-  saleId: string;
-  status: OrderStatus;
-  customer: {
-    id: string;
-    idNum: number;
-    name: string;
-    email: string;
-    companyName?: string;
-    phoneNumber?: string;
-  };
-  createdAt: string;
-  inHandDate?: string;
-  paidAt?: string;
-  customerEstimates: {
-    items: iOrderLineItem[];
-    itemsSubTotal: number;
-    itemsTotal: number;
-    setupCharge: number;
-    shipping: number;
-    discount: number;
-    subTotal: number;
-    total: number;
-  };
-  supplierEstimates: {
-    items: iOrderLineItem[];
-    itemsSubTotal: number;
-    itemsTotal: number;
-    setupCharge: number;
-    shipping: number;
-    subTotal: number;
-    total: number;
-  };
+  orderNumber: string;
+  customer: string;
+  customerEmail: string;
+  status: 'new' | 'in-production' | 'shipped' | 'delivered' | 'cancelled';
+  dateTime: string;
+  inHandDate: string | null;
+  customerTotal: number;
+  supplierTotal: number;
   profit: number;
-  lineItems: iOrderLineItem[];
-  shippingAddress?: iOrderAddress;
+  paymentMethod: string;
+  itemCount?: number;
+  notes?: string;
   billingAddress?: iOrderAddress;
+  shippingAddress?: iOrderAddress;
+  items?: iOrderItem[];
   checkoutDetails?: iOrderCheckoutDetails;
   shippingDetails?: iOrderShippingDetails;
-  notes?: string;
-  comments?: iOrderComment[];
-  purchaseOrders?: iPurchaseOrder[];
-  paymentDetails?: {
-    paymentDate?: string;
-  };
-  paymentMethod?: PaymentMethod;
-  isPaid: boolean;
-  creditCardId?: string;
-  chequePhoto?: iAsset;
-  companyPaymentOrder?: any;
-  cheque?: {
-    chequeNumber?: string;
-  };
-  charges?: iCharge[];
-}
-
-export interface iOrderLineItem {
-  id: string;
-  form: {
-    productName: string;
-    variantName?: string;
-    methodName?: string;
-    color?: string;
-    quantity: number;
-    productItemNumber?: string;
-    supplierItemNumber?: string;
-    customerPricePerQuantity: number;
-    customerSetupCharge: number;
-    supplierPricePerQuantity: number;
-    supplierSetupCharge: number;
-    artworkText?: string;
-    artworkSpecialInstructions?: string;
-  };
-  customThumbnail?: iAsset;
-  customPicture?: iProductPicture;
-  product?: iProduct;
-  supplier?: iSupplier;
-  customerEstimates: {
-    quantity: number;
-    setupCharge: number;
-    pricePerQuantity: number;
-    subTotal: number;
-    total: number;
-  };
-  supplierEstimates: {
-    quantity: number;
-    setupCharge: number;
-    pricePerQuantity: number;
-    subTotal: number;
-    total: number;
-  };
-  profit: number;
-  artworkType?: 'artwork' | 'text' | 'artwork_and_text' | 'none';
-  artworkImage?: iArtworkImage;
-  supplierPage?: iSupplierPage;
-}
-
-export interface iAsset {
-  id: string;
-  filename: string;
-  contentType: string;
-  size: number;
-  width?: number;
-  height?: number;
-  url: string;
-  sourceKey: string;
-  webpKey: string;
-}
-
-export interface iProductPicture {
-  productId: number;
-  pictureId: number;
-  slug: string;
-  index: number;
-  url: string;
-  thumbnail226X240: string;
-  sourceKey800X800: string;
-  slugKey800X800: string;
-  urlSlugKey800X800: string;
-}
-
-export interface iProduct {
-  id: number;
-  name: string;
-  primaryPicture?: iProductPicture;
-  supplierPages?: iSupplierPage[];
-}
-
-export interface iSupplier {
-  id: number;
-  companyName: string;
-  webUrl?: string;
-  emailAddress?: string;
-  telephoneNumber?: string;
-  importerKey?: string;
-  website: string;
-}
-
-export interface iArtworkImage {
-  id: string;
-  asset: iAsset;
-  assetPreview?: iAsset;
-}
-
-export interface iSupplierPage {
-  url: string;
-  sku: string;
 }
 
 export interface iOrderAddress {
+  type: 'billing' | 'shipping';
+  label: string;
   name: string;
-  addressLine: string;
-  addressLine2?: string;
-  country: string;
-  state: string;
+  street: string;
   city: string;
+  state: string;
   zipCode: string;
+  country: string;
+  isPrimary: boolean;
+}
+
+export interface iOrderItem {
+  id: string;
+  productId?: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  supplierPrice: number;
+  customization?: string;
+  sku?: string;
+  description?: string;
 }
 
 export interface iOrderCheckoutDetails {
-  dateOrderNeededBy?: string;
+  inHandDate?: string;
   additionalInstructions?: string;
+  paymentMethod?: string;
+  paymentDate?: string;
+  paymentStatus?: 'Paid' | 'Pending' | 'Failed';
 }
 
 export interface iOrderShippingDetails {
-  shippingType?: string;
-  shippingCost?: number;
-  shippingCompany?: string;
-  shippingDate?: string;
-  shippingTrackingNumber?: string;
-}
-
-export interface iOrderComment {
-  id: string;
-  createdAt: string;
-  comment: string;
-  assets?: iAsset[];
-}
-
-export interface iPurchaseOrder {
-  id: number;
-  form: {
-    shippingCost?: number;
-  };
-  isDefaultShippingCost: boolean;
-  notes?: {
-    documentId: string;
-    lastEditedAt?: string;
-  };
-  lineItemsCount: number;
-  productCount: number;
-  customCount: number;
-  supplier: iSupplier;
-  defaultShippingCost?: number;
-}
-
-export interface iCharge {
-  id: string;
-  responseDocument: {
-    id: string;
-    paid: boolean;
-    amount: number;
-    source: {
-      id: string;
-      brand: string;
-      last4: string;
-      first6: string;
-      exp_year: string;
-      exp_month: string;
-      cvc_check: string;
-    };
-    status: string;
-    created: number;
-    outcome: {
-      type: string;
-      network_status: string;
-    };
-    ref_num: string;
-    captured: boolean;
-    currency: string;
-    auth_code: string;
-    amount_refunded: number;
-    payment_method_details: string;
-  };
-  amount: number;
-  createdAt: string;
-  paid: boolean;
-  status: string;
-  brand: string;
-  last4: string;
+  type?: 'Ground' | 'Express' | 'Overnight';
+  company?: 'UPS' | 'FedEx' | 'USPS' | 'DHL';
+  cost?: number;
+  date?: string;
+  trackingNumber?: string;
 }
 
 export interface iOrderFormData {
-  customerId: string;
-  status: OrderStatus;
-  paymentMethod: PaymentMethod;
-  inHandDate?: string;
-  notes?: string;
-  shippingAddress?: iCustomerAddressFormData;
-  billingAddress?: iCustomerAddressFormData;
+  customer: string;
+  customerEmail: string;
+  status: string;
+  paymentMethod: string;
+  customerTotal: string;
+  supplierTotal: string;
+  inHandDate: string;
+  notes: string;
+  billingAddress: iCustomerAddressFormData;
+  shippingAddress: iCustomerAddressFormData;
   sameAsShipping: boolean;
+  items: iOrderItem[];
   checkoutDetails?: iOrderCheckoutDetails;
   shippingDetails?: iOrderShippingDetails;
 }
@@ -255,52 +87,39 @@ export interface iOrderFormProps {
 }
 
 export interface iOrderListResponse {
+  orders: iOrder[];
   count: number;
-  sales: iOrder[];
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    itemsPerPage: number;
+  };
 }
 
 export interface iCreateOrderRequest {
   customerId: string;
-  status: OrderStatus;
-  paymentMethod: PaymentMethod;
+  status: string;
+  paymentMethod: string;
+  customerTotal: number;
+  supplierTotal: number;
   inHandDate?: string;
   notes?: string;
-  shippingAddress?: iOrderAddress;
-  billingAddress?: iOrderAddress;
+  billingAddress: iOrderAddress;
+  shippingAddress: iOrderAddress;
+  items: iOrderItem[];
   checkoutDetails?: iOrderCheckoutDetails;
   shippingDetails?: iOrderShippingDetails;
 }
 
-export interface iUpdateOrderRequest {
+export interface iUpdateOrderRequest extends Partial<iCreateOrderRequest> {
   id: number;
-  paymentDetails?: {
-    paymentDate?: string;
-  };
-  paymentMethod?: PaymentMethod;
-  isPaid?: boolean;
-  status?: OrderStatus;
-  creditCardId?: string;
-  chequePhotoId?: string;
-  companyPaymentOrderId?: string;
-  cheque?: {
-    chequeNumber?: string;
-  };
 }
 
 export interface iOrderStatusUpdate {
   id: number;
-  status: OrderStatus;
+  status: iOrder['status'];
   updatedBy: string;
   updatedAt: string;
   trackingNumber?: string;
-}
-
-export interface iOrderSearchParams {
-  isQuote: boolean;
-  search?: string;
-  pageSize: number;
-  pageIndex: number;
-  orderStatus?: OrderStatus[];
-  quoteStatus?: string[];
-  website: WebsiteType;
 }

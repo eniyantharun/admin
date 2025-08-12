@@ -1,183 +1,57 @@
-import { QuoteStatus, WebsiteType, OrderStatus } from './enums';
-
 export interface iQuote {
   id: number;
-  saleId: string;
-  status: QuoteStatus;
-  customer: {
-    id: string;
-    name: string;
-    email: string;
-    companyName?: string;
-    phoneNumber?: string;
-  };
-  createdAt: string;
-  inHandDate?: string;
-  customerEstimates: {
-    items: iQuoteLineItem[];
-    itemsSubTotal: number;
-    itemsTotal: number;
-    setupCharge: number;
-    shipping: number;
-    discount: number;
-    subTotal: number;
-    total: number;
-  };
-  supplierEstimates: {
-    items: iQuoteLineItem[];
-    itemsSubTotal: number;
-    itemsTotal: number;
-    setupCharge: number;
-    shipping: number;
-    subTotal: number;
-    total: number;
-  };
-  profit: number;
-  lineItems: iQuoteLineItem[];
-  shippingAddress?: iQuoteAddress;
+  quoteNumber: string;
+  customer: string;
+  customerEmail: string;
+  status: 'new-quote' | 'quote-sent-to-customer' | 'quote-converted-to-order';
+  dateTime: string;
+  inHandDate: string | null;
+  customerTotal: number;
+  notes?: string;
   billingAddress?: iQuoteAddress;
+  shippingAddress?: iQuoteAddress;
   checkoutDetails?: iQuoteCheckoutDetails;
   shippingDetails?: iQuoteShippingDetails;
-  notes?: string;
-  comments?: iQuoteComment[];
-  followups?: iQuoteFollowup[];
-}
-
-export interface iQuoteLineItem {
-  id: string;
-  form: {
-    productName: string;
-    variantName?: string;
-    methodName?: string;
-    color?: string;
-    quantity: number;
-    productItemNumber?: string;
-    supplierItemNumber?: string;
-    customerPricePerQuantity: number;
-    customerSetupCharge: number;
-    supplierPricePerQuantity: number;
-    supplierSetupCharge: number;
-    artworkText?: string;
-    artworkSpecialInstructions?: string;
-  };
-  customThumbnail?: iAsset;
-  customPicture?: iProductPicture;
-  product?: iProduct;
-  supplier?: iSupplier;
-  customerEstimates: {
-    quantity: number;
-    setupCharge: number;
-    pricePerQuantity: number;
-    subTotal: number;
-    total: number;
-  };
-  supplierEstimates: {
-    quantity: number;
-    setupCharge: number;
-    pricePerQuantity: number;
-    subTotal: number;
-    total: number;
-  };
-  profit: number;
-  artworkType?: 'artwork' | 'text' | 'artwork_and_text' | 'none';
-  artworkImage?: iArtworkImage;
-  supplierPage?: iSupplierPage;
-}
-
-export interface iAsset {
-  id: string;
-  filename: string;
-  contentType: string;
-  size: number;
-  width?: number;
-  height?: number;
-  url: string;
-  sourceKey: string;
-  webpKey: string;
-}
-
-export interface iProductPicture {
-  productId: number;
-  pictureId: number;
-  slug: string;
-  index: number;
-  url: string;
-  thumbnail226X240: string;
-  sourceKey800X800: string;
-  slugKey800X800: string;
-  urlSlugKey800X800: string;
-}
-
-export interface iProduct {
-  id: number;
-  name: string;
-  primaryPicture?: iProductPicture;
-  supplierPages?: iSupplierPage[];
-}
-
-export interface iSupplier {
-  id: number;
-  companyName: string;
-  webUrl?: string;
-  emailAddress?: string;
-  telephoneNumber?: string;
-  importerKey?: string;
-  website: string;
-}
-
-export interface iArtworkImage {
-  id: string;
-  asset: iAsset;
-  assetPreview?: iAsset;
-}
-
-export interface iSupplierPage {
-  url: string;
-  sku: string;
 }
 
 export interface iQuoteAddress {
+  type: 'billing' | 'shipping';
+  label: string;
   name: string;
-  addressLine: string;
-  addressLine2?: string;
-  country: string;
-  state: string;
+  street: string;
   city: string;
+  state: string;
   zipCode: string;
+  country: string;
+  isPrimary: boolean;
 }
 
 export interface iQuoteCheckoutDetails {
-  dateOrderNeededBy?: string;
+  inHandDate?: string;
   additionalInstructions?: string;
+  paymentMethod?: string;
+  paymentDate?: string;
+  paymentStatus?: 'Pending' | 'Paid' | 'Failed';
 }
 
 export interface iQuoteShippingDetails {
-  shippingType?: string;
-  shippingCost?: number;
-  shippingCompany?: string;
-  shippingDate?: string;
-  shippingTrackingNumber?: string;
-}
-
-export interface iQuoteComment {
-  id: string;
-  createdAt: string;
-  comment: string;
-  assets?: iAsset[];
-}
-
-export interface iQuoteFollowup {
-  sendAt: string;
-  sentAt?: string;
+  type?: 'Ground' | 'Express' | 'Overnight';
+  company?: 'UPS' | 'FedEx' | 'USPS' | 'DHL';
+  cost?: number;
+  date?: string;
+  trackingNumber?: string;
 }
 
 export interface iQuoteFormData {
-  customerId: string;
-  status: QuoteStatus;
-  inHandDate?: string;
-  notes?: string;
-  shippingAddress?: iQuoteAddress;
-  billingAddress?: iQuoteAddress;
+  customer: string;
+  customerEmail: string;
+  status: string;
+  customerTotal: string;
+  inHandDate: string;
+  notes: string;
+  billingAddress: iQuoteAddress;
+  shippingAddress: iQuoteAddress;
+  sameAsShipping: boolean;
   checkoutDetails?: iQuoteCheckoutDetails;
   shippingDetails?: iQuoteShippingDetails;
 }
@@ -189,33 +63,47 @@ export interface iQuoteFormProps {
   loading?: boolean;
 }
 
+export interface iQuoteItem {
+  id: string;
+  productId: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  customization?: string;
+}
+
 export interface iQuoteListResponse {
+  quotes: iQuote[];
   count: number;
-  sales: iQuote[];
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    itemsPerPage: number;
+  };
 }
 
 export interface iCreateQuoteRequest {
   customerId: string;
+  status: string;
+  customerTotal: number;
+  inHandDate?: string;
+  notes?: string;
+  billingAddress: iQuoteAddress;
+  shippingAddress: iQuoteAddress;
+  items: iQuoteItem[];
+  checkoutDetails?: iQuoteCheckoutDetails;
+  shippingDetails?: iQuoteShippingDetails;
 }
 
-export interface iUpdateQuoteRequest {
+export interface iUpdateQuoteRequest extends Partial<iCreateQuoteRequest> {
   id: number;
-  status?: QuoteStatus;
 }
 
 export interface iQuoteStatusUpdate {
   id: number;
-  status: QuoteStatus;
+  status: iQuote['status'];
   updatedBy: string;
   updatedAt: string;
-}
-
-export interface iQuoteSearchParams {
-  isQuote: boolean;
-  search?: string;
-  pageSize: number;
-  pageIndex: number;
-  orderStatus?: OrderStatus[];
-  quoteStatus?: QuoteStatus[];
-  website: WebsiteType;
 }
