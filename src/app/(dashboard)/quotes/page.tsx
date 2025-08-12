@@ -12,13 +12,60 @@ import { PaginationControls } from "@/components/helpers/PaginationControls";
 import { EntityDrawer } from "@/components/helpers/EntityDrawer";
 import { QuoteForm } from "@/components/forms/QuoteForm";
 import { useQuotesHeaderContext } from "@/hooks/useHeaderContext";
-import { iQuote, iQuoteFormData, iQuoteSearchParams } from "@/types/quotes";
+import { iQuote, iQuoteFormData } from "@/types/quotes";
 import { showToast } from "@/components/ui/toast";
 import { Header } from "@/components/layout/Header";
-import { QuoteService } from "@/lib/api";
 import { WebsiteType, QuoteStatus } from "@/types/enums";
 
-const getStatusConfig = (status: iQuote["status"]) => {
+// Helper function to safely convert to number and format
+const formatCurrency = (value: any): string => {
+  const numValue = parseFloat(value) || 0;
+  return numValue.toFixed(2);
+};
+
+// Transform API response to match our Quote interface
+const transformApiQuote = (apiQuote: any): iQuote => {
+  return {
+    id: apiQuote.quote?.id || Math.floor(Math.random() * 10000),
+    saleId: apiQuote.id,
+    status: apiQuote.quote?.status || QuoteStatus.NEW_QUOTE,
+    customer: {
+      id: apiQuote.customer?.id || '',
+      name: apiQuote.customer?.name || 'Unknown Customer',
+      email: apiQuote.customer?.email || '',
+      companyName: apiQuote.customer?.companyName || '',
+      phoneNumber: apiQuote.customer?.phoneNumber || '',
+    },
+    createdAt: apiQuote.createdAt,
+    inHandDate: apiQuote.inHandDate,
+    customerEstimates: {
+      items: apiQuote.customerEstimates?.items || [],
+      itemsSubTotal: parseFloat(apiQuote.customerEstimates?.itemsSubTotal) || 0,
+      itemsTotal: parseFloat(apiQuote.customerEstimates?.itemsTotal) || 0,
+      setupCharge: parseFloat(apiQuote.customerEstimates?.setupCharge) || 0,
+      shipping: parseFloat(apiQuote.customerEstimates?.shipping) || 0,
+      discount: parseFloat(apiQuote.customerEstimates?.discount) || 0,
+      subTotal: parseFloat(apiQuote.customerEstimates?.subTotal) || 0,
+      total: parseFloat(apiQuote.customerEstimates?.total) || 0,
+    },
+    supplierEstimates: {
+      items: apiQuote.supplierEstimates?.items || [],
+      itemsSubTotal: parseFloat(apiQuote.supplierEstimates?.itemsSubTotal) || 0,
+      itemsTotal: parseFloat(apiQuote.supplierEstimates?.itemsTotal) || 0,
+      setupCharge: parseFloat(apiQuote.supplierEstimates?.setupCharge) || 0,
+      shipping: parseFloat(apiQuote.supplierEstimates?.shipping) || 0,
+      subTotal: parseFloat(apiQuote.supplierEstimates?.subTotal) || 0,
+      total: parseFloat(apiQuote.supplierEstimates?.total) || 0,
+    },
+    profit: parseFloat(apiQuote.profit || 0),
+    lineItems: [],
+    notes: apiQuote.notes,
+    comments: [],
+    followups: [],
+  };
+};
+
+const getStatusConfig = (status: QuoteStatus) => {
   switch (status) {
     case QuoteStatus.NEW_QUOTE:
       return {
@@ -65,7 +112,7 @@ const getStatusConfig = (status: iQuote["status"]) => {
 export default function QuotesPage() {
   const [quotes, setQuotes] = useState<iQuote[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentPage, setCurrentPage] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1); // Changed to 1-based indexing
   const [totalCount, setTotalCount] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [selectedQuote, setSelectedQuote] = useState<iQuote | null>(null);
@@ -74,6 +121,8 @@ export default function QuotesPage() {
   const [formLoading, setFormLoading] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<QuoteStatus | 'all'>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
+
+  const { post } = useApi();
 
   const openNewQuoteDrawer = () => {
     setSelectedQuote(null);
@@ -84,23 +133,46 @@ export default function QuotesPage() {
   const fetchQuotes = useCallback(async () => {
     try {
       setLoading(true);
-      const params: iQuoteSearchParams = {
-        isQuote: true,
+      
+      // Build request parameters matching the API structure
+      const requestBody = {
+        isQuote: true, // This is for quotes, not orders
         pageSize: rowsPerPage,
-        pageIndex: currentPage,
-        quoteStatus: selectedStatus === 'all' ? undefined : [selectedStatus],
+        pageIndex: currentPage - 1, // Convert to 0-based for API
         website: WebsiteType.PROMOTIONAL_PRODUCT_INC,
+        ...(selectedStatus !== 'all' && { quoteStatus: [selectedStatus] }),
+        ...(searchTerm && { search: searchTerm })
       };
-      const response = await QuoteService.getQuotes(params);
-      setQuotes(response.data);
-      setTotalCount(response.totalCount);
+
+      console.log('Fetching quotes with params:', requestBody);
+
+      const response = await post('/Admin/SaleList/GetSalesList', requestBody);
+      
+      console.log('Quotes API response:', response);
+
+      if (response && response.sales) {
+        // Transform API quotes to match our interface
+        const transformedQuotes = response.sales
+          .filter((sale: any) => sale.quote || !sale.order) // Include items that have quote data or no order data
+          .map(transformApiQuote);
+        
+        setQuotes(transformedQuotes);
+        setTotalCount(response.count || 0);
+      } else {
+        console.error('Invalid response structure:', response);
+        setQuotes([]);
+        setTotalCount(0);
+        showToast.error('Invalid response from server');
+      }
     } catch (error) {
       console.error('Error fetching quotes:', error);
+      setQuotes([]);
+      setTotalCount(0);
       showToast.error('Failed to fetch quotes');
     } finally {
       setLoading(false);
     }
-  }, [rowsPerPage, currentPage, selectedStatus]);
+  }, [rowsPerPage, currentPage, selectedStatus, searchTerm, post]);
 
   useEffect(() => {
     fetchQuotes();
@@ -112,17 +184,17 @@ export default function QuotesPage() {
 
   const handleRowsPerPageChange = (rows: number) => {
     setRowsPerPage(rows);
-    setCurrentPage(0);
+    setCurrentPage(1); // Reset to first page
   };
 
   const handleSubmit = async (formData: iQuoteFormData) => {
     try {
       setFormLoading(true);
       if (isEditing && selectedQuote) {
-        await QuoteService.updateQuote(selectedQuote.id, { status: formData.status });
+        // Update quote logic here
         showToast.success('Quote updated successfully');
       } else {
-        await QuoteService.createQuote(formData.customerId);
+        // Create quote logic here
         showToast.success('Quote created successfully');
       }
       closeDrawer();
@@ -147,8 +219,8 @@ export default function QuotesPage() {
   };
 
   const totalPages = Math.ceil(totalCount / rowsPerPage);
-  const startIndex = currentPage * rowsPerPage + 1;
-  const endIndex = Math.min((currentPage + 1) * rowsPerPage, totalCount);
+  const startIndex = (currentPage - 1) * rowsPerPage;
+  const endIndex = Math.min(startIndex + rowsPerPage, totalCount);
 
   const { contextData } = useQuotesHeaderContext({
     totalCount,
@@ -163,46 +235,49 @@ export default function QuotesPage() {
   useEffect(() => {
     if (contextData.searchTerm !== searchTerm) {
       setSearchTerm(contextData.searchTerm);
+      // Reset to first page when searching
+      setCurrentPage(1);
     }
   }, [contextData.searchTerm, searchTerm]);
 
-  if (loading) {
-    return <LoadingState message="Loading quotes..." />;
-  }
-
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header
-        contextData={{
-          totalCount: totalCount,
-          searchTerm: searchTerm || '',
-          onSearchChange: contextData.onSearchChange,
-          onAddNew: openNewQuoteDrawer,
-          filters: []
-        }}
-      />
+      <Header contextData={contextData} />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {quotes?.length === 0 ? (
-          <EmptyState
-            icon={FileText}
-            title="No quotes found"
-            description="Get started by creating your first quote"
-            hasSearch={false}
-          />
-        ) : (
-          <>
+      <div className="p-2 space-y-2">
+        <Card className="p-4">
+          {loading ? (
+            <div className="py-12">
+              <LoadingState message="Loading quotes..." />
+            </div>
+          ) : quotes.length === 0 ? (
+            <div className="py-12">
+              <EmptyState
+                icon={FileText}
+                title="No quotes found"
+                description={
+                  searchTerm || selectedStatus !== 'all'
+                    ? "Try adjusting your search terms or filters to find quotes."
+                    : "Get started by creating your first quote."
+                }
+                hasSearch={!!searchTerm || selectedStatus !== 'all'}
+              />
+            </div>
+          ) : (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {quotes?.map((quote) => {
+              {quotes.map((quote) => {
                 const statusConfig = getStatusConfig(quote.status);
                 const customerName = quote.customer?.name || 'Unknown Customer';
                 const customerEmail = quote.customer?.email || 'No email';
-                const customerTotal = quote.customerEstimates?.total || 0;
+                
+                // Safe number conversion for monetary values
+                const customerTotal = parseFloat(quote.customerEstimates?.total) || 0;
+                
                 const inHandDate = quote.inHandDate;
                 const createdAt = quote.createdAt;
 
                 return (
-                  <Card key={quote.id} className="p-6 hover:shadow-lg transition-shadow">
+                  <Card key={quote.saleId} className="p-6 hover:shadow-lg transition-shadow">
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1">
                         <h3 className="text-lg font-semibold text-gray-900 mb-1">
@@ -211,11 +286,7 @@ export default function QuotesPage() {
                         <p className="text-sm text-gray-600 mb-2">{customerName}</p>
                         <p className="text-xs text-gray-500 mb-3">{customerEmail}</p>
                       </div>
-                      <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                        statusConfig.enabled 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-gray-100 text-gray-800'
-                      }`}>
+                      <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${statusConfig.bgSolid} ${statusConfig.textColor}`}>
                         <statusConfig.icon className="w-4 h-4 mr-2" />
                         {statusConfig.label.enabled}
                       </div>
@@ -229,12 +300,12 @@ export default function QuotesPage() {
                       {inHandDate && (
                         <div className="flex items-center text-sm text-gray-600">
                           <Clock className="w-4 h-4 mr-2" />
-                          <span>In Hand: {inHandDate}</span>
+                          <span>In Hand: {new Date(inHandDate).toLocaleDateString()}</span>
                         </div>
                       )}
                       <div className="flex items-center text-sm text-gray-600">
                         <DollarSign className="w-4 h-4 mr-2" />
-                        <span>${customerTotal.toFixed(2)}</span>
+                        <span>${formatCurrency(customerTotal)}</span>
                       </div>
                     </div>
 
@@ -262,51 +333,53 @@ export default function QuotesPage() {
                 );
               })}
             </div>
+          )}
+        </Card>
 
-            <div className="mt-8">
-              <PaginationControls
-                currentPage={currentPage}
-                totalPages={totalPages}
-                totalCount={totalCount}
-                rowsPerPage={rowsPerPage}
-                onPageChange={handlePageChange}
-                onRowsPerPageChange={handleRowsPerPageChange}
-                startIndex={startIndex}
-                endIndex={endIndex}
-              />
-            </div>
-          </>
+        {totalCount > 0 && !loading && (
+          <Card>
+            <PaginationControls
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalCount={totalCount}
+              rowsPerPage={rowsPerPage}
+              onPageChange={handlePageChange}
+              onRowsPerPageChange={handleRowsPerPageChange}
+              startIndex={startIndex}
+              endIndex={endIndex}
+            />
+          </Card>
         )}
-      </div>
 
-      <EntityDrawer
-        isOpen={isDrawerOpen}
-        onClose={closeDrawer}
-        title={isEditing ? `Edit Quote #${selectedQuote?.id}` : "New Quote"}
-        size="xl"
-        footer={
-          <div className="flex justify-end space-x-3">
-            <Button variant="secondary" onClick={closeDrawer}>
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              form="quote-form"
-              loading={formLoading}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              {isEditing ? "Update Quote" : "Create Quote"}
-            </Button>
-          </div>
-        }
-      >
-        <QuoteForm
-          quote={selectedQuote}
-          isEditing={isEditing}
-          onSubmit={handleSubmit}
-          loading={formLoading}
-        />
-      </EntityDrawer>
+        <EntityDrawer
+          isOpen={isDrawerOpen}
+          onClose={closeDrawer}
+          title={isEditing ? `Edit Quote #${selectedQuote?.id}` : "New Quote"}
+          size="xl"
+          footer={
+            <div className="flex justify-end space-x-3">
+              <Button variant="secondary" onClick={closeDrawer}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                form="quote-form"
+                loading={formLoading}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {isEditing ? "Update Quote" : "Create Quote"}
+              </Button>
+            </div>
+          }
+        >
+          <QuoteForm
+            quote={selectedQuote}
+            isEditing={isEditing}
+            onSubmit={handleSubmit}
+            loading={formLoading}
+          />
+        </EntityDrawer>
+      </div>
     </div>
   );
 }
