@@ -11,7 +11,7 @@ import { iCustomer, iCustomerAddressFormData } from '@/types/customer';
 import { iOrderFormData, iOrderFormProps, iOrderItem, iOrder } from '@/types/order';
 import { showToast } from '@/components/ui/toast';
 
-type FormStep = 'customer' | 'address' | 'items' | 'details' | 'checkout' | 'notes';
+type FormStep = 'customer-address' | 'items' | 'details' | 'checkout' | 'notes';
 
 interface ExtendedOrderItem extends iOrderItem {
   images?: string[];
@@ -108,7 +108,7 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
   onSubmit,
   loading = false
 }) => {
-  const [currentStep, setCurrentStep] = useState<FormStep>('customer');
+  const [currentStep, setCurrentStep] = useState<FormStep>('customer-address');
   const [selectedCustomer, setSelectedCustomer] = useState<iCustomer | null>(null);
   const [showBillingAddressForm, setShowBillingAddressForm] = useState(false);
   const [showShippingAddressForm, setShowShippingAddressForm] = useState(false);
@@ -161,7 +161,7 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
         notes: order.notes || '',
         items: mockOrderItems,
       }));
-      setCurrentStep('customer');
+      setCurrentStep('customer-address');
     } else {
       setSelectedCustomer(mockCustomer);
       setOrderItems(mockOrderItems);
@@ -180,7 +180,7 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
   }, [order, isEditing]);
 
   const handleNextStep = () => {
-    const steps: FormStep[] = ['customer', 'address', 'items', 'details', 'checkout', 'notes'];
+    const steps: FormStep[] = ['customer-address', 'items', 'details', 'checkout', 'notes'];
     const currentIndex = steps.indexOf(currentStep);
     if (currentIndex < steps.length - 1) {
       setCurrentStep(steps[currentIndex + 1]);
@@ -188,7 +188,7 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
   };
 
   const handlePrevStep = () => {
-    const steps: FormStep[] = ['customer', 'address', 'items', 'details', 'checkout', 'notes'];
+    const steps: FormStep[] = ['customer-address', 'items', 'details', 'checkout', 'notes'];
     const currentIndex = steps.indexOf(currentStep);
     if (currentIndex > 0) {
       setCurrentStep(steps[currentIndex - 1]);
@@ -335,8 +335,7 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
 
   const getStepTitle = (step: FormStep) => {
     switch (step) {
-      case 'customer': return 'Customer';
-      case 'address': return 'Addresses';
+      case 'customer-address': return 'Customer & Address';
       case 'items': return 'Items';
       case 'details': return 'Details';
       case 'checkout': return 'Checkout';
@@ -347,8 +346,7 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
 
   const isStepCompleted = (step: FormStep) => {
     switch (step) {
-      case 'customer': return !!selectedCustomer;
-      case 'address': return !!(formData.billingAddress.street && formData.shippingAddress.street);
+      case 'customer-address': return !!(selectedCustomer && formData.billingAddress.street && formData.shippingAddress.street);
       case 'items': return orderItems.length > 0;
       case 'details': return !!(formData.customerTotal && parseFloat(formData.customerTotal) > 0);
       case 'checkout': return true;
@@ -358,7 +356,7 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
   };
 
   const renderStepIndicator = () => {
-    const steps: FormStep[] = ['customer', 'address', 'items', 'details', 'checkout', 'notes'];
+    const steps: FormStep[] = ['customer-address', 'items', 'details', 'checkout', 'notes'];
     
     return (
       <div className="flex items-center justify-between mb-4 bg-gray-50 p-3 rounded-lg">
@@ -369,7 +367,7 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
           size="sm"
           icon={ChevronLeft}
           iconOnly
-          disabled={currentStep === 'customer'}
+          disabled={currentStep === 'customer-address'}
           className="w-8 h-8"
         />
         
@@ -426,89 +424,162 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
     );
   };
 
-  const renderCustomerStep = () => {
-    if (isEditing && selectedCustomer) {
-      return (
-        <div className="space-y-4">
-          <Card className="p-4 bg-blue-50 border-blue-200">
-            <div className="flex items-center space-x-4">
-              <EntityAvatar
-                name={`${selectedCustomer.firstName} ${selectedCustomer.lastName}`}
-                id={selectedCustomer.idNum}
-                type="customer"
-                size="lg"
-              />
-              <div className="flex-1">
-                <div className="flex items-center space-x-2 mb-2">
-                  <h3 className="text-lg font-semibold text-blue-800">
-                    {selectedCustomer.firstName} {selectedCustomer.lastName}
-                  </h3>
-                  {selectedCustomer.isBusinessCustomer && (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      Business Customer
-                    </span>
-                  )}
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                  <div className="flex items-center gap-2 text-blue-700">
-                    <Mail className="w-4 h-4" />
-                    <span>{selectedCustomer.email}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-blue-700">
-                    <Phone className="w-4 h-4" />
-                    <span>{selectedCustomer.phone}</span>
-                  </div>
-                  {selectedCustomer.companyName && (
-                    <div className="flex items-center gap-2 text-blue-700 sm:col-span-2">
-                      <Building className="w-4 h-4" />
-                      <span>{selectedCustomer.companyName}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-              <CheckCircle className="w-6 h-6 text-green-500" />
-            </div>
-          </Card>
-          
-          <div className="text-center">
-            <p className="text-sm text-gray-600 mb-3">
-              This order is associated with the customer shown above.
-            </p>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setCurrentStep('address')}
-            >
-              Continue to Addresses
-            </Button>
-          </div>
-        </div>
-      );
-    }
-
+  const renderCustomerAndAddressStep = () => {
     return (
-      <div className="space-y-2">
-        <CustomerSearch 
-          onCustomerSelect={handleCustomerSelect}
-          selectedCustomer={selectedCustomer}
-          onNewCustomer={() => {}}
-        />
-        
-        {selectedCustomer && (
-          <Card className="p-3 bg-green-50 border-green-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium text-green-800 text-sm">
-                  {selectedCustomer.firstName} {selectedCustomer.lastName}
-                </p>
-                <p className="text-xs text-green-600">{selectedCustomer.email}</p>
-                {selectedCustomer.companyName && (
-                  <p className="text-xs text-green-600">{selectedCustomer.companyName}</p>
-                )}
+      <div className="space-y-4">
+        {/* Customer Selection */}
+        <Card className="p-4">
+          <h4 className="font-medium text-gray-900 text-sm mb-3 flex items-center gap-2">
+            <User className="w-4 h-4 text-blue-500" />
+            Customer Selection
+          </h4>
+          
+          {isEditing && selectedCustomer ? (
+            <Card className="p-4 bg-blue-50 border-blue-200">
+              <div className="flex items-center space-x-4">
+                <EntityAvatar
+                  name={`${selectedCustomer.firstName} ${selectedCustomer.lastName}`}
+                  id={selectedCustomer.idNum}
+                  type="customer"
+                  size="lg"
+                />
+                <div className="flex-1">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <h3 className="text-lg font-semibold text-blue-800">
+                      {selectedCustomer.firstName} {selectedCustomer.lastName}
+                    </h3>
+                    {selectedCustomer.isBusinessCustomer && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        Business Customer
+                      </span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                    <div className="flex items-center gap-2 text-blue-700">
+                      <Mail className="w-4 h-4" />
+                      <span>{selectedCustomer.email}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-blue-700">
+                      <Phone className="w-4 h-4" />
+                      <span>{selectedCustomer.phone}</span>
+                    </div>
+                    {selectedCustomer.companyName && (
+                      <div className="flex items-center gap-2 text-blue-700 sm:col-span-2">
+                        <Building className="w-4 h-4" />
+                        <span>{selectedCustomer.companyName}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <CheckCircle className="w-6 h-6 text-green-500" />
               </div>
-              <CheckCircle className="w-4 h-4 text-green-500" />
-            </div>
-          </Card>
+            </Card>
+          ) : (
+            <CustomerSearch 
+              onCustomerSelect={handleCustomerSelect}
+              selectedCustomer={selectedCustomer}
+              onNewCustomer={() => {}}
+            />
+          )}
+        </Card>
+
+        {/* Address Selection */}
+        {selectedCustomer && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Billing Address */}
+            <Card className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-medium text-gray-900 text-sm flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-green-500" />
+                  Billing Address
+                </h4>
+                <Button
+                  onClick={() => setShowBillingAddressForm(!showBillingAddressForm)}
+                  variant="secondary"
+                  size="sm"
+                  icon={showBillingAddressForm ? ChevronDown : ChevronRight}
+                  className="h-6"
+                >
+                  {formData.billingAddress.street ? 'Edit' : 'Add'}
+                </Button>
+              </div>
+              
+              {formData.billingAddress.street && (
+                <div className="text-xs text-gray-600 mb-2 bg-gray-50 p-3 rounded-lg">
+                  <p className="font-medium text-gray-900">{formData.billingAddress.name}</p>
+                  <p>{formData.billingAddress.street}</p>
+                  <p>{formData.billingAddress.city}, {formData.billingAddress.state} {formData.billingAddress.zipCode}</p>
+                  <p className="text-xs text-blue-600 mt-1">{formData.billingAddress.label}</p>
+                </div>
+              )}
+              
+              {showBillingAddressForm && (
+                <div className="border-t pt-2 mt-2">
+                  <AddressForm
+                    address={formData.billingAddress}
+                    onSubmit={handleBillingAddressSubmit}
+                    onCancel={() => setShowBillingAddressForm(false)}
+                  />
+                </div>
+              )}
+            </Card>
+
+            {/* Shipping Address */}
+            <Card className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-medium text-gray-900 text-sm flex items-center gap-2">
+                  <Truck className="w-4 h-4 text-purple-500" />
+                  Shipping Address
+                </h4>
+                <div className="flex items-center space-x-2">
+                  <label className="flex items-center text-xs">
+                    <input
+                      type="checkbox"
+                      checked={formData.sameAsShipping}
+                      onChange={(e) => {
+                        setFormData(prev => ({
+                          ...prev,
+                          sameAsShipping: e.target.checked,
+                          shippingAddress: e.target.checked ? prev.billingAddress : prev.shippingAddress
+                        }));
+                      }}
+                      className="mr-1 w-3 h-3"
+                    />
+                    Same as billing
+                  </label>
+                  <Button
+                    onClick={() => setShowShippingAddressForm(!showShippingAddressForm)}
+                    variant="secondary"
+                    size="sm"
+                    icon={showShippingAddressForm ? ChevronDown : ChevronRight}
+                    disabled={formData.sameAsShipping}
+                    className="h-6"
+                  >
+                    {formData.shippingAddress.street ? 'Edit' : 'Add'}
+                  </Button>
+                </div>
+              </div>
+              
+              {formData.shippingAddress.street && (
+                <div className="text-xs text-gray-600 mb-2 bg-gray-50 p-3 rounded-lg">
+                  <p className="font-medium text-gray-900">{formData.shippingAddress.name}</p>
+                  <p>{formData.shippingAddress.street}</p>
+                  <p>{formData.shippingAddress.city}, {formData.shippingAddress.state} {formData.shippingAddress.zipCode}</p>
+                  <p className="text-xs text-blue-600 mt-1">{formData.shippingAddress.label}</p>
+                </div>
+              )}
+              
+              {showShippingAddressForm && !formData.sameAsShipping && (
+                <div className="border-t pt-2 mt-2">
+                  <AddressForm
+                    address={formData.shippingAddress}
+                    onSubmit={handleShippingAddressSubmit}
+                    onCancel={() => setShowShippingAddressForm(false)}
+                  />
+                </div>
+              )}
+            </Card>
+          </div>
         )}
       </div>
     );
@@ -663,96 +734,6 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
           </div>
         </Card>
       )}
-    </div>
-  );
-
-  const renderAddressStep = () => (
-    <div className="space-y-3">
-      <Card className="p-3">
-        <div className="flex items-center justify-between mb-2">
-          <h4 className="font-medium text-gray-900 text-sm">Billing Address</h4>
-          <Button
-            onClick={() => setShowBillingAddressForm(!showBillingAddressForm)}
-            variant="secondary"
-            size="sm"
-            icon={showBillingAddressForm ? ChevronDown : ChevronRight}
-            className="h-6"
-          >
-            {formData.billingAddress.street ? 'Edit' : 'Add'}
-          </Button>
-        </div>
-        
-        {formData.billingAddress.street && (
-          <div className="text-xs text-gray-600 mb-2 bg-gray-50 p-3 rounded-lg">
-            <p className="font-medium text-gray-900">{formData.billingAddress.name}</p>
-            <p>{formData.billingAddress.street}</p>
-            <p>{formData.billingAddress.city}, {formData.billingAddress.state} {formData.billingAddress.zipCode}</p>
-            <p className="text-xs text-blue-600 mt-1">{formData.billingAddress.label}</p>
-          </div>
-        )}
-        
-        {showBillingAddressForm && (
-          <div className="border-t pt-2 mt-2">
-            <AddressForm
-              address={formData.billingAddress}
-              onSubmit={handleBillingAddressSubmit}
-              onCancel={() => setShowBillingAddressForm(false)}
-            />
-          </div>
-        )}
-      </Card>
-
-      <Card className="p-3">
-        <div className="flex items-center justify-between mb-2">
-          <h4 className="font-medium text-gray-900 text-sm">Shipping Address</h4>
-          <div className="flex items-center space-x-2">
-            <label className="flex items-center text-xs">
-              <input
-                type="checkbox"
-                checked={formData.sameAsShipping}
-                onChange={(e) => {
-                  setFormData(prev => ({
-                    ...prev,
-                    sameAsShipping: e.target.checked,
-                    shippingAddress: e.target.checked ? prev.billingAddress : prev.shippingAddress
-                  }));
-                }}
-                className="mr-1 w-3 h-3"
-              />
-              Same as billing
-            </label>
-            <Button
-              onClick={() => setShowShippingAddressForm(!showShippingAddressForm)}
-              variant="secondary"
-              size="sm"
-              icon={showShippingAddressForm ? ChevronDown : ChevronRight}
-              disabled={formData.sameAsShipping}
-              className="h-6"
-            >
-              {formData.shippingAddress.street ? 'Edit' : 'Add'}
-            </Button>
-          </div>
-        </div>
-        
-        {formData.shippingAddress.street && (
-          <div className="text-xs text-gray-600 mb-2 bg-gray-50 p-3 rounded-lg">
-            <p className="font-medium text-gray-900">{formData.shippingAddress.name}</p>
-            <p>{formData.shippingAddress.street}</p>
-            <p>{formData.shippingAddress.city}, {formData.shippingAddress.state} {formData.shippingAddress.zipCode}</p>
-            <p className="text-xs text-blue-600 mt-1">{formData.shippingAddress.label}</p>
-          </div>
-        )}
-        
-        {showShippingAddressForm && !formData.sameAsShipping && (
-          <div className="border-t pt-2 mt-2">
-            <AddressForm
-              address={formData.shippingAddress}
-              onSubmit={handleShippingAddressSubmit}
-              onCancel={() => setShowShippingAddressForm(false)}
-            />
-          </div>
-        )}
-      </Card>
     </div>
   );
 
@@ -1066,13 +1047,12 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
 
   const renderCurrentStep = () => {
     switch (currentStep) {
-      case 'customer': return renderCustomerStep();
-      case 'address': return renderAddressStep();
+      case 'customer-address': return renderCustomerAndAddressStep();
       case 'items': return renderItemsStep();
       case 'details': return renderDetailsStep();
       case 'checkout': return renderCheckoutStep();
       case 'notes': return renderNotesStep();
-      default: return renderCustomerStep();
+      default: return renderCustomerAndAddressStep();
     }
   };
 
@@ -1099,31 +1079,6 @@ export const OrderForm: React.FC<iOrderFormProps> = ({
               <Calendar className="w-3 h-3 text-gray-400" />
               <span className="text-gray-500">Created:</span>
               <span className="font-medium">{order.dateTime}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <DollarSign className="w-3 h-3 text-gray-400" />
-              <span className="text-gray-500">Total:</span>
-              <span className="font-medium text-green-600">${order.customerTotal.toFixed(2)}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Package className="w-3 h-3 text-gray-400" />
-              <span className="text-gray-500">Items:</span>
-              <span className="font-medium">{order.itemCount || orderItems.length} items</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <DollarSign className="w-3 h-3 text-gray-400" />
-              <span className="text-gray-500">Profit:</span>
-              <span className="font-medium text-orange-600">${order.profit.toFixed(2)}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <CreditCard className="w-3 h-3 text-gray-400" />
-              <span className="text-gray-500">Payment:</span>
-              <span className="font-medium">{order.paymentMethod}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <ImageIcon className="w-3 h-3 text-gray-400" />
-              <span className="text-gray-500">Images:</span>
-              <span className="font-medium">{orderItems.reduce((sum, item) => sum + (item.images?.length || 0), 0)} total</span>
             </div>
           </div>
         </div>

@@ -18,9 +18,19 @@ import { showToast } from "@/components/ui/toast";
 import { Header } from "@/components/layout/Header";
 
 const getStatusConfig = (status: string) => {
-  const normalizedStatus = status.toLowerCase().replace(/\s+/g, '-');
+  // Handle both the mapped status and potential API status
+  let normalizedStatus = status.toLowerCase().replace(/\s+/g, '-');
+  
+  // Handle some API statuses directly if they slip through
+  if (status === 'NewOrder') normalizedStatus = 'new';
+  if (status === 'OrderInProduction') normalizedStatus = 'in-production';
+  if (status === 'Completed') normalizedStatus = 'delivered';
+  if (status === 'QuoteConvertedToOrder') normalizedStatus = 'new';
+  
+  console.log('Status config for:', status, 'normalized to:', normalizedStatus);
   
   switch (normalizedStatus) {
+    case 'new':
     case 'neworder':
     case 'new-order':
       return {
@@ -31,8 +41,9 @@ const getStatusConfig = (status: string) => {
         bgSolid: "bg-blue-100",
         textColor: "text-blue-800",
       };
-    case 'orderinproduction':
     case 'in-production':
+    case 'orderinproduction':
+    case 'inproduction':
       return {
         enabled: true,
         label: { enabled: "In Production", disabled: "In Production" },
@@ -50,8 +61,8 @@ const getStatusConfig = (status: string) => {
         bgSolid: "bg-purple-100",
         textColor: "text-purple-800",
       };
-    case 'completed':
     case 'delivered':
+    case 'completed':
       return {
         enabled: true,
         label: { enabled: "Completed", disabled: "Completed" },
@@ -70,9 +81,10 @@ const getStatusConfig = (status: string) => {
         textColor: "text-red-800",
       };
     default:
+      console.warn(`No status config found for: "${status}" (normalized: "${normalizedStatus}")`);
       return {
         enabled: true,
-        label: { enabled: "Unknown", disabled: "Unknown" },
+        label: { enabled: status || "Unknown", disabled: status || "Unknown" },
         icon: Clock,
         bgGradient: "from-gray-500 to-gray-600",
         bgSolid: "bg-gray-100",
@@ -80,6 +92,7 @@ const getStatusConfig = (status: string) => {
       };
   }
 };
+
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<iOrder[]>([]);
@@ -139,22 +152,33 @@ export default function OrdersPage() {
   }, []);
 
   const mapApiStatusToOrderStatus = useCallback((apiStatus: string): iOrder['status'] => {
-    switch (apiStatus) {
-      case OrderStatus.NEW_ORDER:
-      case OrderStatus.IN_PROCESS:
-        return 'new';
-      case OrderStatus.IN_PRODUCTION:
-        return 'in-production';
-      case OrderStatus.SHIPPED:
-        return 'shipped';
-      case OrderStatus.COMPLETED:
-        return 'delivered';
-      case OrderStatus.CANCELLED:
-        return 'cancelled';
-      default:
-        return 'new';
-    }
-  }, []);
+  // Log the actual status for debugging
+  console.log('Mapping API status to order status:', apiStatus);
+  
+  switch (apiStatus) {
+    case 'NewOrder':
+    case 'InProgress':
+    case 'WaitingForApproval':
+      return 'new';
+    case 'OrderInProduction':
+    case 'InProduction':
+      return 'in-production';
+    case 'Shipped':
+      return 'shipped';
+    case 'Completed':
+    case 'Delivered':
+      return 'delivered';
+    case 'Cancelled':
+      return 'cancelled';
+    case 'QuoteConvertedToOrder':
+      return 'new'; // Treat converted quotes as new orders
+    case 'OnHold':
+      return 'new'; // Treat on-hold as new for now
+    default:
+      console.warn(`Unknown order status received: "${apiStatus}". Defaulting to 'new'.`);
+      return 'new';
+  }
+}, []);
 
   const mapApiPaymentMethod = useCallback((apiMethod: string): string => {
     switch (apiMethod) {
@@ -170,21 +194,21 @@ export default function OrdersPage() {
   }, []);
 
   const mapStatusFilterToApi = useCallback((filter: string): string[] => {
-    switch (filter) {
-      case 'new':
-        return [OrderStatus.NEW_ORDER, OrderStatus.IN_PROCESS];
-      case 'in-production':
-        return [OrderStatus.IN_PRODUCTION];
-      case 'shipped':
-        return [OrderStatus.SHIPPED];
-      case 'delivered':
-        return [OrderStatus.COMPLETED];
-      case 'cancelled':
-        return [OrderStatus.CANCELLED];
-      default:
-        return [];
-    }
-  }, []);
+  switch (filter) {
+    case 'new':
+      return ['NewOrder', 'InProgress', 'WaitingForApproval', 'QuoteConvertedToOrder'];
+    case 'in-production':
+      return ['OrderInProduction', 'InProduction'];
+    case 'shipped':
+      return ['Shipped'];
+    case 'delivered':
+      return ['Completed', 'Delivered'];
+    case 'cancelled':
+      return ['Cancelled'];
+    default:
+      return [];
+  }
+}, []);
 
   const fetchOrders = useCallback(async () => {
     if (loading) return;
