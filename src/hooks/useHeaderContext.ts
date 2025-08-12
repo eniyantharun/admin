@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { Download, RefreshCw, FileText, Mail, BarChart3, LayoutGrid, List } from 'lucide-react';
 import { IActionConfig, IFilterConfig, IHeaderContextData, IUseHeaderContextProps } from '@/types/headerContext';
+import { OrderStatus, QuoteStatus } from '@/types/enums';
 
 
 export const useHeaderContext = ({
@@ -237,8 +238,8 @@ export const useOrdersHeaderContext = ({
 }: {
   totalCount: number;
   onAddNew: () => void;
-  statusFilter: string;
-  onStatusFilterChange: (value: string) => void;
+  statusFilter: OrderStatus | 'all';
+  onStatusFilterChange: (value: OrderStatus | 'all') => void;
   onRefresh?: () => void;
   onExport?: () => void;
 }) => {
@@ -252,16 +253,16 @@ export const useOrdersHeaderContext = ({
       value: statusFilter,
       onChange: (value: string | boolean) => {
         if (typeof value === 'string') {
-          onStatusFilterChange(value);
+          onStatusFilterChange(value as OrderStatus | 'all');
         }
       },
       options: [
         { value: 'all', label: 'All Orders' },
-        { value: 'new', label: 'New Orders' },
-        { value: 'in-production', label: 'In Production' },
-        { value: 'shipped', label: 'Shipped' },
-        { value: 'delivered', label: 'Delivered' },
-        { value: 'cancelled', label: 'Cancelled' }
+        { value: OrderStatus.NEW_ORDER, label: 'New Orders' },
+        { value: OrderStatus.IN_PRODUCTION, label: 'In Production' },
+        { value: OrderStatus.SHIPPED, label: 'Shipped' },
+        { value: OrderStatus.COMPLETED, label: 'Completed' },
+        { value: OrderStatus.CANCELLED, label: 'Cancelled' }
       ]
     }
   ];
@@ -310,8 +311,8 @@ export const useQuotesHeaderContext = ({
 }: {
   totalCount: number;
   onAddNew: () => void;
-  statusFilter: string;
-  onStatusFilterChange: (value: string) => void;
+  statusFilter: QuoteStatus | 'all';
+  onStatusFilterChange: (value: QuoteStatus | 'all') => void;
   onRefresh?: () => void;
   onExport?: () => void;
 }) => {
@@ -325,14 +326,14 @@ export const useQuotesHeaderContext = ({
       value: statusFilter,
       onChange: (value: string | boolean) => {
         if (typeof value === 'string') {
-          onStatusFilterChange(value);
+          onStatusFilterChange(value as QuoteStatus | 'all');
         }
       },
       options: [
         { value: 'all', label: 'All Quotes' },
-        { value: 'new-quote', label: 'New Quotes' },
-        { value: 'quote-sent-to-customer', label: 'Sent to Customer' },
-        { value: 'quote-converted-to-order', label: 'Converted to Order' }
+        { value: QuoteStatus.NEW_QUOTE, label: 'New Quotes' },
+        { value: QuoteStatus.QUOTE_SENT_TO_CUSTOMER, label: 'Sent to Customer' },
+        { value: QuoteStatus.QUOTE_CONVERTED_TO_ORDER, label: 'Converted to Order' }
       ]
     }
   ];

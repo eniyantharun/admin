@@ -24,6 +24,7 @@ import {
 import { googleMapsUtils } from "@/lib/googleMaps";
 import { iCustomerFormProps } from "./../../types/customer"
 import { showToast } from "@/components/ui/toast";
+import { WebsiteType, OrderStatus } from "@/types/enums";
 
 
 export const CustomerForm: React.FC<iCustomerFormProps> = ({
@@ -504,7 +505,7 @@ export const CustomerForm: React.FC<iCustomerFormProps> = ({
                         {order.status && (
                           <span
                             className={`inline-block px-2 py-1 rounded text-xs font-medium ${
-                              order.status === "completed"
+                              order.status === OrderStatus.COMPLETED
                                 ? "bg-green-100 text-green-800"
                                 : "bg-gray-100 text-gray-800"
                             }`}

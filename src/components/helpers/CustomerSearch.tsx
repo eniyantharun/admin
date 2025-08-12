@@ -10,6 +10,7 @@ import { EmptyState, LoadingState } from '@/components/helpers/EmptyLoadingState
 import { iCustomer, iApiCustomer, iCustomerFormData } from '@/types/customer';
 import { googleMapsUtils } from '@/lib/googleMaps';
 import { showToast } from '@/components/ui/toast';
+import { WebsiteType } from '@/types/enums';
 
 interface CustomerSearchProps {
   onCustomerSelect: (customer: iCustomer) => void;
@@ -68,7 +69,7 @@ export const CustomerSearch: React.FC<CustomerSearchProps> = ({
         Search: term,
         Count: '10',
         Index: '0',
-        Website: 'promotional_product_inc',
+        Website: WebsiteType.PROMOTIONAL_PRODUCT_INC,
       });
 
       const response = await get(`/Admin/CustomerEditor/GetCustomersList?${queryParams}`);

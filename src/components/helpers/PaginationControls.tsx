@@ -53,7 +53,7 @@ export const PaginationControls: React.FC<iPaginationControlsProps> = ({
           Showing <span className="font-medium">{startIndex + 1}</span>{" "}
           to <span className="font-medium">{endIndex}</span> of{" "}
           <span className="font-medium">
-            {totalCount.toLocaleString()}
+            {totalCount?.toLocaleString()}
           </span>{" "}
           results
         </p>

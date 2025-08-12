@@ -1,6 +1,7 @@
 import axios, { AxiosRequestConfig, AxiosError } from 'axios';
 import Cookies from 'js-cookie';
 import { showToast } from '../components/ui/toast';
+import { OrderStatus, QuoteStatus, WebsiteType, PaymentMethod } from '../types/enums';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL!;
 
@@ -27,7 +28,7 @@ apiClient.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     } else {
-      console.log('No auth token found in cookies');
+      showToast.error('No auth token found in cookies');
     }
     return config;
   },
@@ -80,7 +81,7 @@ export const api = {
       
       return response.data;
     } catch (error) {
-      console.log(`API GET Error for ${url}:`);
+      showToast.error(`API GET Error for ${url}:`);
       throw error;
     }
   },
@@ -95,7 +96,7 @@ export const api = {
       
       return response.data;
     } catch (error) {
-      console.log(`API POST Error for ${url}:`);
+      showToast.error(`API POST Error for ${url}:`);
       throw error;
     }
   },
@@ -110,7 +111,7 @@ export const api = {
       
       return response.data;
     } catch (error) {
-      console.log(`API PUT Error for ${url}:`);
+      showToast.error(`API PUT Error for ${url}:`);
       throw error;
     }
   },
@@ -125,7 +126,7 @@ export const api = {
       
       return response.data;
     } catch (error) {
-       console.log(`API DELETE Error for ${url}:`);
+       showToast.error(`API DELETE Error for ${url}:`);
       throw error;
     }
   },
@@ -175,17 +176,49 @@ export const apiEndpoints = {
   },
   
   orders: {
-    list: '/Admin/Orders/GetOrdersList',
+    list: 'https://api.promowe.com/Admin/Orders/GetOrdersList',
     create: '/Admin/Orders/CreateOrder',
     update: (id: string | number) => `/Admin/Orders/UpdateOrder/${id}`,
     delete: (id: string | number) => `/Admin/Orders/DeleteOrder/${id}`,
   },
   
   quotes: {
-    list: '/Admin/Quotes/GetQuotesList',
+    list: 'https://api.promowe.com/Admin/Quotes/GetQuotesList',
     create: '/Admin/Quotes/CreateQuote',
     update: (id: string | number) => `/Admin/Quotes/UpdateQuote/${id}`,
     delete: (id: string | number) => `/Admin/Quotes/DeleteQuote/${id}`,
+  },
+  
+  sales: {
+    list: '/Admin/SaleList/GetSalesList',
+    quoteDetail: (id: string | number) => `/Admin/SaleEditor/GetQuoteDetail?id=${id}`,
+    orderDetail: (id: string | number) => `/Admin/SaleEditor/GetOrderDetail?Id=${id}`,
+    setLineItemsPositions: '/Admin/SaleEditor/SetLineItemsPositions',
+    setLineItemDetail: '/Admin/SaleEditor/SetLineItemDetail',
+    setSaleDetail: '/Admin/SaleEditor/SetSaleDetail',
+    addEmptyLineItem: '/Admin/SaleEditor/AddEmptyLineItem',
+    removeLineItems: '/Admin/SaleEditor/RemoveLineItems',
+    setOrderDetail: '/Admin/SaleEditor/SetOrderDetail',
+    getChargesList: (orderId: string | number) => `/Admin/SaleEditor/GetChargesList?OrderId=${orderId}`,
+    getSaleComments: (saleId: string) => `/Admin/SaleEditor/GetSaleComments?SaleId=${saleId}`,
+    getSaleInvoices: (saleId: string, supplierId: string | number) => `/Admin/SaleEditor/GetSaleInvoices?SaleId=${saleId}&SupplierId=${supplierId}`,
+    getSaleSummary: (saleId: string) => `/Admin/SaleEditor/GetSaleSummary?SaleId=${saleId}`,
+    getShippingCompanies: (prefix?: string) => `/Admin/SaleEditor/GetShippingCompanies?Prefix=${prefix || ''}`,
+    getShippingTypes: (count?: number, prefix?: string) => `/Admin/SaleEditor/GetShippingTypes?Count=${count || 10}&Prefix=${prefix || ''}`,
+    getTrackingLink: (companyName: string, trackingNumber: string) => `/Admin/SaleEditor/GetTrackingLink?CompanyName=${companyName}&TrackingNumber=${trackingNumber}`,
+    addEmptyOrder: '/Admin/SaleEditor/AddEmptyOrder',
+    addQuotationFollowups: '/Admin/SaleEditor/AddQuotationFollowups',
+    addSaleComment: '/Admin/SaleEditor/AddSaleComment',
+    convertOrderToQuote: '/Admin/SaleEditor/ConvertOrderToQuote',
+    sendQuotationFollowup: '/Admin/SaleEditor/SendQuotationFollowup',
+    addEmptyQuote: '/Admin/SaleEditor/AddEmptyQuote',
+    setPurchaseOrderDetail: '/Admin/SaleEditor/SetPurchaseOrderDetail',
+    setQuoteDetail: '/Admin/SaleEditor/SetQuoteDetail',
+  },
+  
+  dashboard: {
+    getDashboardOrders: '/Admin/Dashboard/GetDashboardOrders',
+    getOrderStatistics: '/Admin/Dashboard/GetOrderStatistics',
   },
   
   brands: {
@@ -257,6 +290,156 @@ export class SupplierService {
 
   static async updateSupplier(id: string | number, supplierData: any) {
     return api.put(apiEndpoints.suppliers.update(id), supplierData);
+  }
+}
+
+export class QuoteService {
+  static async getQuotes(params: {
+    isQuote: boolean;
+    search?: string;
+    pageSize: number;
+    pageIndex: number;
+    orderStatus?: OrderStatus[];
+    quoteStatus?: QuoteStatus[];
+    website: WebsiteType;
+  }) {
+    return api.post(apiEndpoints.sales.list, params);
+  }
+
+  static async getQuoteDetail(id: string | number) {
+    return api.get(apiEndpoints.sales.quoteDetail(id));
+  }
+
+  static async createQuote(customerId: string) {
+    return api.post(apiEndpoints.sales.addEmptyQuote, { customerId });
+  }
+
+  static async updateQuote(id: number, data: { status?: QuoteStatus }) {
+    return api.post(apiEndpoints.sales.setQuoteDetail, { id, ...data });
+  }
+
+  static async addQuotationFollowups(quoteId: number) {
+    return api.post(apiEndpoints.sales.addQuotationFollowups, { quoteId });
+  }
+
+  static async sendQuotationFollowup(quoteId: number) {
+    return api.post(apiEndpoints.sales.sendQuotationFollowup, { quoteId });
+  }
+
+  static async setLineItemsPositions(saleId: string, lineItemIds: string[]) {
+    return api.post(apiEndpoints.sales.setLineItemsPositions, { saleId, lineItemIds });
+  }
+
+  static async setLineItemDetail(lineItemId: string, data: any) {
+    return api.post(apiEndpoints.sales.setLineItemDetail, { lineItemId, ...data });
+  }
+
+  static async addEmptyLineItem(saleId: string, productId: number) {
+    return api.post(apiEndpoints.sales.addEmptyLineItem, { saleId, productId });
+  }
+
+  static async removeLineItems(saleId: string, lineItemIds: string[]) {
+    return api.post(apiEndpoints.sales.removeLineItems, { SaleId: saleId, LineItemIds: lineItemIds });
+  }
+
+  static async setSaleDetail(saleId: string, data: any) {
+    return api.post(apiEndpoints.sales.setSaleDetail, { saleId, ...data });
+  }
+
+  static async getSaleComments(saleId: string) {
+    return api.get(apiEndpoints.sales.getSaleComments(saleId));
+  }
+
+  static async addSaleComment(saleId: string, comment: string, attachments?: string[]) {
+    return api.post(apiEndpoints.sales.addSaleComment, { saleId, comment, attachments });
+  }
+
+  static async getSaleSummary(saleId: string) {
+    return api.get(apiEndpoints.sales.getSaleSummary(saleId));
+  }
+
+  static async getShippingCompanies(prefix?: string) {
+    return api.get(apiEndpoints.sales.getShippingCompanies(prefix));
+  }
+
+  static async getShippingTypes(count?: number, prefix?: string) {
+    return api.get(apiEndpoints.sales.getShippingTypes(count, prefix));
+  }
+
+  static async getTrackingLink(companyName: string, trackingNumber: string) {
+    return api.get(apiEndpoints.sales.getTrackingLink(companyName, trackingNumber));
+  }
+}
+
+export class OrderService {
+  static async getOrders(params: {
+    isQuote: boolean;
+    search?: string;
+    pageSize: number;
+    pageIndex: number;
+    orderStatus?: OrderStatus[];
+    quoteStatus?: string[];
+    website: WebsiteType;
+  }) {
+    return api.post(apiEndpoints.sales.list, params);
+  }
+
+  static async getOrderDetail(id: string | number) {
+    return api.get(apiEndpoints.sales.orderDetail(id));
+  }
+
+  static async createOrder(customerId: string) {
+    return api.post(apiEndpoints.sales.addEmptyOrder, { customerId });
+  }
+
+  static async updateOrder(id: number, data: {
+    paymentDetails?: { paymentDate?: string };
+    paymentMethod?: PaymentMethod;
+    isPaid?: boolean;
+    status?: OrderStatus;
+    creditCardId?: string;
+    chequePhotoId?: string;
+    companyPaymentOrderId?: string;
+    cheque?: { chequeNumber?: string };
+  }) {
+    return api.post(apiEndpoints.sales.setOrderDetail, { id, ...data });
+  }
+
+  static async getChargesList(orderId: string | number) {
+    return api.get(apiEndpoints.sales.getChargesList(orderId));
+  }
+
+  static async getSaleInvoices(saleId: string, supplierId: string | number) {
+    return api.get(apiEndpoints.sales.getSaleInvoices(saleId, supplierId));
+  }
+
+  static async setPurchaseOrderDetail(purchaseOrderId: number, data: {
+    form?: { shippingCost?: number };
+    isDefaultShippingEnabled?: boolean;
+    notesId?: string;
+  }) {
+    return api.post(apiEndpoints.sales.setPurchaseOrderDetail, { purchaseOrderId, ...data });
+  }
+
+  static async convertOrderToQuote(quoteId: number) {
+    return api.post(apiEndpoints.sales.convertOrderToQuote, { quoteId });
+  }
+}
+
+export class DashboardService {
+  static async getDashboardOrders(startDate: string, endDate: string) {
+    const params = new URLSearchParams({
+      Start: startDate,
+      End: endDate
+    });
+    return api.get(`${apiEndpoints.dashboard.getDashboardOrders}?${params}`);
+  }
+
+  static async getOrderStatistics(month: string) {
+    const params = new URLSearchParams({
+      Month: month
+    });
+    return api.get(`${apiEndpoints.dashboard.getOrderStatistics}?${params}`);
   }
 }
 
