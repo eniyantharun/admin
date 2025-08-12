@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Eye, Calendar, DollarSign, User, FileText, Mail, CheckCircle, Clock, Send } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -17,9 +17,10 @@ import { showToast } from "@/components/ui/toast";
 import { Header } from "@/components/layout/Header";
 import { WebsiteType, QuoteStatus } from "@/types/enums";
 
-// Helper function to safely convert to number and format
-const formatCurrency = (value: any): string => {
-  const numValue = parseFloat(value) || 0;
+// Helper function to safely format currency
+const formatCurrency = (value: number | string | undefined | null): string => {
+  if (value === null || value === undefined) return "0.00";
+  const numValue = typeof value === 'string' ? parseFloat(value) || 0 : Number(value) || 0;
   return numValue.toFixed(2);
 };
 
@@ -40,28 +41,32 @@ const transformApiQuote = (apiQuote: any): iQuote => {
     inHandDate: apiQuote.inHandDate,
     customerEstimates: {
       items: apiQuote.customerEstimates?.items || [],
-      itemsSubTotal: parseFloat(apiQuote.customerEstimates?.itemsSubTotal) || 0,
-      itemsTotal: parseFloat(apiQuote.customerEstimates?.itemsTotal) || 0,
-      setupCharge: parseFloat(apiQuote.customerEstimates?.setupCharge) || 0,
-      shipping: parseFloat(apiQuote.customerEstimates?.shipping) || 0,
-      discount: parseFloat(apiQuote.customerEstimates?.discount) || 0,
-      subTotal: parseFloat(apiQuote.customerEstimates?.subTotal) || 0,
-      total: parseFloat(apiQuote.customerEstimates?.total) || 0,
+      itemsSubTotal: Number(apiQuote.customerEstimates?.itemsSubTotal) || 0,
+      itemsTotal: Number(apiQuote.customerEstimates?.itemsTotal) || 0,
+      setupCharge: Number(apiQuote.customerEstimates?.setupCharge) || 0,
+      shipping: Number(apiQuote.customerEstimates?.shipping) || 0,
+      discount: Number(apiQuote.customerEstimates?.discount) || 0,
+      subTotal: Number(apiQuote.customerEstimates?.subTotal) || 0,
+      total: Number(apiQuote.customerEstimates?.total) || 0,
     },
     supplierEstimates: {
       items: apiQuote.supplierEstimates?.items || [],
-      itemsSubTotal: parseFloat(apiQuote.supplierEstimates?.itemsSubTotal) || 0,
-      itemsTotal: parseFloat(apiQuote.supplierEstimates?.itemsTotal) || 0,
-      setupCharge: parseFloat(apiQuote.supplierEstimates?.setupCharge) || 0,
-      shipping: parseFloat(apiQuote.supplierEstimates?.shipping) || 0,
-      subTotal: parseFloat(apiQuote.supplierEstimates?.subTotal) || 0,
-      total: parseFloat(apiQuote.supplierEstimates?.total) || 0,
+      itemsSubTotal: Number(apiQuote.supplierEstimates?.itemsSubTotal) || 0,
+      itemsTotal: Number(apiQuote.supplierEstimates?.itemsTotal) || 0,
+      setupCharge: Number(apiQuote.supplierEstimates?.setupCharge) || 0,
+      shipping: Number(apiQuote.supplierEstimates?.shipping) || 0,
+      subTotal: Number(apiQuote.supplierEstimates?.subTotal) || 0,
+      total: Number(apiQuote.supplierEstimates?.total) || 0,
     },
-    profit: parseFloat(apiQuote.profit || 0),
+    profit: Number(apiQuote.profit || 0),
     lineItems: [],
     notes: apiQuote.notes,
     comments: [],
     followups: [],
+    shippingAddress: apiQuote.shippingAddress,
+    billingAddress: apiQuote.billingAddress,
+    checkoutDetails: apiQuote.checkoutDetails,
+    shippingDetails: apiQuote.shippingDetails,
   };
 };
 
@@ -112,7 +117,7 @@ const getStatusConfig = (status: QuoteStatus) => {
 export default function QuotesPage() {
   const [quotes, setQuotes] = useState<iQuote[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentPage, setCurrentPage] = useState(1); // Changed to 1-based indexing
+  const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [selectedQuote, setSelectedQuote] = useState<iQuote | null>(null);
@@ -122,70 +127,174 @@ export default function QuotesPage() {
   const [selectedStatus, setSelectedStatus] = useState<QuoteStatus | 'all'>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
 
-  const { post } = useApi();
+  // Use ref to prevent infinite re-renders
+  const mountedRef = useRef(true);
+  const fetchTimeoutRef = useRef<NodeJS.Timeout>();
+  
+  // Create a stable API instance
+  const apiRef = useRef(useApi());
+  const api = apiRef.current;
 
-  const openNewQuoteDrawer = () => {
+  const openNewQuoteDrawer = useCallback(() => {
     setSelectedQuote(null);
     setIsEditing(false);
     setIsDrawerOpen(true);
-  };
+  }, []);
 
   const fetchQuotes = useCallback(async () => {
-    try {
-      setLoading(true);
-      
-      // Build request parameters matching the API structure
-      const requestBody = {
-        isQuote: true, // This is for quotes, not orders
-        pageSize: rowsPerPage,
-        pageIndex: currentPage - 1, // Convert to 0-based for API
-        website: WebsiteType.PROMOTIONAL_PRODUCT_INC,
-        ...(selectedStatus !== 'all' && { quoteStatus: [selectedStatus] }),
-        ...(searchTerm && { search: searchTerm })
-      };
+    if (!mountedRef.current) return;
 
-      console.log('Fetching quotes with params:', requestBody);
+    // Clear any existing timeout
+    if (fetchTimeoutRef.current) {
+      clearTimeout(fetchTimeoutRef.current);
+    }
 
-      const response = await post('/Admin/SaleList/GetSalesList', requestBody);
-      
-      console.log('Quotes API response:', response);
+    // Debounce the API call
+    fetchTimeoutRef.current = setTimeout(async () => {
+      if (!mountedRef.current) return;
 
-      if (response && response.sales) {
-        // Transform API quotes to match our interface
-        const transformedQuotes = response.sales
-          .filter((sale: any) => sale.quote || !sale.order) // Include items that have quote data or no order data
-          .map(transformApiQuote);
+      try {
+        setLoading(true);
         
-        setQuotes(transformedQuotes);
-        setTotalCount(response.count || 0);
-      } else {
-        console.error('Invalid response structure:', response);
+        // Build request parameters matching the API structure
+        const requestBody = {
+          isQuote: true, // This is for quotes, not orders
+          pageSize: rowsPerPage,
+          pageIndex: currentPage - 1, // Convert to 0-based for API
+          website: WebsiteType.PROMOTIONAL_PRODUCT_INC,
+          ...(selectedStatus !== 'all' && { quoteStatus: [selectedStatus] }),
+          ...(searchTerm && { search: searchTerm })
+        };
+
+        console.log('Fetching quotes with params:', requestBody);
+
+        const response = await api.post('/Admin/SaleList/GetSalesList', requestBody);
+        
+        console.log('Quotes API response:', response);
+
+        if (!mountedRef.current) return;
+
+        if (response && response.sales) {
+          // Transform API quotes to match our interface
+          const transformedQuotes = response.sales
+            .filter((sale: any) => sale.quote || !sale.order) // Include items that have quote data or no order data
+            .map(transformApiQuote);
+          
+          setQuotes(transformedQuotes);
+          setTotalCount(response.count || 0);
+        } else {
+          console.error('Invalid response structure:', response);
+          setQuotes([]);
+          setTotalCount(0);
+          showToast.error('Invalid response from server');
+        }
+      } catch (error) {
+        if (!mountedRef.current) return;
+        console.error('Error fetching quotes:', error);
         setQuotes([]);
         setTotalCount(0);
-        showToast.error('Invalid response from server');
+        showToast.error('Failed to fetch quotes');
+      } finally {
+        if (mountedRef.current) {
+          setLoading(false);
+        }
       }
-    } catch (error) {
-      console.error('Error fetching quotes:', error);
-      setQuotes([]);
-      setTotalCount(0);
-      showToast.error('Failed to fetch quotes');
-    } finally {
-      setLoading(false);
-    }
-  }, [rowsPerPage, currentPage, selectedStatus, searchTerm, post]);
+    }, 300); // 300ms debounce
+  }, [rowsPerPage, currentPage, selectedStatus, searchTerm]); // Removed 'post' from dependencies
 
+  // Memoize context data to prevent unnecessary re-renders
+  const contextData = useMemo(() => ({
+    totalCount,
+    searchTerm,
+    onSearchChange: (term: string) => {
+      setSearchTerm(term);
+      setCurrentPage(1); // Reset to first page when searching
+    },
+    onAddNew: openNewQuoteDrawer,
+    filters: [
+      {
+        key: 'status',
+        label: 'Status',
+        type: 'select' as const,
+        value: selectedStatus,
+        onChange: (value: string | boolean) => {
+          if (typeof value === 'string') {
+            setSelectedStatus(value as QuoteStatus | 'all');
+            setCurrentPage(1);
+          }
+        },
+        options: [
+          { value: 'all', label: 'All Quotes' },
+          { value: QuoteStatus.NEW_QUOTE, label: 'New Quotes' },
+          { value: QuoteStatus.QUOTE_SENT_TO_CUSTOMER, label: 'Sent to Customer' },
+          { value: QuoteStatus.QUOTE_CONVERTED_TO_ORDER, label: 'Converted to Order' }
+        ]
+      }
+    ],
+    actions: [
+      {
+        key: 'refresh',
+        label: 'Refresh',
+        icon: () => null,
+        onClick: fetchQuotes,
+        variant: 'secondary' as const
+      },
+      {
+        key: 'export',
+        label: 'Export',
+        icon: () => null,
+        onClick: () => showToast.info('Export functionality coming soon'),
+        variant: 'secondary' as const
+      }
+    ]
+  }), [totalCount, searchTerm, selectedStatus, openNewQuoteDrawer, fetchQuotes]);
+
+  // Component lifecycle management
   useEffect(() => {
-    fetchQuotes();
-  }, [fetchQuotes]);
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (fetchTimeoutRef.current) {
+        clearTimeout(fetchTimeoutRef.current);
+      }
+    };
+  }, []);
 
-  const handlePageChange = (page: number) => {
+  // Fetch quotes when dependencies change - but only once per mount
+  useEffect(() => {
+    let isInitialMount = true;
+    
+    const timeoutId = setTimeout(() => {
+      if (isInitialMount && mountedRef.current) {
+        fetchQuotes();
+      }
+    }, 100); // Small delay to ensure component is fully mounted
+
+    return () => {
+      isInitialMount = false;
+      clearTimeout(timeoutId);
+    };
+  }, []); // Only run on mount
+
+  // Separate effect for when filters/pagination change
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (mountedRef.current) {
+        fetchQuotes();
+      }
+    }, 100);
+
+    return () => clearTimeout(timeoutId);
+  }, [rowsPerPage, currentPage, selectedStatus, searchTerm]); // Dependencies that should trigger refetch
+
+  const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
-  };
+  }, []);
 
-  const handleRowsPerPageChange = (rows: number) => {
+  const handleRowsPerPageChange = useCallback((rows: number) => {
     setRowsPerPage(rows);
-    setCurrentPage(1); // Reset to first page
-  };
+    setCurrentPage(1);
+  }, []);
 
   const handleSubmit = async (formData: iQuoteFormData) => {
     try {
@@ -206,39 +315,21 @@ export default function QuotesPage() {
     }
   };
 
-  const openEditQuoteDrawer = (quote: iQuote) => {
+  const openEditQuoteDrawer = useCallback((quote: iQuote) => {
     setSelectedQuote(quote);
     setIsEditing(true);
     setIsDrawerOpen(true);
-  };
+  }, []);
 
-  const closeDrawer = () => {
+  const closeDrawer = useCallback(() => {
     setIsDrawerOpen(false);
     setSelectedQuote(null);
     setIsEditing(false);
-  };
+  }, []);
 
   const totalPages = Math.ceil(totalCount / rowsPerPage);
   const startIndex = (currentPage - 1) * rowsPerPage;
   const endIndex = Math.min(startIndex + rowsPerPage, totalCount);
-
-  const { contextData } = useQuotesHeaderContext({
-    totalCount,
-    onAddNew: openNewQuoteDrawer,
-    statusFilter: selectedStatus,
-    onStatusFilterChange: setSelectedStatus,
-    onRefresh: fetchQuotes,
-    onExport: () => showToast.info('Export functionality coming soon')
-  });
-
-  // Update searchTerm when context changes
-  useEffect(() => {
-    if (contextData.searchTerm !== searchTerm) {
-      setSearchTerm(contextData.searchTerm);
-      // Reset to first page when searching
-      setCurrentPage(1);
-    }
-  }, [contextData.searchTerm, searchTerm]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -271,7 +362,7 @@ export default function QuotesPage() {
                 const customerEmail = quote.customer?.email || 'No email';
                 
                 // Safe number conversion for monetary values
-                const customerTotal = parseFloat(quote.customerEstimates?.total) || 0;
+                const customerTotal = quote.customerEstimates?.total || 0;
                 
                 const inHandDate = quote.inHandDate;
                 const createdAt = quote.createdAt;

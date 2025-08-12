@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Eye, Calendar, DollarSign, ShoppingCart, CreditCard, Package, CheckCircle, Clock, Truck, X, Mail } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -17,9 +17,10 @@ import { Header } from "@/components/layout/Header";
 import { useApi } from "@/hooks/useApi";
 import { WebsiteType, OrderStatus } from "@/types/enums";
 
-// Helper function to safely convert to number and format
-const formatCurrency = (value: any): string => {
-  const numValue = parseFloat(value) || 0;
+// Helper function to safely format currency
+const formatCurrency = (value: number | string | undefined | null): string => {
+  if (value === null || value === undefined) return "0.00";
+  const numValue = typeof value === 'string' ? parseFloat(value) || 0 : Number(value) || 0;
   return numValue.toFixed(2);
 };
 
@@ -42,24 +43,24 @@ const transformApiOrder = (apiOrder: any): iOrder => {
     paidAt: apiOrder.paidAt,
     customerEstimates: {
       items: apiOrder.customerEstimates?.items || [],
-      itemsSubTotal: parseFloat(apiOrder.customerEstimates?.itemsSubTotal) || 0,
-      itemsTotal: parseFloat(apiOrder.customerEstimates?.itemsTotal) || 0,
-      setupCharge: parseFloat(apiOrder.customerEstimates?.setupCharge) || 0,
-      shipping: parseFloat(apiOrder.customerEstimates?.shipping) || 0,
-      discount: parseFloat(apiOrder.customerEstimates?.discount) || 0,
-      subTotal: parseFloat(apiOrder.customerEstimates?.subTotal) || 0,
-      total: parseFloat(apiOrder.customerEstimates?.total) || 0,
+      itemsSubTotal: Number(apiOrder.customerEstimates?.itemsSubTotal) || 0,
+      itemsTotal: Number(apiOrder.customerEstimates?.itemsTotal) || 0,
+      setupCharge: Number(apiOrder.customerEstimates?.setupCharge) || 0,
+      shipping: Number(apiOrder.customerEstimates?.shipping) || 0,
+      discount: Number(apiOrder.customerEstimates?.discount) || 0,
+      subTotal: Number(apiOrder.customerEstimates?.subTotal) || 0,
+      total: Number(apiOrder.customerEstimates?.total) || 0,
     },
     supplierEstimates: {
       items: apiOrder.supplierEstimates?.items || [],
-      itemsSubTotal: parseFloat(apiOrder.supplierEstimates?.itemsSubTotal) || 0,
-      itemsTotal: parseFloat(apiOrder.supplierEstimates?.itemsTotal) || 0,
-      setupCharge: parseFloat(apiOrder.supplierEstimates?.setupCharge) || 0,
-      shipping: parseFloat(apiOrder.supplierEstimates?.shipping) || 0,
-      subTotal: parseFloat(apiOrder.supplierEstimates?.subTotal) || 0,
-      total: parseFloat(apiOrder.supplierEstimates?.total) || 0,
+      itemsSubTotal: Number(apiOrder.supplierEstimates?.itemsSubTotal) || 0,
+      itemsTotal: Number(apiOrder.supplierEstimates?.itemsTotal) || 0,
+      setupCharge: Number(apiOrder.supplierEstimates?.setupCharge) || 0,
+      shipping: Number(apiOrder.supplierEstimates?.shipping) || 0,
+      subTotal: Number(apiOrder.supplierEstimates?.subTotal) || 0,
+      total: Number(apiOrder.supplierEstimates?.total) || 0,
     },
-    profit: parseFloat(apiOrder.profit) || 0,
+    profit: Number(apiOrder.profit) || 0,
     lineItems: [],
     isPaid: apiOrder.order?.status === OrderStatus.COMPLETED,
     paymentMethod: apiOrder.order?.paymentMethod,
@@ -138,89 +139,177 @@ export default function OrdersPage() {
   const [formLoading, setFormLoading] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<OrderStatus | 'all'>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
+  
+  // Use ref to prevent infinite re-renders
+  const mountedRef = useRef(true);
+  const fetchTimeoutRef = useRef<NodeJS.Timeout>();
+  
+  // Create a stable API instance
+  const apiRef = useRef(useApi());
+  const api = apiRef.current;
 
-  const { post } = useApi();
-
-  const openNewOrderDrawer = () => {
+  const openNewOrderDrawer = useCallback(() => {
     setSelectedOrder(null);
     setIsEditing(false);
     setIsDrawerOpen(true);
-  };
+  }, []);
 
   const fetchOrders = useCallback(async () => {
-    try {
-      setLoading(true);
-      
-      // Build request parameters matching the API structure
-      const requestBody = {
-        isQuote: false, // This is for orders, not quotes
-        pageSize: rowsPerPage,
-        pageIndex: currentPage - 1, // Convert to 0-based for API
-        website: WebsiteType.PROMOTIONAL_PRODUCT_INC,
-        ...(selectedStatus !== 'all' && { orderStatus: [selectedStatus] }),
-        ...(searchTerm && { search: searchTerm })
-      };
+    if (!mountedRef.current) return;
 
-      console.log('Fetching orders with params:', requestBody);
+    // Clear any existing timeout
+    if (fetchTimeoutRef.current) {
+      clearTimeout(fetchTimeoutRef.current);
+    }
 
-      const response = await post('/Admin/SaleList/GetSalesList', requestBody);
-      
-      console.log('Orders API response:', response);
+    // Debounce the API call
+    fetchTimeoutRef.current = setTimeout(async () => {
+      if (!mountedRef.current) return;
 
-      if (response && response.sales) {
-        // Transform API orders to match our interface
-        const transformedOrders = response.sales
-          .filter((sale: any) => sale.order) // Only include items that have order data
-          .map(transformApiOrder);
+      try {
+        setLoading(true);
         
-        setOrders(transformedOrders);
-        setTotalCount(response.count || 0);
-      } else {
-        console.error('Invalid response structure:', response);
+        // Build request parameters matching the API structure
+        const requestBody = {
+          isQuote: false, // This is for orders, not quotes
+          pageSize: rowsPerPage,
+          pageIndex: currentPage - 1, // Convert to 0-based for API
+          website: WebsiteType.PROMOTIONAL_PRODUCT_INC,
+          ...(selectedStatus !== 'all' && { orderStatus: [selectedStatus] }),
+          ...(searchTerm && { search: searchTerm })
+        };
+
+        console.log('Fetching orders with params:', requestBody);
+
+        const response = await api.post('/Admin/SaleList/GetSalesList', requestBody);
+        
+        console.log('Orders API response:', response);
+
+        if (!mountedRef.current) return;
+
+        if (response && response.sales) {
+          // Transform API orders to match our interface
+          const transformedOrders = response.sales
+            .filter((sale: any) => sale.order) // Only include items that have order data
+            .map(transformApiOrder);
+          
+          setOrders(transformedOrders);
+          setTotalCount(response.count || 0);
+        } else {
+          console.error('Invalid response structure:', response);
+          setOrders([]);
+          setTotalCount(0);
+          showToast.error('Invalid response from server');
+        }
+      } catch (error) {
+        if (!mountedRef.current) return;
+        console.error('Error fetching orders:', error);
         setOrders([]);
         setTotalCount(0);
-        showToast.error('Invalid response from server');
+        showToast.error('Failed to fetch orders');
+      } finally {
+        if (mountedRef.current) {
+          setLoading(false);
+        }
       }
-    } catch (error) {
-      console.error('Error fetching orders:', error);
-      setOrders([]);
-      setTotalCount(0);
-      showToast.error('Failed to fetch orders');
-    } finally {
-      setLoading(false);
-    }
-  }, [rowsPerPage, currentPage, selectedStatus, searchTerm, post]);
+    }, 300); // 300ms debounce
+  }, [rowsPerPage, currentPage, selectedStatus, searchTerm]); // Removed 'post' from dependencies
 
-  const { contextData } = useOrdersHeaderContext({
+  // Memoize context data to prevent unnecessary re-renders
+  const contextData = useMemo(() => ({
     totalCount,
+    searchTerm,
+    onSearchChange: (term: string) => {
+      setSearchTerm(term);
+      setCurrentPage(1); // Reset to first page when searching
+    },
     onAddNew: openNewOrderDrawer,
-    statusFilter: selectedStatus,
-    onStatusFilterChange: setSelectedStatus,
-    onRefresh: fetchOrders,
-    onExport: () => showToast.info('Export functionality coming soon')
-  });
+    filters: [
+      {
+        key: 'status',
+        label: 'Status',
+        type: 'select' as const,
+        value: selectedStatus,
+        onChange: (value: string | boolean) => {
+          if (typeof value === 'string') {
+            setSelectedStatus(value as OrderStatus | 'all');
+            setCurrentPage(1);
+          }
+        },
+        options: [
+          { value: 'all', label: 'All Orders' },
+          { value: OrderStatus.NEW_ORDER, label: 'New Orders' },
+          { value: OrderStatus.IN_PRODUCTION, label: 'In Production' },
+          { value: OrderStatus.SHIPPED, label: 'Shipped' },
+          { value: OrderStatus.COMPLETED, label: 'Completed' },
+          { value: OrderStatus.CANCELLED, label: 'Cancelled' }
+        ]
+      }
+    ],
+    actions: [
+      {
+        key: 'refresh',
+        label: 'Refresh',
+        icon: () => null,
+        onClick: fetchOrders,
+        variant: 'secondary' as const
+      },
+      {
+        key: 'export',
+        label: 'Export',
+        icon: () => null,
+        onClick: () => showToast.info('Export functionality coming soon'),
+        variant: 'secondary' as const
+      }
+    ]
+  }), [totalCount, searchTerm, selectedStatus, openNewOrderDrawer, fetchOrders]);
 
-  // Update searchTerm when context changes
+  // Component lifecycle management
   useEffect(() => {
-    if (contextData.searchTerm !== searchTerm) {
-      setSearchTerm(contextData.searchTerm);
-      // Reset to first page when searching
-      setCurrentPage(1);
-    }
-  }, [contextData.searchTerm, searchTerm]);
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (fetchTimeoutRef.current) {
+        clearTimeout(fetchTimeoutRef.current);
+      }
+    };
+  }, []);
 
+  // Fetch orders when dependencies change - but only once per mount
   useEffect(() => {
-    fetchOrders();
-  }, [fetchOrders]);
+    let isInitialMount = true;
+    
+    const timeoutId = setTimeout(() => {
+      if (isInitialMount && mountedRef.current) {
+        fetchOrders();
+      }
+    }, 100); // Small delay to ensure component is fully mounted
 
-  const handlePageChange = (page: number) => {
+    return () => {
+      isInitialMount = false;
+      clearTimeout(timeoutId);
+    };
+  }, []); // Only run on mount
+
+  // Separate effect for when filters/pagination change
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (mountedRef.current) {
+        fetchOrders();
+      }
+    }, 100);
+
+    return () => clearTimeout(timeoutId);
+  }, [rowsPerPage, currentPage, selectedStatus, searchTerm]); // Dependencies that should trigger refetch
+
+  const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
-  };
+  }, []);
 
-  const handleRowsPerPageChange = (rows: number) => {
+  const handleRowsPerPageChange = useCallback((rows: number) => {
     setRowsPerPage(rows);
     setCurrentPage(1);
-  };
+  }, []);
 
   const handleSubmit = async (formData: iOrderFormData) => {
     try {
@@ -241,17 +330,17 @@ export default function OrdersPage() {
     }
   };
 
-  const openEditOrderDrawer = (order: iOrder) => {
+  const openEditOrderDrawer = useCallback((order: iOrder) => {
     setSelectedOrder(order);
     setIsEditing(true);
     setIsDrawerOpen(true);
-  };
+  }, []);
 
-  const closeDrawer = () => {
+  const closeDrawer = useCallback(() => {
     setIsDrawerOpen(false);
     setSelectedOrder(null);
     setIsEditing(false);
-  };
+  }, []);
 
   const totalPages = Math.ceil(totalCount / rowsPerPage);
   const startIndex = (currentPage - 1) * rowsPerPage;
@@ -288,9 +377,9 @@ export default function OrdersPage() {
                 const customerEmail = order.customer?.email || 'No email';
                 
                 // Safe number conversion for all monetary values
-                const customerTotal = parseFloat(order.customerEstimates?.total) || 0;
-                const supplierTotal = parseFloat(order.supplierEstimates?.total) || 0;
-                const profit = parseFloat(order.profit) || 0;
+                const customerTotal = order.customerEstimates?.total || 0;
+                const supplierTotal = order.supplierEstimates?.total || 0;
+                const profit = order.profit || 0;
                 
                 const inHandDate = order.inHandDate;
                 const createdAt = order.createdAt;
