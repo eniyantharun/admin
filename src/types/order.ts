@@ -123,3 +123,79 @@ export interface iOrderStatusUpdate {
   updatedAt: string;
   trackingNumber?: string;
 }
+
+export interface iApiSale {
+  id: string;
+  customer: {
+    name: string;
+    website: string;
+  };
+  createdAt: string;
+  inHandDate: string | null;
+  customerEstimates: {
+    items: any[];
+    itemsSubTotal: number | string;
+    itemsTotal: number | string;
+    setupCharge: number | string;
+    shipping: number | string;
+    discount: number | string;
+    subTotal: number | string;
+    total: number | string;
+  };
+  supplierEstimates: {
+    items: any[];
+    itemsSubTotal: number | string;
+    itemsTotal: number | string;
+    setupCharge: number | string;
+    shipping: number | string;
+    subTotal: number | string;
+    total: number | string;
+  };
+  profit: number | string;
+  order: {
+    id: number;
+    status: string;
+    paymentMethod: string;
+  } | null;
+  quote: {
+    id: number;
+    status: string;
+  } | null;
+  isAdConversion: boolean;
+}
+
+export interface iApiSalesResponse {
+  count: number;
+  sales: iApiSale[];
+}
+
+export interface iApiSalesRequest {
+  isQuote: boolean;
+  search: string;
+  pageSize: number;
+  pageIndex: number;
+  website: string;
+  orderStatus?: string[];
+  quoteStatus?: string[];
+}
+
+export interface iOrder {
+  id: number;
+  orderNumber: string;
+  customer: string;
+  customerEmail: string;
+  status: 'new' | 'in-production' | 'shipped' | 'delivered' | 'cancelled';
+  dateTime: string;
+  inHandDate: string | null;
+  customerTotal: number;
+  supplierTotal: number;
+  profit: number;
+  paymentMethod: string;
+  itemCount?: number;
+  notes?: string;
+  billingAddress?: iOrderAddress;
+  shippingAddress?: iOrderAddress;
+  items?: iOrderItem[];
+  checkoutDetails?: iOrderCheckoutDetails;
+  shippingDetails?: iOrderShippingDetails;
+}

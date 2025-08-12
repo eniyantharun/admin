@@ -107,3 +107,66 @@ export interface iQuoteStatusUpdate {
   updatedBy: string;
   updatedAt: string;
 }
+
+export interface iApiSale {
+  id: string;
+  customer: {
+    name: string;
+    website: string;
+  };
+  createdAt: string;
+  inHandDate: string | null;
+  customerEstimates: {
+    items: any[];
+    itemsSubTotal: number | string;
+    itemsTotal: number | string;
+    setupCharge: number | string;
+    shipping: number | string;
+    discount: number | string;
+    subTotal: number | string;
+    total: number | string;
+  };
+  supplierEstimates: {
+    items: any[];
+    itemsSubTotal: number | string;
+    itemsTotal: number | string;
+    setupCharge: number | string;
+    shipping: number | string;
+    subTotal: number | string;
+    total: number | string;
+  };
+  profit: number | string;
+  order: {
+    id: number;
+    status: string;
+    paymentMethod: string;
+  } | null;
+  quote: {
+    id: number;
+    status: string;
+  } | null;
+  isAdConversion: boolean;
+}
+
+export interface iApiQuote extends iApiSale {
+  quote: {
+    id: number;
+    status: string;
+  };
+}
+
+export interface iQuote {
+  id: number;
+  quoteNumber: string;
+  customer: string;
+  customerEmail: string;
+  status: 'new-quote' | 'quote-sent-to-customer' | 'quote-converted-to-order';
+  dateTime: string;
+  inHandDate: string | null;
+  customerTotal: number;
+  notes?: string;
+  billingAddress?: iQuoteAddress;
+  shippingAddress?: iQuoteAddress;
+  checkoutDetails?: iQuoteCheckoutDetails;
+  shippingDetails?: iQuoteShippingDetails;
+}

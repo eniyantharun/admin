@@ -12,66 +12,18 @@ import { PaginationControls } from "@/components/helpers/PaginationControls";
 import { EntityDrawer } from "@/components/helpers/EntityDrawer";
 import { QuoteForm } from "@/components/forms/QuoteForm";
 import { useQuotesHeaderContext } from "@/hooks/useHeaderContext";
-import { iQuote, iQuoteFormData } from "@/types/quotes";
+import { iQuote, iQuoteFormData, iApiQuote } from "@/types/quotes";
+import { iApiSale, iApiSalesResponse, iApiSalesRequest } from "@/types/order";
+import { QuoteStatus } from "@/lib/enums";
 import { showToast } from "@/components/ui/toast";
 import { Header } from "@/components/layout/Header";
 
-const mockQuotes: iQuote[] = [
-  {
-    id: 10679,
-    quoteNumber: "QUO-10679",
-    customer: "Cynthia Bogucki",
-    customerEmail: "cynthia.bogucki@example.com",
-    status: "new-quote",
-    dateTime: "7/18/2025 2:15:42 PM",
-    inHandDate: "7/29/2025",
-    customerTotal: 678.74,
-  },
-  {
-    id: 10678,
-    quoteNumber: "QUO-10678",
-    customer: "Kathy Dennis",
-    customerEmail: "kathy.dennis@example.com",
-    status: "new-quote",
-    dateTime: "7/18/2025 1:21:12 PM",
-    inHandDate: "7/24/2025",
-    customerTotal: 748.28,
-  },
-  {
-    id: 10677,
-    quoteNumber: "QUO-10677",
-    customer: "Jake Mahon",
-    customerEmail: "jake.mahon@example.com",
-    status: "quote-sent-to-customer",
-    dateTime: "7/15/2025 6:49:46 PM",
-    inHandDate: "8/24/2025",
-    customerTotal: 925.13,
-  },
-  {
-    id: 10676,
-    quoteNumber: "QUO-10676",
-    customer: "Christina Johnson",
-    customerEmail: "christina.johnson@example.com",
-    status: "quote-sent-to-customer",
-    dateTime: "7/15/2025 8:07:15 AM",
-    inHandDate: "8/3/2025",
-    customerTotal: 451.18,
-  },
-  {
-    id: 10675,
-    quoteNumber: "QUO-10675",
-    customer: "Nic Hunter",
-    customerEmail: "nic.hunter@example.com",
-    status: "quote-converted-to-order",
-    dateTime: "7/14/2025 11:48:49 AM",
-    inHandDate: "7/30/2025",
-    customerTotal: 556.0,
-  },
-];
-
-const getStatusConfig = (status: iQuote["status"]) => {
-  switch (status) {
-    case "new-quote":
+const getStatusConfig = (status: string) => {
+  const normalizedStatus = status.toLowerCase().replace(/\s+/g, '-');
+  
+  switch (normalizedStatus) {
+    case 'newquote':
+    case 'new-quote':
       return {
         enabled: true,
         label: { enabled: "New Quote", disabled: "New Quote" },
@@ -80,7 +32,8 @@ const getStatusConfig = (status: iQuote["status"]) => {
         bgSolid: "bg-blue-100",
         textColor: "text-blue-800",
       };
-    case "quote-sent-to-customer":
+    case 'quotesenttocustomer':
+    case 'quote-sent-to-customer':
       return {
         enabled: true,
         label: { enabled: "Quote Sent", disabled: "Quote Sent" },
@@ -89,7 +42,9 @@ const getStatusConfig = (status: iQuote["status"]) => {
         bgSolid: "bg-orange-100",
         textColor: "text-orange-800",
       };
-    case "quote-converted-to-order":
+    case 'quoteconvertedtoorder':
+    case 'quote-converted-to-order':
+    case 'convertedtoorderbycustomer':
       return {
         enabled: true,
         label: {
@@ -100,6 +55,15 @@ const getStatusConfig = (status: iQuote["status"]) => {
         bgGradient: "from-green-500 to-green-600",
         bgSolid: "bg-green-100",
         textColor: "text-green-800",
+      };
+    case 'cancelled':
+      return {
+        enabled: false,
+        label: { enabled: "Cancelled", disabled: "Cancelled" },
+        icon: Clock,
+        bgGradient: "from-red-500 to-red-600",
+        bgSolid: "bg-red-100",
+        textColor: "text-red-800",
       };
     default:
       return {
@@ -124,10 +88,13 @@ export default function QuotesPage() {
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  const { get, post, put, loading } = useApi();
+  const { post, loading } = useApi({
+    cancelOnUnmount: true,
+    dedupe: true,
+    cacheDuration: 30000,
+  });
   const submitApi = useApi();
 
-  // Header context with filters and actions
   const { contextData, searchTerm } = useQuotesHeaderContext({
     totalCount,
     onAddNew: () => openNewQuoteDrawer(),
@@ -135,60 +102,98 @@ export default function QuotesPage() {
     onStatusFilterChange: setStatusFilter,
   });
 
+  const transformApiSaleToQuote = useCallback((sale: iApiSale): iQuote | null => {
+    if (!sale.quote) return null;
+    
+    const customerTotal = typeof sale.customerEstimates.total === 'string' 
+      ? parseFloat(sale.customerEstimates.total) 
+      : sale.customerEstimates.total;
+
+    return {
+      id: sale.quote.id,
+      quoteNumber: `QUO-${sale.quote.id}`,
+      customer: sale.customer.name,
+      customerEmail: `${sale.customer.name.toLowerCase().replace(/\s+/g, '.')}@example.com`,
+      status: mapApiStatusToQuoteStatus(sale.quote.status),
+      dateTime: new Date(sale.createdAt).toLocaleString(),
+      inHandDate: sale.inHandDate,
+      customerTotal: customerTotal || 0,
+    };
+  }, []);
+
+  const mapApiStatusToQuoteStatus = useCallback((apiStatus: string): iQuote['status'] => {
+    switch (apiStatus) {
+      case QuoteStatus.NEW_QUOTE:
+        return 'new-quote';
+      case QuoteStatus.QUOTE_SENT_TO_CUSTOMER:
+        return 'quote-sent-to-customer';
+      case QuoteStatus.QUOTE_CONVERTED_TO_ORDER:
+      case QuoteStatus.CONVERTED_TO_ORDER_BY_CUSTOMER:
+        return 'quote-converted-to-order';
+      default:
+        return 'new-quote';
+    }
+  }, []);
+
+  const mapStatusFilterToApi = useCallback((filter: string): string[] => {
+    switch (filter) {
+      case 'new-quote':
+        return [QuoteStatus.NEW_QUOTE];
+      case 'quote-sent-to-customer':
+        return [QuoteStatus.QUOTE_SENT_TO_CUSTOMER];
+      case 'quote-converted-to-order':
+        return [QuoteStatus.QUOTE_CONVERTED_TO_ORDER, QuoteStatus.CONVERTED_TO_ORDER_BY_CUSTOMER];
+      default:
+        return [];
+    }
+  }, []);
+
   const fetchQuotes = useCallback(async () => {
-    if (!isInitialLoad && loading) return;
+    if (loading) return;
 
     try {
-      let filteredQuotes = [...mockQuotes];
-
-      if (searchTerm) {
-        filteredQuotes = filteredQuotes.filter(
-          (quote: iQuote) =>
-            quote.quoteNumber
-              .toLowerCase()
-              .includes(searchTerm.toLowerCase()) ||
-            quote.customer
-              .toLowerCase()
-              .includes(searchTerm.toLowerCase()) ||
-            quote.customerEmail
-              .toLowerCase()
-              .includes(searchTerm.toLowerCase())
-        );
-      }
+      const requestBody: iApiSalesRequest = {
+        isQuote: true,
+        search: searchTerm || "",
+        pageSize: rowsPerPage,
+        pageIndex: currentPage - 1,
+        website: "promotional_product_inc"
+      };
 
       if (statusFilter !== "all") {
-        filteredQuotes = filteredQuotes.filter(
-          (quote: iQuote) => quote.status === statusFilter
-        );
+        const mappedStatuses = mapStatusFilterToApi(statusFilter);
+        if (mappedStatuses.length > 0) {
+          requestBody.quoteStatus = mappedStatuses;
+        }
       }
 
-      const startIndex = (currentPage - 1) * rowsPerPage;
-      const paginatedQuotes = filteredQuotes.slice(
-        startIndex,
-        startIndex + rowsPerPage
-      );
+      const response = await post("/Admin/SaleList/GetSalesList", requestBody) as iApiSalesResponse | null;
 
-      setQuotes(paginatedQuotes);
-      setTotalCount(filteredQuotes.length);
+      if (response && response.sales) {
+        const transformedQuotes = response.sales
+          .map(transformApiSaleToQuote)
+          .filter((quote): quote is iQuote => quote !== null);
+        
+        setQuotes(transformedQuotes);
+        setTotalCount(response.count || 0);
+      } else {
+        setQuotes([]);
+        setTotalCount(0);
+      }
     } catch (error: any) {
       if (error?.name !== "CanceledError" && error?.code !== "ERR_CANCELED") {
         showToast.error("Error fetching quotes");
+        setQuotes([]);
+        setTotalCount(0);
       }
     } finally {
       setIsInitialLoad(false);
     }
-  }, [
-    searchTerm,
-    statusFilter,
-    currentPage,
-    rowsPerPage,
-    loading,
-    isInitialLoad,
-  ]);
+  }, [searchTerm, statusFilter, currentPage, rowsPerPage, post, transformApiSaleToQuote, mapStatusFilterToApi, loading]);
 
   useEffect(() => {
     fetchQuotes();
-  }, [fetchQuotes]);
+  }, [searchTerm, statusFilter, currentPage, rowsPerPage]);
 
   useEffect(() => {
     if (currentPage !== 1) {

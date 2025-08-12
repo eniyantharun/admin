@@ -12,170 +12,17 @@ import { PaginationControls } from "@/components/helpers/PaginationControls";
 import { EntityDrawer } from "@/components/helpers/EntityDrawer";
 import { OrderForm } from "@/components/forms/OrderForm";
 import { useOrdersHeaderContext } from "@/hooks/useHeaderContext";
-import { iOrder, iOrderFormData } from "@/types/order";
+import { iOrder, iOrderFormData, iApiSale, iApiSalesResponse, iApiSalesRequest } from "@/types/order";
+import { OrderStatus, PaymentMethod } from "@/lib/enums";
 import { showToast } from "@/components/ui/toast";
 import { Header } from "@/components/layout/Header";
 
-const mockOrders: iOrder[] = [
-  {
-    id: 6874,
-    orderNumber: "ORD-6874",
-    customer: "Andreka Driver",
-    customerEmail: "andreka.driver@example.com",
-    status: "new",
-    dateTime: "7/20/2025 7:14:21 PM",
-    inHandDate: "7/24/2025",
-    customerTotal: 1.44,
-    supplierTotal: 1.44,
-    profit: 0.0,
-    paymentMethod: "Credit Card",
-    itemCount: 1,
-  },
-  {
-    id: 6873,
-    orderNumber: "ORD-6873",
-    customer: "Bobbie Smith",
-    customerEmail: "bobbie.smith@example.com",
-    status: "delivered",
-    dateTime: "7/20/2025 7:36:38 AM",
-    inHandDate: "8/6/2025",
-    customerTotal: 72.0,
-    supplierTotal: 72.0,
-    profit: 0.0,
-    paymentMethod: "Credit Card",
-    itemCount: 3,
-  },
-  {
-    id: 6872,
-    orderNumber: "ORD-6872",
-    customer: "Cameron Davis",
-    customerEmail: "cameron.davis@example.com",
-    status: "new",
-    dateTime: "7/20/2025 6:39:03 AM",
-    inHandDate: "8/12/2025",
-    customerTotal: 229.0,
-    supplierTotal: 229.0,
-    profit: 0.0,
-    paymentMethod: "Credit Card",
-    itemCount: 5,
-  },
-  {
-    id: 6871,
-    orderNumber: "ORD-6871",
-    customer: "Matt Schechter",
-    customerEmail: "matt.schechter@example.com",
-    status: "new",
-    dateTime: "7/19/2025 6:03:56 AM",
-    inHandDate: "7/31/2025",
-    customerTotal: 284.0,
-    supplierTotal: 284.0,
-    profit: 0.0,
-    paymentMethod: "Credit Card",
-    itemCount: 2,
-  },
-  {
-    id: 6870,
-    orderNumber: "ORD-6870",
-    customer: "Jennifer Keepes",
-    customerEmail: "jennifer.keepes@example.com",
-    status: "in-production",
-    dateTime: "7/18/2025 1:26:02 PM",
-    inHandDate: "8/3/2025",
-    customerTotal: 272.5,
-    supplierTotal: 272.5,
-    profit: 0.0,
-    paymentMethod: "Credit Card",
-    itemCount: 4,
-  },
-  {
-    id: 6868,
-    orderNumber: "ORD-6868",
-    customer: "Cameron Davis",
-    customerEmail: "cameron.davis@example.com",
-    status: "new",
-    dateTime: "7/17/2025 11:25:06 AM",
-    inHandDate: "8/31/2025",
-    customerTotal: 613.5,
-    supplierTotal: 385.5,
-    profit: 228.0,
-    paymentMethod: "Credit Card",
-    itemCount: 8,
-  },
-  {
-    id: 6867,
-    orderNumber: "ORD-6867",
-    customer: "Molly Shumate",
-    customerEmail: "molly.shumate@example.com",
-    status: "shipped",
-    dateTime: "7/17/2025 8:59:41 AM",
-    inHandDate: "7/31/2025",
-    customerTotal: 320.0,
-    supplierTotal: 320.0,
-    profit: 0.0,
-    paymentMethod: "Credit Card",
-    itemCount: 6,
-  },
-  {
-    id: 6865,
-    orderNumber: "ORD-6865",
-    customer: "Jessica Mathis",
-    customerEmail: "jessica.mathis@example.com",
-    status: "new",
-    dateTime: "7/16/2025 6:49:10 PM",
-    inHandDate: "7/15/2025",
-    customerTotal: 5.4,
-    supplierTotal: 5.4,
-    profit: 0.0,
-    paymentMethod: "Credit Card",
-    itemCount: 1,
-  },
-  {
-    id: 6864,
-    orderNumber: "ORD-6864",
-    customer: "Julia Stephanie",
-    customerEmail: "julia.stephanie@example.com",
-    status: "new",
-    dateTime: "7/15/2025 11:32:56 PM",
-    inHandDate: "7/16/2025",
-    customerTotal: 4.12,
-    supplierTotal: 4.12,
-    profit: 0.0,
-    paymentMethod: "Credit Card",
-    itemCount: 1,
-  },
-  {
-    id: 6863,
-    orderNumber: "ORD-6863",
-    customer: "Nick Aslanyan",
-    customerEmail: "nick.aslanyan@example.com",
-    status: "in-production",
-    dateTime: "7/15/2025 2:38:56 PM",
-    inHandDate: null,
-    customerTotal: 429.0,
-    supplierTotal: 272.06,
-    profit: 156.94,
-    paymentMethod: "Credit Card",
-    itemCount: 7,
-  },
-  {
-    id: 6862,
-    orderNumber: "ORD-6862",
-    customer: "Nic Hunter",
-    customerEmail: "nic.hunter@example.com",
-    status: "cancelled",
-    dateTime: "7/15/2025 11:59:33 AM",
-    inHandDate: "7/30/2025",
-    customerTotal: 556.0,
-    supplierTotal: 369.43,
-    profit: 186.57,
-    paymentMethod: "Credit Card",
-    itemCount: 9,
-  },
-];
-
-const getStatusConfig = (status: iOrder["status"]) => {
-  switch (status) {
-    case "new":
+const getStatusConfig = (status: string) => {
+  const normalizedStatus = status.toLowerCase().replace(/\s+/g, '-');
+  
+  switch (normalizedStatus) {
+    case 'neworder':
+    case 'new-order':
       return {
         enabled: true,
         label: { enabled: "New Order", disabled: "New Order" },
@@ -184,7 +31,8 @@ const getStatusConfig = (status: iOrder["status"]) => {
         bgSolid: "bg-blue-100",
         textColor: "text-blue-800",
       };
-    case "in-production":
+    case 'orderinproduction':
+    case 'in-production':
       return {
         enabled: true,
         label: { enabled: "In Production", disabled: "In Production" },
@@ -193,7 +41,7 @@ const getStatusConfig = (status: iOrder["status"]) => {
         bgSolid: "bg-orange-100",
         textColor: "text-orange-800",
       };
-    case "shipped":
+    case 'shipped':
       return {
         enabled: true,
         label: { enabled: "Shipped", disabled: "Shipped" },
@@ -202,16 +50,17 @@ const getStatusConfig = (status: iOrder["status"]) => {
         bgSolid: "bg-purple-100",
         textColor: "text-purple-800",
       };
-    case "delivered":
+    case 'completed':
+    case 'delivered':
       return {
         enabled: true,
-        label: { enabled: "Delivered", disabled: "Delivered" },
+        label: { enabled: "Completed", disabled: "Completed" },
         icon: CheckCircle,
         bgGradient: "from-green-500 to-green-600",
         bgSolid: "bg-green-100",
         textColor: "text-green-800",
       };
-    case "cancelled":
+    case 'cancelled':
       return {
         enabled: false,
         label: { enabled: "Cancelled", disabled: "Cancelled" },
@@ -243,10 +92,13 @@ export default function OrdersPage() {
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  const { get, post, put, loading } = useApi();
+  const { post, loading } = useApi({
+    cancelOnUnmount: true,
+    dedupe: true,
+    cacheDuration: 30000,
+  });
   const submitApi = useApi();
 
-  // Header context with filters and actions
   const { contextData, searchTerm } = useOrdersHeaderContext({
     totalCount,
     onAddNew: () => openNewOrderDrawer(),
@@ -255,60 +107,131 @@ export default function OrdersPage() {
    
   });
 
+  const transformApiSaleToOrder = useCallback((sale: iApiSale): iOrder | null => {
+    if (!sale.order) return null;
+    
+    const customerTotal = typeof sale.customerEstimates.total === 'string' 
+      ? parseFloat(sale.customerEstimates.total) 
+      : sale.customerEstimates.total;
+    
+    const supplierTotal = typeof sale.supplierEstimates.total === 'string'
+      ? parseFloat(sale.supplierEstimates.total)
+      : sale.supplierEstimates.total;
+    
+    const profit = typeof sale.profit === 'string'
+      ? parseFloat(sale.profit)
+      : sale.profit;
+
+    return {
+      id: sale.order.id,
+      orderNumber: `ORD-${sale.order.id}`,
+      customer: sale.customer.name,
+      customerEmail: `${sale.customer.name.toLowerCase().replace(/\s+/g, '.')}@example.com`,
+      status: mapApiStatusToOrderStatus(sale.order.status),
+      dateTime: new Date(sale.createdAt).toLocaleString(),
+      inHandDate: sale.inHandDate,
+      customerTotal: customerTotal || 0,
+      supplierTotal: supplierTotal || 0,
+      profit: profit || 0,
+      paymentMethod: mapApiPaymentMethod(sale.order.paymentMethod),
+      itemCount: sale.customerEstimates.items?.length || 0,
+    };
+  }, []);
+
+  const mapApiStatusToOrderStatus = useCallback((apiStatus: string): iOrder['status'] => {
+    switch (apiStatus) {
+      case OrderStatus.NEW_ORDER:
+      case OrderStatus.IN_PROCESS:
+        return 'new';
+      case OrderStatus.IN_PRODUCTION:
+        return 'in-production';
+      case OrderStatus.SHIPPED:
+        return 'shipped';
+      case OrderStatus.COMPLETED:
+        return 'delivered';
+      case OrderStatus.CANCELLED:
+        return 'cancelled';
+      default:
+        return 'new';
+    }
+  }, []);
+
+  const mapApiPaymentMethod = useCallback((apiMethod: string): string => {
+    switch (apiMethod) {
+      case 'CreditCard':
+        return 'Credit Card';
+      case PaymentMethod.CHEQUE:
+        return 'Cheque';
+      case PaymentMethod.COMPANY_PAYMENT_ORDER:
+        return 'Company Payment Order';
+      default:
+        return apiMethod || 'Credit Card';
+    }
+  }, []);
+
+  const mapStatusFilterToApi = useCallback((filter: string): string[] => {
+    switch (filter) {
+      case 'new':
+        return [OrderStatus.NEW_ORDER, OrderStatus.IN_PROCESS];
+      case 'in-production':
+        return [OrderStatus.IN_PRODUCTION];
+      case 'shipped':
+        return [OrderStatus.SHIPPED];
+      case 'delivered':
+        return [OrderStatus.COMPLETED];
+      case 'cancelled':
+        return [OrderStatus.CANCELLED];
+      default:
+        return [];
+    }
+  }, []);
+
   const fetchOrders = useCallback(async () => {
-    if (!isInitialLoad && loading) return;
+    if (loading) return;
 
     try {
-      let filteredOrders = [...mockOrders];
-
-      if (searchTerm) {
-        filteredOrders = filteredOrders.filter(
-          (order: iOrder) =>
-            order.orderNumber
-              .toLowerCase()
-              .includes(searchTerm.toLowerCase()) ||
-            order.customer
-              .toLowerCase()
-              .includes(searchTerm.toLowerCase()) ||
-            order.customerEmail
-              .toLowerCase()
-              .includes(searchTerm.toLowerCase())
-        );
-      }
+      const requestBody: iApiSalesRequest = {
+        isQuote: false,
+        search: searchTerm || "",
+        pageSize: rowsPerPage,
+        pageIndex: currentPage - 1,
+        website: "promotional_product_inc"
+      };
 
       if (statusFilter !== "all") {
-        filteredOrders = filteredOrders.filter(
-          (order: iOrder) => order.status === statusFilter
-        );
+        const mappedStatuses = mapStatusFilterToApi(statusFilter);
+        if (mappedStatuses.length > 0) {
+          requestBody.orderStatus = mappedStatuses;
+        }
       }
 
-      const startIndex = (currentPage - 1) * rowsPerPage;
-      const paginatedOrders = filteredOrders.slice(
-        startIndex,
-        startIndex + rowsPerPage
-      );
+      const response = await post("/Admin/SaleList/GetSalesList", requestBody) as iApiSalesResponse | null;
 
-      setOrders(paginatedOrders);
-      setTotalCount(filteredOrders.length);
+      if (response && response.sales) {
+        const transformedOrders = response.sales
+          .map(transformApiSaleToOrder)
+          .filter((order): order is iOrder => order !== null);
+        
+        setOrders(transformedOrders);
+        setTotalCount(response.count || 0);
+      } else {
+        setOrders([]);
+        setTotalCount(0);
+      }
     } catch (error: any) {
       if (error?.name !== "CanceledError" && error?.code !== "ERR_CANCELED") {
         showToast.error("Error fetching orders");
+        setOrders([]);
+        setTotalCount(0);
       }
     } finally {
       setIsInitialLoad(false);
     }
-  }, [
-    searchTerm,
-    statusFilter,
-    currentPage,
-    rowsPerPage,
-    loading,
-    isInitialLoad,
-  ]);
+  }, [searchTerm, statusFilter, currentPage, rowsPerPage, post, transformApiSaleToOrder, mapStatusFilterToApi, loading]);
 
   useEffect(() => {
     fetchOrders();
-  }, [fetchOrders]);
+  }, [searchTerm, statusFilter, currentPage, rowsPerPage]);
 
   useEffect(() => {
     if (currentPage !== 1) {
