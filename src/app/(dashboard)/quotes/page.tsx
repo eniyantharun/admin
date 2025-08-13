@@ -244,7 +244,7 @@ export default function QuotesPage() {
     <div className="quotes-page">
       <Header contextData={contextData} />
       
-      <div className="p-6 space-y-4">
+      <div className="p-2 space-y-2">
         <Card className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">

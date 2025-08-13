@@ -18,17 +18,13 @@ import { showToast } from "@/components/ui/toast";
 import { Header } from "@/components/layout/Header";
 
 const getStatusConfig = (status: string) => {
-  // Handle both the mapped status and potential API status
   let normalizedStatus = status.toLowerCase().replace(/\s+/g, '-');
   
-  // Handle some API statuses directly if they slip through
   if (status === 'NewOrder') normalizedStatus = 'new';
   if (status === 'OrderInProduction') normalizedStatus = 'in-production';
   if (status === 'Completed') normalizedStatus = 'delivered';
   if (status === 'QuoteConvertedToOrder') normalizedStatus = 'new';
-  
-  console.log('Status config for:', status, 'normalized to:', normalizedStatus);
-  
+    
   switch (normalizedStatus) {
     case 'new':
     case 'neworder':
@@ -152,8 +148,6 @@ export default function OrdersPage() {
   }, []);
 
   const mapApiStatusToOrderStatus = useCallback((apiStatus: string): iOrder['status'] => {
-  // Log the actual status for debugging
-  console.log('Mapping API status to order status:', apiStatus);
   
   switch (apiStatus) {
     case 'NewOrder':
@@ -171,9 +165,9 @@ export default function OrdersPage() {
     case 'Cancelled':
       return 'cancelled';
     case 'QuoteConvertedToOrder':
-      return 'new'; // Treat converted quotes as new orders
+      return 'new'; 
     case 'OnHold':
-      return 'new'; // Treat on-hold as new for now
+      return 'new'; 
     default:
       console.warn(`Unknown order status received: "${apiStatus}". Defaulting to 'new'.`);
       return 'new';
@@ -306,7 +300,7 @@ export default function OrdersPage() {
     <div className="orders-page">
       <Header contextData={contextData} />
       
-      <div className="p-6 space-y-4">
+      <div className="p-2 space-y-2">
         <Card className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
@@ -400,7 +394,7 @@ export default function OrdersPage() {
                           <div className="text-xs text-gray-500 ml-4">
                             {order.customerEmail}
                           </div>
-                          {order.itemCount && (
+                          {order.itemCount !== null && order.itemCount !== undefined && (
                             <div className="text-xs text-blue-600 ml-4">
                               <Package className="w-3 h-3 inline mr-1" />
                               {order.itemCount} items
