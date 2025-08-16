@@ -1,28 +1,57 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, DollarSign, Calendar, Send, CheckCircle, User, MapPin, MessageSquare, ChevronRight, ChevronDown, ChevronLeft, Plus, Trash2, Package, Mail, Phone, Building, ImageIcon } from 'lucide-react';
+import { FileText, DollarSign, Calendar, Send, CheckCircle, User, MapPin, MessageSquare, ChevronRight, ChevronDown, ChevronLeft, Plus, Package, Mail, Phone, Building, ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { FormInput } from '@/components/helpers/FormInput';
 import { CustomerSearch } from '@/components/helpers/CustomerSearch';
 import { AddressForm } from '@/components/forms/AddressForm';
 import { EntityAvatar } from '@/components/helpers/EntityAvatar';
-import { ImageGallery } from '@/components/ui/ImageGallery';
 import { iCustomer, iCustomerAddressFormData } from '@/types/customer';
 import { iQuoteFormData, iQuoteFormProps, iQuote } from '@/types/quotes';
+import { useApi } from '@/hooks/useApi';
 import { showToast } from '@/components/ui/toast';
+import { LineItemCard } from '../ui/LineItemCard';
 
 type FormStep = 'customer-address' | 'items' | 'quote' | 'notes';
 
-interface QuoteItem {
+interface LineItemData {
   id: string;
   productName: string;
+  variantName?: string;
+  methodName?: string;
+  color?: string;
   quantity: number;
-  unitPrice: number;
-  totalPrice: number;
+  productItemNumber?: string;
+  supplierItemNumber?: string;
+  customerPricePerQuantity: number;
+  customerSetupCharge: number;
+  supplierPricePerQuantity: number;
+  supplierSetupCharge: number;
+  artworkText?: string;
+  artworkSpecialInstructions?: string;
   customization?: string;
   description?: string;
   images?: string[];
+  selectedProduct?: any;
 }
+
+interface SaleSummary {
+  customerSummary: {
+    itemsTotal: number;
+    setupCharge: number;
+    subTotal: number;
+    total: number;
+  };
+  totalSupplierSummary: {
+    itemsTotal: number;
+    setupCharge: number;
+    subTotal: number;
+    total: number;
+  };
+  profit: number;
+}
+
+const DEFAULT_SALE_ID = '0046d15a-2cea-4de3-8590-49a6f3e3a0a4';
 
 const mockCustomer: iCustomer = {
   id: '12345',
@@ -63,37 +92,6 @@ const mockAddresses = {
   }
 };
 
-const mockQuoteItems: QuoteItem[] = [
-  {
-    id: '1',
-    productName: 'Custom Branded Mugs',
-    quantity: 100,
-    unitPrice: 8.50,
-    totalPrice: 850.00,
-    customization: 'Company logo on both sides',
-    description: 'Ceramic mugs with custom full-color printing',
-    images: [
-      'https://tiimg.tistatic.com/fp/1/008/403/customized-printed-promotional-mugs-for-corporate-personal-gift-105.jpg?w=400&h=400&fit=crop',
-      'https://d2fy0k1bcbbnwr.cloudfront.net/Designs_Inners_and_Outers/Mugs/mug_basic_pat_d539_o.jpg?w=400&h=400&fit=crop',
-      'https://crystalimagery.com/cdn/shop/products/Logo_coffee_e6da97d1-4fb9-485b-b848-e0ebc4f5238f_1024x1024.jpg?v=1619803077?w=400&h=400&fit=crop'
-    ]
-  },
-  {
-    id: '2', 
-    productName: 'Promotional Pens',
-    quantity: 500,
-    unitPrice: 1.25,
-    totalPrice: 625.00,
-    customization: 'Company name and contact info',
-    description: 'Metal ballpoint pens with laser engraving',
-    images: [
-      'https://store.jaunpurmart.in/wp-content/uploads/2024/11/02.jpg?w=400&h=400&fit=crop',
-      'https://store.jaunpurmart.in/wp-content/uploads/2024/11/03.jpg?w=400&h=400&fit=crop',
-      'https://promotionway.com/data/shopproducts/6724/aluminium-ball-pen-coloured-touch-ip131503-52-vm-ea.jpg?w=400&h=400&fit=crop'
-    ]
-  }
-];
-
 export const QuoteForm: React.FC<iQuoteFormProps> = ({
   quote,
   isEditing,
@@ -104,7 +102,8 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
   const [selectedCustomer, setSelectedCustomer] = useState<iCustomer | null>(null);
   const [showBillingAddressForm, setShowBillingAddressForm] = useState(false);
   const [showShippingAddressForm, setShowShippingAddressForm] = useState(false);
-  const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
+  const [lineItems, setLineItems] = useState<LineItemData[]>([]);
+  const [saleSummary, setSaleSummary] = useState<SaleSummary | null>(null);
   
   const [formData, setFormData] = useState<iQuoteFormData>({
     customer: '',
@@ -120,10 +119,14 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
   
   const [formErrors, setFormErrors] = useState<Partial<iQuoteFormData>>({});
 
+  const { post } = useApi({
+    cancelOnUnmount: false,
+    dedupe: false,
+  });
+
   useEffect(() => {
     if (isEditing && quote) {
       setSelectedCustomer(mockCustomer);
-      setQuoteItems(mockQuoteItems);
       setFormData({
         customer: quote.customer,
         customerEmail: quote.customerEmail,
@@ -136,22 +139,132 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
         sameAsShipping: false,
       });
       setCurrentStep('customer-address');
+      fetchExistingLineItems();
     } else {
       setSelectedCustomer(mockCustomer);
-      setQuoteItems(mockQuoteItems);
       setFormData({
         customer: mockCustomer.firstName + ' ' + mockCustomer.lastName,
         customerEmail: mockCustomer.email,
         status: 'new-quote',
-        customerTotal: mockQuoteItems.reduce((sum, item) => sum + item.totalPrice, 0).toString(),
+        customerTotal: '0',
         inHandDate: '',
         notes: '',
         billingAddress: mockAddresses.billing,
         shippingAddress: mockAddresses.shipping,
         sameAsShipping: false,
       });
+      fetchExistingLineItems();
     }
   }, [quote, isEditing]);
+
+  const fetchExistingLineItems = async () => {
+    try {
+      const response = await post(`https://api.promowe.com/Admin/SaleEditor/GetSaleSummary?saleId=${DEFAULT_SALE_ID}`);
+      if (response) {
+        setSaleSummary(response);
+        setFormData(prev => ({
+          ...prev,
+          customerTotal: response.customerSummary.total.toString()
+        }));
+        
+        setLineItems([]);
+      }
+    } catch (error) {
+      setSaleSummary(null);
+      setLineItems([]);
+    }
+  };
+
+  const fetchSaleSummary = async () => {
+    try {
+      const response = await post(`https://api.promowe.com/Admin/SaleEditor/GetSaleSummary?saleId=${DEFAULT_SALE_ID}`);
+      if (response) {
+        setSaleSummary(response);
+        setFormData(prev => ({
+          ...prev,
+          customerTotal: response.customerSummary.total.toString()
+        }));
+      }
+    } catch (error) {
+      showToast.error('Failed to fetch sale summary');
+    }
+  };
+
+  const handleAddEmptyLineItem = async () => {
+    try {
+      const response = await post('https://api.promowe.com/Admin/SaleEditor/AddEmptyLineItem', {
+        saleId: DEFAULT_SALE_ID
+      });
+      
+      if (response && response.lineItems) {
+        const newItems: LineItemData[] = response.lineItems.map((item: any) => ({
+          id: item.id,
+          productName: item.form.productName || '',
+          variantName: item.form.variantName || '',
+          methodName: item.form.methodName || '',
+          color: item.form.color || '',
+          quantity: item.form.quantity || 1,
+          productItemNumber: item.form.productItemNumber || '',
+          supplierItemNumber: item.form.supplierItemNumber || '',
+          customerPricePerQuantity: item.form.customerPricePerQuantity || 0,
+          customerSetupCharge: item.form.customerSetupCharge || 0,
+          supplierPricePerQuantity: item.form.supplierPricePerQuantity || 0,
+          supplierSetupCharge: item.form.supplierSetupCharge || 0,
+          artworkText: item.form.artworkText || '',
+          artworkSpecialInstructions: item.form.artworkSpecialInstructions || '',
+          images: [],
+          selectedProduct: null
+        }));
+        
+        setLineItems(newItems);
+        await fetchSaleSummary();
+        showToast.success('Line item added successfully');
+      }
+    } catch (error) {
+      showToast.error('Failed to add line item');
+    }
+  };
+
+  const handleUpdateLineItem = async (itemId: string, updatedItem: LineItemData) => {
+    setLineItems(prev => prev.map(item => item.id === itemId ? updatedItem : item));
+    await fetchSaleSummary();
+  };
+
+  const handleRemoveLineItem = async (itemId: string) => {
+    try {
+      const response = await post('https://api.promowe.com/Admin/SaleEditor/RemoveLineItems', {
+        saleId: DEFAULT_SALE_ID,
+        lineItemIds: [itemId]
+      });
+      
+      if (response && response.lineItems) {
+        const updatedItems: LineItemData[] = response.lineItems.map((item: any) => ({
+          id: item.id,
+          productName: item.form.productName || '',
+          variantName: item.form.variantName || '',
+          methodName: item.form.methodName || '',
+          color: item.form.color || '',
+          quantity: item.form.quantity || 1,
+          productItemNumber: item.form.productItemNumber || '',
+          supplierItemNumber: item.form.supplierItemNumber || '',
+          customerPricePerQuantity: item.form.customerPricePerQuantity || 0,
+          customerSetupCharge: item.form.customerSetupCharge || 0,
+          supplierPricePerQuantity: item.form.supplierPricePerQuantity || 0,
+          supplierSetupCharge: item.form.supplierSetupCharge || 0,
+          artworkText: item.form.artworkText || '',
+          artworkSpecialInstructions: item.form.artworkSpecialInstructions || '',
+          images: [],
+          selectedProduct: null
+        }));
+        
+        setLineItems(updatedItems);
+        await fetchSaleSummary();
+        showToast.success('Line item removed successfully');
+      }
+    } catch (error) {
+      showToast.error('Failed to remove line item');
+    }
+  };
 
   const handleNextStep = () => {
     const steps: FormStep[] = ['customer-address', 'items', 'quote', 'notes'];
@@ -176,8 +289,9 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
     if (!formData.customerTotal || parseFloat(formData.customerTotal) <= 0) {
       errors.customerTotal = 'Customer total must be greater than 0';
     }
-    if (quoteItems.length === 0) {
+    if (lineItems.length === 0) {
       showToast.error('At least one item is required');
+      return false;
     }
 
     setFormErrors(errors);
@@ -238,50 +352,6 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
     setShowShippingAddressForm(false);
   };
 
-  const addQuoteItem = () => {
-    const newItem: QuoteItem = {
-      id: Date.now().toString(),
-      productName: '',
-      quantity: 1,
-      unitPrice: 0,
-      totalPrice: 0,
-      customization: '',
-      description: '',
-      images: []
-    };
-    setQuoteItems(prev => [...prev, newItem]);
-  };
-
-  const removeQuoteItem = (itemId: string) => {
-    setQuoteItems(prev => prev.filter(item => item.id !== itemId));
-    showToast.success('Item removed from quote');
-  };
-
-  const updateQuoteItem = (itemId: string, field: keyof QuoteItem, value: any) => {
-    setQuoteItems(prev => prev.map(item => {
-      if (item.id === itemId) {
-        const updatedItem = { ...item, [field]: value };
-        if (field === 'quantity' || field === 'unitPrice') {
-          updatedItem.totalPrice = updatedItem.quantity * updatedItem.unitPrice;
-        }
-        return updatedItem;
-      }
-      return item;
-    }));
-  };
-
-  const updateQuoteItemImages = (itemId: string, images: string[]) => {
-    updateQuoteItem(itemId, 'images', images);
-  };
-
-  useEffect(() => {
-    const total = quoteItems.reduce((sum, item) => sum + item.totalPrice, 0);
-    setFormData(prev => ({
-      ...prev,
-      customerTotal: total.toString()
-    }));
-  }, [quoteItems]);
-
   const getStepTitle = (step: FormStep) => {
     switch (step) {
       case 'customer-address': return 'Customer & Address';
@@ -295,7 +365,7 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
   const isStepCompleted = (step: FormStep) => {
     switch (step) {
       case 'customer-address': return !!(selectedCustomer && formData.billingAddress.street && formData.shippingAddress.street);
-      case 'items': return quoteItems.length > 0;
+      case 'items': return lineItems.length > 0;
       case 'quote': return !!(formData.customerTotal && parseFloat(formData.customerTotal) > 0);
       case 'notes': return true;
       default: return false;
@@ -374,7 +444,6 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
   const renderCustomerAndAddressStep = () => {
     return (
       <div className="space-y-4">
-        {/* Customer Selection */}
         <Card className="p-4">
           <h4 className="font-medium text-gray-900 text-sm mb-3 flex items-center gap-2">
             <User className="w-4 h-4 text-blue-500" />
@@ -430,10 +499,8 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
           )}
         </Card>
 
-        {/* Address Selection */}
         {selectedCustomer && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Billing Address */}
             <Card className="p-4">
               <div className="flex items-center justify-between mb-3">
                 <h4 className="font-medium text-gray-900 text-sm flex items-center gap-2">
@@ -471,7 +538,6 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
               )}
             </Card>
 
-            {/* Shipping Address */}
             <Card className="p-4">
               <div className="flex items-center justify-between mb-3">
                 <h4 className="font-medium text-gray-900 text-sm flex items-center gap-2">
@@ -537,137 +603,58 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
       <div className="flex items-center justify-between">
         <h4 className="font-medium text-gray-900 text-sm">Quote Items</h4>
         <Button
-          onClick={addQuoteItem}
+          onClick={handleAddEmptyLineItem}
           variant="secondary"
           size="sm"
           icon={Plus}
           className="h-7"
         >
-          Add Item
+          Add Line Item
         </Button>
       </div>
 
-      {quoteItems.length === 0 ? (
+      {lineItems.length === 0 ? (
         <Card className="p-6 text-center">
           <Package className="w-8 h-8 mx-auto text-gray-400 mb-3" />
           <p className="text-sm text-gray-500 mb-3">No items added yet</p>
           <Button
-            onClick={addQuoteItem}
+            onClick={handleAddEmptyLineItem}
             variant="secondary"
             size="sm"
             icon={Plus}
           >
-            Add First Item
+            Add First Line Item
           </Button>
         </Card>
       ) : (
         <div className="space-y-3">
-          {quoteItems.map((item, index) => (
-            <Card key={item.id} className="p-4">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-medium text-gray-900">Item #{index + 1}</span>
-                <Button
-                  onClick={() => removeQuoteItem(item.id)}
-                  variant="danger"
-                  size="sm"
-                  icon={Trash2}
-                  iconOnly
-                  className="w-6 h-6"
-                />
-              </div>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-                <FormInput
-                  label="Product Name"
-                  name={`product-${item.id}`}
-                  value={item.productName}
-                  onChange={(e) => updateQuoteItem(item.id, 'productName', e.target.value)}
-                  placeholder="Enter product name"
-                  required
-                />
-                <FormInput
-                  label="Description"
-                  name={`description-${item.id}`}
-                  value={item.description || ''}
-                  onChange={(e) => updateQuoteItem(item.id, 'description', e.target.value)}
-                  placeholder="Product description"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-3">
-                <FormInput
-                  label="Quantity"
-                  name={`quantity-${item.id}`}
-                  type="number"
-                  value={item.quantity.toString()}
-                  onChange={(e) => updateQuoteItem(item.id, 'quantity', parseInt(e.target.value) || 0)}
-                  placeholder="1"
-                  required
-                />
-                <FormInput
-                  label="Unit Price"
-                  name={`unitPrice-${item.id}`}
-                  type="number"
-                  value={item.unitPrice.toString()}
-                  onChange={(e) => updateQuoteItem(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
-                  placeholder="0.00"
-                  required
-                />
-                <div className="form-input-group">
-                  <label className="form-label block text-sm font-medium text-gray-700 mb-1">
-                    Total Price
-                  </label>
-                  <div className="text-lg font-bold text-green-600 py-2">
-                    ${item.totalPrice.toFixed(2)}
-                  </div>
-                </div>
-                <div className="form-input-group">
-                  <label className="form-label block text-sm font-medium text-gray-700 mb-1">
-                    Margin
-                  </label>
-                  <div className="text-sm text-gray-600 py-2">
-                    {item.unitPrice > 0 ? ((item.unitPrice * 0.15) / item.unitPrice * 100).toFixed(1) : '0.0'}%
-                  </div>
-                </div>
-              </div>
-
-              <div className="mb-3">
-                <FormInput
-                  label="Customization/Notes"
-                  name={`customization-${item.id}`}
-                  value={item.customization || ''}
-                  onChange={(e) => updateQuoteItem(item.id, 'customization', e.target.value)}
-                  placeholder="Special instructions or customization details"
-                />
-              </div>
-
-              <div className="border-t pt-3">
-                <ImageGallery
-                  images={item.images || []}
-                  onImagesChange={(images) => updateQuoteItemImages(item.id, images)}
-                  title={`${item.productName || 'Product'} Images`}
-                  maxImages={8}
-                  editable={true}
-                />
-              </div>
-            </Card>
+          {lineItems.map((item, index) => (
+            <LineItemCard
+              key={item.id}
+              item={item}
+              index={index}
+              saleId={DEFAULT_SALE_ID}
+              onRemove={handleRemoveLineItem}
+              onUpdate={handleUpdateLineItem}
+              isNew={index === lineItems.length - 1}
+            />
           ))}
         </div>
       )}
 
-      {quoteItems.length > 0 && (
+      {saleSummary && (
         <Card className="p-4 bg-purple-50 border-purple-200">
           <div className="flex justify-between items-center">
             <span className="text-sm font-medium text-purple-800">Quote Summary</span>
             <div className="text-right">
               <div className="text-xl font-bold text-green-600">
-                ${quoteItems.reduce((sum, item) => sum + item.totalPrice, 0).toFixed(2)}
+                ${saleSummary.customerSummary.total.toFixed(2)}
               </div>
               <div className="text-xs text-purple-600">
-                {quoteItems.length} item{quoteItems.length !== 1 ? 's' : ''}
+                {lineItems.length} item{lineItems.length !== 1 ? 's' : ''}
               </div>
-              <div className="text-xs text-purple-600">
-                {quoteItems.reduce((sum, item) => sum + (item.images?.length || 0), 0)} images
+              <div className="text-xs text-orange-600">
+                Profit: ${saleSummary.profit.toFixed(2)}
               </div>
             </div>
           </div>
@@ -705,25 +692,35 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
         />
       </div>
 
-      <Card className="p-4 bg-gray-50">
-        <h5 className="font-medium text-gray-800 mb-3 text-sm">Financial Summary</h5>
-        <div className="space-y-2 text-sm">
-          <div className="flex justify-between">
-            <span className="text-gray-600">Subtotal:</span>
-            <span className="font-medium">${parseFloat(formData.customerTotal || '0').toFixed(2)}</span>
+      {saleSummary && (
+        <Card className="p-4 bg-gray-50">
+          <h5 className="font-medium text-gray-800 mb-3 text-sm">Financial Summary</h5>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Items Total:</span>
+              <span className="font-medium">${saleSummary.customerSummary.itemsTotal.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Setup Charges:</span>
+              <span className="font-medium">${saleSummary.customerSummary.setupCharge.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Subtotal:</span>
+              <span className="font-medium">${saleSummary.customerSummary.subTotal.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between border-t pt-2">
+              <span className="text-gray-600 font-medium">Total Amount:</span>
+              <span className="font-bold text-green-600 text-lg">
+                ${saleSummary.customerSummary.total.toFixed(2)}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Profit:</span>
+              <span className="font-bold text-orange-600">${saleSummary.profit.toFixed(2)}</span>
+            </div>
           </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Tax (8.5%):</span>
-            <span className="font-medium">${(parseFloat(formData.customerTotal || '0') * 0.085).toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between border-t pt-2">
-            <span className="text-gray-600 font-medium">Total Amount:</span>
-            <span className="font-bold text-green-600 text-lg">
-              ${(parseFloat(formData.customerTotal || '0') * 1.085).toFixed(2)}
-            </span>
-          </div>
-        </div>
-      </Card>
+        </Card>
+      )}
     </div>
   );
 
@@ -744,49 +741,59 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
         <p className="text-xs text-gray-500 mt-1">These notes will be visible to the customer on the quote</p>
       </div>
 
-      <Card className="p-4 bg-blue-50 border-blue-200">
-        <h5 className="font-medium text-blue-800 mb-3 text-sm">Quote Summary</h5>
-        <div className="space-y-2 text-sm">
-          <div className="flex justify-between">
-            <span className="text-blue-700">Customer:</span>
-            <span className="font-medium text-blue-800">{formData.customer}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-blue-700">Email:</span>
-            <span className="font-medium text-blue-800">{formData.customerEmail}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-blue-700">Items:</span>
-            <span className="font-medium text-blue-800">{quoteItems.length} item{quoteItems.length !== 1 ? 's' : ''}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-blue-700">Images:</span>
-            <span className="font-medium text-blue-800">{quoteItems.reduce((sum, item) => sum + (item.images?.length || 0), 0)} total</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-blue-700">Subtotal:</span>
-            <span className="font-medium text-blue-800">${parseFloat(formData.customerTotal || '0').toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-blue-700">Total Amount:</span>
-            <span className="font-bold text-green-600 text-lg">${(parseFloat(formData.customerTotal || '0') * 1.085).toFixed(2)}</span>
-          </div>
-          {formData.inHandDate && (
+      {saleSummary && (
+        <Card className="p-4 bg-blue-50 border-blue-200">
+          <h5 className="font-medium text-blue-800 mb-3 text-sm">Quote Summary</h5>
+          <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-blue-700">In-Hand Date:</span>
-              <span className="font-medium text-blue-800">{formData.inHandDate}</span>
+              <span className="text-blue-700">Customer:</span>
+              <span className="font-medium text-blue-800">{formData.customer}</span>
             </div>
-          )}
-          <div className="flex justify-between">
-            <span className="text-blue-700">Status:</span>
-            <span className="font-medium text-blue-800">
-              {formData.status === 'new-quote' ? 'New Quote' : 
-               formData.status === 'quote-sent-to-customer' ? 'Quote Sent' : 
-               'Converted to Order'}
-            </span>
+            <div className="flex justify-between">
+              <span className="text-blue-700">Email:</span>
+              <span className="font-medium text-blue-800">{formData.customerEmail}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-blue-700">Items:</span>
+              <span className="font-medium text-blue-800">{lineItems.length} item{lineItems.length !== 1 ? 's' : ''}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-blue-700">Images:</span>
+              <span className="font-medium text-blue-800">{lineItems.reduce((sum, item) => sum + (item.images?.length || 0), 0)} total</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-blue-700">Items Total:</span>
+              <span className="font-medium text-blue-800">${saleSummary.customerSummary.itemsTotal.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-blue-700">Setup Charges:</span>
+              <span className="font-medium text-blue-800">${saleSummary.customerSummary.setupCharge.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-blue-700">Total Amount:</span>
+              <span className="font-bold text-green-600 text-lg">${saleSummary.customerSummary.total.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-blue-700">Profit:</span>
+              <span className="font-bold text-orange-600">${saleSummary.profit.toFixed(2)}</span>
+            </div>
+            {formData.inHandDate && (
+              <div className="flex justify-between">
+                <span className="text-blue-700">In-Hand Date:</span>
+                <span className="font-medium text-blue-800">{formData.inHandDate}</span>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <span className="text-blue-700">Status:</span>
+              <span className="font-medium text-blue-800">
+                {formData.status === 'new-quote' ? 'New Quote' : 
+                 formData.status === 'quote-sent-to-customer' ? 'Quote Sent' : 
+                 'Converted to Order'}
+              </span>
+            </div>
           </div>
-        </div>
-      </Card>
+        </Card>
+      )}
 
       {isEditing && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -862,7 +869,7 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
             <div className="flex items-center gap-2">
               <ImageIcon className="w-4 h-4 text-gray-400" />
               <span className="text-gray-500">Images:</span>
-              <span className="font-medium">{quoteItems.reduce((sum, item) => sum + (item.images?.length || 0), 0)} total</span>
+              <span className="font-medium">{lineItems.reduce((sum, item) => sum + (item.images?.length || 0), 0)} total</span>
             </div>
           </div>
         </div>

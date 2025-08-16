@@ -1,8 +1,6 @@
-import React from 'react';
+import React, { HTMLAttributes } from 'react';
 
-interface CardProps {
-  children: React.ReactNode;
-  className?: string;
+interface CardProps extends HTMLAttributes<HTMLDivElement> {
   padding?: 'none' | 'sm' | 'md' | 'lg';
   shadow?: 'none' | 'sm' | 'md' | 'lg';
   border?: boolean;
@@ -16,6 +14,7 @@ export const Card: React.FC<CardProps> = ({
   shadow = 'sm',
   border = true,
   rounded = 'lg',
+  ...rest 
 }) => {
   const paddingClasses = {
     none: 'ui-card-padding-none',
@@ -43,6 +42,7 @@ export const Card: React.FC<CardProps> = ({
   return (
     <div
       className={`ui-card-container bg-white ${paddingClasses[padding]} ${shadowClasses[shadow]} ${roundedClasses[rounded]} ${borderClass} ${className}`}
+      {...rest} 
     >
       {children}
     </div>
