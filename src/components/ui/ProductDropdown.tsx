@@ -69,7 +69,7 @@ export const ProductDropdown: React.FC<ProductDropdownProps> = ({
     }
 
     try {
-      const response = await get(`https://api.promowe.com/Admin/ProductList/GetProductsList?search=${encodeURIComponent(term)}&pageSize=20&offset=0`) as ProductSearchResponse;
+      const response = await get(`https://api.promowe.com/Admin/ProductList/GetProductsList?search=${(term)}&pageSize=20&offset=0`) as ProductSearchResponse;
       
       if (response?.products) {
         setProducts(response.products);
@@ -82,14 +82,16 @@ export const ProductDropdown: React.FC<ProductDropdownProps> = ({
   }, [get]);
 
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      if (isOpen) {
-        searchProducts(searchTerm);
-      }
-    }, 300);
+  const timeoutId = setTimeout(() => {
+    if (isOpen && searchTerm.trim().length >= 2) {  
+      searchProducts(searchTerm);
+    } else if (searchTerm.trim().length < 2) {
+      setProducts([]); 
+    }
+  }, 600);
 
-    return () => clearTimeout(timeoutId);
-  }, [searchTerm, searchProducts, isOpen]);
+  return () => clearTimeout(timeoutId);
+}, [searchTerm, searchProducts, isOpen]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

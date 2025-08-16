@@ -104,6 +104,7 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
   const [showShippingAddressForm, setShowShippingAddressForm] = useState(false);
   const [lineItems, setLineItems] = useState<LineItemData[]>([]);
   const [saleSummary, setSaleSummary] = useState<SaleSummary | null>(null);
+  const [isLoadingLineItems, setIsLoadingLineItems] = useState(false);
   
   const [formData, setFormData] = useState<iQuoteFormData>({
     customer: '',
@@ -124,6 +125,81 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
     dedupe: false,
   });
 
+  // Transform API line item to our LineItemData format
+  const transformApiLineItem = (apiItem: any): LineItemData => ({
+    id: apiItem.id,
+    productName: apiItem.form?.productName || '',
+    variantName: apiItem.form?.variantName || '',
+    methodName: apiItem.form?.methodName || '',
+    color: apiItem.form?.color || '',
+    quantity: apiItem.form?.quantity || 1,
+    productItemNumber: apiItem.form?.productItemNumber || '',
+    supplierItemNumber: apiItem.form?.supplierItemNumber || '',
+    customerPricePerQuantity: apiItem.form?.customerPricePerQuantity || 0,
+    customerSetupCharge: apiItem.form?.customerSetupCharge || 0,
+    supplierPricePerQuantity: apiItem.form?.supplierPricePerQuantity || 0,
+    supplierSetupCharge: apiItem.form?.supplierSetupCharge || 0,
+    artworkText: apiItem.form?.artworkText || '',
+    artworkSpecialInstructions: apiItem.form?.artworkSpecialInstructions || '',
+    images: [],
+    selectedProduct: null
+  });
+
+  // Fetch existing line items and sale summary
+  const fetchExistingLineItems = async () => {
+    setIsLoadingLineItems(true);
+    try {
+      // First get the sale summary to check if there are any line items
+      const summaryResponse = await post(`https://api.promowe.com/Admin/SaleEditor/GetSaleSummary?saleId=${DEFAULT_SALE_ID}`);
+      
+      if (summaryResponse) {
+        setSaleSummary(summaryResponse);
+        setFormData(prev => ({
+          ...prev,
+          customerTotal: summaryResponse.customerSummary.total.toString()
+        }));
+        
+        // If there are items in the summary, try to get the actual line items
+        if (summaryResponse.customerSummary.items && summaryResponse.customerSummary.items.length > 0) {
+          // Try adding an empty line item to get the current line items list
+          // This is a workaround since there's no direct "GetLineItems" endpoint
+          try {
+            const lineItemsResponse = await post('https://api.promowe.com/Admin/SaleEditor/AddEmptyLineItem', {
+              saleId: DEFAULT_SALE_ID
+            });
+            
+            if (lineItemsResponse && lineItemsResponse.lineItems && Array.isArray(lineItemsResponse.lineItems)) {
+              const transformedItems = lineItemsResponse.lineItems.map(transformApiLineItem);
+              // Remove the last item if it's empty (the one we just added)
+              const filteredItems = transformedItems.filter((item: any) => 
+                item.productName || 
+                item.quantity > 1 || 
+                item.customerPricePerQuantity > 0 ||
+                item.productItemNumber
+              );
+
+              setLineItems(filteredItems);
+              console.log('Fetched existing line items:', filteredItems);
+            }
+          } catch (lineItemError) {
+            console.error('Error fetching line items detail:', lineItemError);
+            setLineItems([]);
+          }
+        } else {
+          // No items in summary, so no line items exist
+          setLineItems([]);
+        }
+      }
+      
+    } catch (error) {
+      console.error('Error fetching sale data:', error);
+      setSaleSummary(null);
+      setLineItems([]);
+    } finally {
+      setIsLoadingLineItems(false);
+    }
+  };
+
   useEffect(() => {
     if (isEditing && quote) {
       setSelectedCustomer(mockCustomer);
@@ -139,7 +215,6 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
         sameAsShipping: false,
       });
       setCurrentStep('customer-address');
-      fetchExistingLineItems();
     } else {
       setSelectedCustomer(mockCustomer);
       setFormData({
@@ -153,27 +228,16 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
         shippingAddress: mockAddresses.shipping,
         sameAsShipping: false,
       });
+    }
+    
+    // Always fetch existing data when component mounts or quote changes
+    // Use a timeout to prevent rapid successive calls
+    const timeoutId = setTimeout(() => {
       fetchExistingLineItems();
-    }
-  }, [quote, isEditing]);
+    }, 100);
 
-  const fetchExistingLineItems = async () => {
-    try {
-      const response = await post(`https://api.promowe.com/Admin/SaleEditor/GetSaleSummary?saleId=${DEFAULT_SALE_ID}`);
-      if (response) {
-        setSaleSummary(response);
-        setFormData(prev => ({
-          ...prev,
-          customerTotal: response.customerSummary.total.toString()
-        }));
-        
-        setLineItems([]);
-      }
-    } catch (error) {
-      setSaleSummary(null);
-      setLineItems([]);
-    }
-  };
+    return () => clearTimeout(timeoutId);
+  }, [quote, isEditing]);
 
   const fetchSaleSummary = async () => {
     try {
@@ -184,8 +248,10 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
           ...prev,
           customerTotal: response.customerSummary.total.toString()
         }));
+        console.log('Sale summary updated:', response);
       }
     } catch (error) {
+      console.error('Failed to fetch sale summary:', error);
       showToast.error('Failed to fetch sale summary');
     }
   };
@@ -197,30 +263,13 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
       });
       
       if (response && response.lineItems) {
-        const newItems: LineItemData[] = response.lineItems.map((item: any) => ({
-          id: item.id,
-          productName: item.form.productName || '',
-          variantName: item.form.variantName || '',
-          methodName: item.form.methodName || '',
-          color: item.form.color || '',
-          quantity: item.form.quantity || 1,
-          productItemNumber: item.form.productItemNumber || '',
-          supplierItemNumber: item.form.supplierItemNumber || '',
-          customerPricePerQuantity: item.form.customerPricePerQuantity || 0,
-          customerSetupCharge: item.form.customerSetupCharge || 0,
-          supplierPricePerQuantity: item.form.supplierPricePerQuantity || 0,
-          supplierSetupCharge: item.form.supplierSetupCharge || 0,
-          artworkText: item.form.artworkText || '',
-          artworkSpecialInstructions: item.form.artworkSpecialInstructions || '',
-          images: [],
-          selectedProduct: null
-        }));
-        
+        const newItems: LineItemData[] = response.lineItems.map(transformApiLineItem);
         setLineItems(newItems);
         await fetchSaleSummary();
         showToast.success('Line item added successfully');
       }
     } catch (error) {
+      console.error('Failed to add line item:', error);
       showToast.error('Failed to add line item');
     }
   };
@@ -238,25 +287,7 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
       });
       
       if (response && response.lineItems) {
-        const updatedItems: LineItemData[] = response.lineItems.map((item: any) => ({
-          id: item.id,
-          productName: item.form.productName || '',
-          variantName: item.form.variantName || '',
-          methodName: item.form.methodName || '',
-          color: item.form.color || '',
-          quantity: item.form.quantity || 1,
-          productItemNumber: item.form.productItemNumber || '',
-          supplierItemNumber: item.form.supplierItemNumber || '',
-          customerPricePerQuantity: item.form.customerPricePerQuantity || 0,
-          customerSetupCharge: item.form.customerSetupCharge || 0,
-          supplierPricePerQuantity: item.form.supplierPricePerQuantity || 0,
-          supplierSetupCharge: item.form.supplierSetupCharge || 0,
-          artworkText: item.form.artworkText || '',
-          artworkSpecialInstructions: item.form.artworkSpecialInstructions || '',
-          images: [],
-          selectedProduct: null
-        }));
-        
+        const updatedItems: LineItemData[] = response.lineItems.map(transformApiLineItem);
         setLineItems(updatedItems);
         await fetchSaleSummary();
         showToast.success('Line item removed successfully');
@@ -608,12 +639,18 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
           size="sm"
           icon={Plus}
           className="h-7"
+          disabled={isLoadingLineItems}
         >
           Add Line Item
         </Button>
       </div>
 
-      {lineItems.length === 0 ? (
+      {isLoadingLineItems ? (
+        <Card className="p-6 text-center">
+          <div className="w-8 h-8 mx-auto mb-3 animate-spin rounded-full border-2 border-purple-600 border-t-transparent"></div>
+          <p className="text-sm text-gray-500">Loading line items...</p>
+        </Card>
+      ) : lineItems.length === 0 ? (
         <Card className="p-6 text-center">
           <Package className="w-8 h-8 mx-auto text-gray-400 mb-3" />
           <p className="text-sm text-gray-500 mb-3">No items added yet</p>
@@ -636,13 +673,13 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
               saleId={DEFAULT_SALE_ID}
               onRemove={handleRemoveLineItem}
               onUpdate={handleUpdateLineItem}
-              isNew={index === lineItems.length - 1}
+              isNew={false}
             />
           ))}
         </div>
       )}
 
-      {saleSummary && (
+      {saleSummary && !isLoadingLineItems && (
         <Card className="p-4 bg-purple-50 border-purple-200">
           <div className="flex justify-between items-center">
             <span className="text-sm font-medium text-purple-800">Quote Summary</span>
