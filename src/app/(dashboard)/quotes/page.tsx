@@ -208,13 +208,13 @@ export default function QuotesPage() {
   const handleSubmit = async (formData: iQuoteFormData) => {
     try {
       if (isEditing && selectedQuote) {
-        showToast.success("Quote updated successfully");
+        //showToast.success("Quote updated successfully");
       } else {
         showToast.success("Quote created successfully");
       }
 
       await fetchQuotes();
-      closeDrawer();
+      
     } catch (error: any) {
       if (error?.name !== "CanceledError" && error?.code !== "ERR_CANCELED") {
         showToast.error("Error saving quote");

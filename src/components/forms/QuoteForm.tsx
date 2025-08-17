@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, DollarSign, Calendar, Send, CheckCircle, User, MapPin, MessageSquare, ChevronRight, ChevronDown, ChevronLeft, Plus, Package, Mail, Phone, Building, ImageIcon } from 'lucide-react';
+import { FileText, DollarSign, Calendar, Send, CheckCircle, User, MapPin, MessageSquare, ChevronRight, ChevronDown, ChevronLeft, Plus, Package, Mail, Phone, Building, ImageIcon, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { FormInput } from '@/components/helpers/FormInput';
@@ -671,7 +671,7 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
   };
 
   const renderItemsStep = () => (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h4 className="font-medium text-gray-900 text-sm">Quote Items</h4>
         <Button
@@ -679,33 +679,34 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
           variant="secondary"
           size="sm"
           icon={Plus}
-          className="h-7"
+          className="h-7 text-xs px-2"
           disabled={isLoadingLineItems}
         >
-          Add Line Item
+          Add Item
         </Button>
       </div>
 
       {isLoadingLineItems ? (
-        <Card className="p-6 text-center">
-          <div className="w-8 h-8 mx-auto mb-3 animate-spin rounded-full border-2 border-purple-600 border-t-transparent"></div>
-          <p className="text-sm text-gray-500">Loading line items...</p>
+        <Card className="p-4 text-center">
+          <div className="w-6 h-6 mx-auto mb-2 animate-spin rounded-full border-2 border-purple-600 border-t-transparent"></div>
+          <p className="text-xs text-gray-500">Loading...</p>
         </Card>
       ) : lineItems.length === 0 ? (
-        <Card className="p-6 text-center">
-          <Package className="w-8 h-8 mx-auto text-gray-400 mb-3" />
-          <p className="text-sm text-gray-500 mb-3">No items added yet</p>
+        <Card className="p-4 text-center border-dashed">
+          <Package className="w-6 h-6 mx-auto text-gray-400 mb-2" />
+          <p className="text-xs text-gray-500 mb-2">No items added</p>
           <Button
             onClick={handleAddEmptyLineItem}
             variant="secondary"
             size="sm"
             icon={Plus}
+            className="text-xs"
           >
-            Add First Line Item
+            Add First Item
           </Button>
         </Card>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {lineItems.map((item, index) => (
             <LineItemCard
               key={item.id}
@@ -721,18 +722,15 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
       )}
 
       {saleSummary && !isLoadingLineItems && (
-        <Card className="p-4 bg-purple-50 border-purple-200">
+        <Card className="p-3 bg-blue-50 border-blue-200">
           <div className="flex justify-between items-center">
-            <span className="text-sm font-medium text-purple-800">Quote Summary</span>
+            <span className="text-sm font-medium text-blue-800">Quote Summary</span>
             <div className="text-right">
-              <div className="text-xl font-bold text-green-600">
+              <div className="text-lg font-bold text-green-600">
                 ${saleSummary.customerSummary.total.toFixed(2)}
               </div>
-              <div className="text-xs text-purple-600">
-                {lineItems.length} item{lineItems.length !== 1 ? 's' : ''}
-              </div>
-              <div className="text-xs text-orange-600">
-                Profit: ${saleSummary.profit.toFixed(2)}
+              <div className="text-xs text-blue-600">
+                {lineItems.length} item{lineItems.length !== 1 ? 's' : ''} • Profit: ${saleSummary.profit.toFixed(2)}
               </div>
             </div>
           </div>
