@@ -231,17 +231,17 @@ export const ProductDropdown: React.FC<ProductDropdownProps> = ({
               <div className="flex items-center gap-4 text-sm text-purple-700 mb-2">
                 <div className="flex items-center gap-1">
                   <Building className="w-3 h-3" />
-                  <span>{selectedProduct.supplier.name}</span>
+                  <span>{selectedProduct?.supplier?.name}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <Package className="w-3 h-3" />
-                  <span>{selectedProduct.variants.length} variant{selectedProduct.variants.length !== 1 ? 's' : ''}</span>
+                  <span>{selectedProduct?.variants?.length} variant{selectedProduct?.variants?.length !== 1 ? 's' : ''}</span>
                 </div>
               </div>
 
               <div className="flex items-center gap-4 text-sm">
                 <span className="font-medium text-green-600">
-                  ${selectedProduct.minPrice.toFixed(2)} - ${selectedProduct.maxPrice.toFixed(2)}
+                  ${selectedProduct?.minPrice?.toFixed(2)} - ${selectedProduct?.maxPrice?.toFixed(2)}
                 </span>
                 {selectedProduct.setupCharge > 0 && (
                   <span className="text-purple-600">

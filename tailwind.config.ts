@@ -73,6 +73,9 @@ const config: Config = {
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
       },
+      fontSize: {
+        '2xs': '0.625rem', 
+      },
     },
   },
   plugins: [],

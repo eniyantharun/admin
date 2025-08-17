@@ -7,51 +7,14 @@ import { CustomerSearch } from '@/components/helpers/CustomerSearch';
 import { AddressForm } from '@/components/forms/AddressForm';
 import { EntityAvatar } from '@/components/helpers/EntityAvatar';
 import { iCustomer, iCustomerAddressFormData } from '@/types/customer';
-import { iQuoteFormData, iQuoteFormProps, iQuote } from '@/types/quotes';
+import { iQuoteFormData, iQuoteFormProps, iQuote, LineItemData, SaleSummary, QuoteDetailsResponse } from '@/types/quotes';
 import { useApi } from '@/hooks/useApi';
 import { showToast } from '@/components/ui/toast';
 import { LineItemCard } from '../ui/LineItemCard';
 
 type FormStep = 'customer-address' | 'items' | 'quote' | 'notes';
 
-interface LineItemData {
-  id: string;
-  productName: string;
-  variantName?: string;
-  methodName?: string;
-  color?: string;
-  quantity: number;
-  productItemNumber?: string;
-  supplierItemNumber?: string;
-  customerPricePerQuantity: number;
-  customerSetupCharge: number;
-  supplierPricePerQuantity: number;
-  supplierSetupCharge: number;
-  artworkText?: string;
-  artworkSpecialInstructions?: string;
-  customization?: string;
-  description?: string;
-  images?: string[];
-  selectedProduct?: any;
-}
-
-interface SaleSummary {
-  customerSummary: {
-    itemsTotal: number;
-    setupCharge: number;
-    subTotal: number;
-    total: number;
-  };
-  totalSupplierSummary: {
-    itemsTotal: number;
-    setupCharge: number;
-    subTotal: number;
-    total: number;
-  };
-  profit: number;
-}
-
-const DEFAULT_SALE_ID = '0046d15a-2cea-4de3-8590-49a6f3e3a0a4';
+const DEFAULT_QUOTE_ID = 10698; // Default quote ID as shown in the API example
 
 const mockCustomer: iCustomer = {
   id: '12345',
@@ -105,6 +68,8 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
   const [lineItems, setLineItems] = useState<LineItemData[]>([]);
   const [saleSummary, setSaleSummary] = useState<SaleSummary | null>(null);
   const [isLoadingLineItems, setIsLoadingLineItems] = useState(false);
+  const [quoteDetails, setQuoteDetails] = useState<QuoteDetailsResponse | null>(null);
+  const [currentSaleId, setCurrentSaleId] = useState<string>('');
   
   const [formData, setFormData] = useState<iQuoteFormData>({
     customer: '',
@@ -120,7 +85,7 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
   
   const [formErrors, setFormErrors] = useState<Partial<iQuoteFormData>>({});
 
-  const { post } = useApi({
+  const { get, post } = useApi({
     cancelOnUnmount: false,
     dedupe: false,
   });
@@ -142,59 +107,121 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
     artworkText: apiItem.form?.artworkText || '',
     artworkSpecialInstructions: apiItem.form?.artworkSpecialInstructions || '',
     images: [],
-    selectedProduct: null
+    selectedProduct: apiItem.product || null
   });
 
-  // Fetch existing line items and sale summary
-  const fetchExistingLineItems = async () => {
+  // Fetch quote details including line items
+  const fetchQuoteDetails = async (quoteId: number) => {
     setIsLoadingLineItems(true);
     try {
-      // First get the sale summary to check if there are any line items
-      const summaryResponse = await post(`https://api.promowe.com/Admin/SaleEditor/GetSaleSummary?saleId=${DEFAULT_SALE_ID}`);
+      const response = await get(`https://api.promowe.com/Admin/SaleEditor/GetQuoteDetail?id=${DEFAULT_QUOTE_ID}`) as QuoteDetailsResponse;
       
-      if (summaryResponse) {
-        setSaleSummary(summaryResponse);
+      if (response?.quote?.sale) {
+        setQuoteDetails(response);
+        setCurrentSaleId(response.quote.saleId);
+        
+        // Transform and set line items from the quote details
+        if (response.quote.sale.lineItems && Array.isArray(response.quote.sale.lineItems)) {
+          const transformedItems = response.quote.sale.lineItems
+            .filter(item => item.form?.productName) // Only include items with product names
+            .map(transformApiLineItem);
+          
+          setLineItems(transformedItems);
+          console.log('Fetched quote line items:', transformedItems);
+        } else {
+          setLineItems([]);
+        }
+
+        // Calculate sale summary from the quote details
+        const customerTotal = response.quote.sale.lineItems.reduce((sum, item) => sum + item.customerEstimates.total, 0);
+        const supplierTotal = response.quote.sale.lineItems.reduce((sum, item) => sum + item.supplierEstimates.total, 0);
+        const profit = customerTotal - supplierTotal;
+
+        setSaleSummary({
+          customerSummary: {
+            itemsTotal: customerTotal,
+            setupCharge: response.quote.sale.lineItems.reduce((sum, item) => sum + item.customerEstimates.setupCharge, 0),
+            subTotal: customerTotal,
+            total: customerTotal
+          },
+          totalSupplierSummary: {
+            itemsTotal: supplierTotal,
+            setupCharge: response.quote.sale.lineItems.reduce((sum, item) => sum + item.supplierEstimates.setupCharge, 0),
+            subTotal: supplierTotal,
+            total: supplierTotal
+          },
+          profit: profit
+        });
+
+        // Update form data with quote details
         setFormData(prev => ({
           ...prev,
-          customerTotal: summaryResponse.customerSummary.total.toString()
+          customerTotal: customerTotal.toString(),
+          inHandDate: response.quote.sale.dates.inHandDate || '',
+          notes: response.quote.sale.comments?.[0]?.comment || '',
         }));
-        
-        // If there are items in the summary, try to get the actual line items
-        if (summaryResponse.customerSummary.items && summaryResponse.customerSummary.items.length > 0) {
-          // Try adding an empty line item to get the current line items list
-          // This is a workaround since there's no direct "GetLineItems" endpoint
-          try {
-            const lineItemsResponse = await post('https://api.promowe.com/Admin/SaleEditor/AddEmptyLineItem', {
-              saleId: DEFAULT_SALE_ID
-            });
-            
-            if (lineItemsResponse && lineItemsResponse.lineItems && Array.isArray(lineItemsResponse.lineItems)) {
-              const transformedItems = lineItemsResponse.lineItems.map(transformApiLineItem);
-              // Remove the last item if it's empty (the one we just added)
-              const filteredItems = transformedItems.filter((item: any) => 
-                item.productName || 
-                item.quantity > 1 || 
-                item.customerPricePerQuantity > 0 ||
-                item.productItemNumber
-              );
 
-              setLineItems(filteredItems);
-              console.log('Fetched existing line items:', filteredItems);
+        // Set customer data from quote details
+        const customer = response.quote.sale.customer;
+        const customerData: iCustomer = {
+          id: customer.id,
+          idNum: customer.idNum,
+          firstName: customer.form.firstName,
+          lastName: customer.form.lastName,
+          email: customer.form.email,
+          phone: customer.form.phoneNumber || '',
+          website: customer.website,
+          companyName: customer.form.companyName || '',
+          isBlocked: false,
+          isBusinessCustomer: !!customer.form.companyName,
+          createdAt: customer.createdAt,
+        };
+        setSelectedCustomer(customerData);
+
+        // Set addresses from quote details
+        const billing = response.quote.sale.billingAddress;
+        const shipping = response.quote.sale.shippingAddress;
+
+        if (billing.addressLine) {
+          setFormData(prev => ({
+            ...prev,
+            billingAddress: {
+              type: 'billing' as const,
+              label: 'Billing Address',
+              name: billing.name,
+              street: billing.addressLine,
+              city: billing.city,
+              state: billing.state,
+              zipCode: billing.zipCode,
+              country: billing.country || 'US',
+              isPrimary: true,
             }
-          } catch (lineItemError) {
-            console.error('Error fetching line items detail:', lineItemError);
-            setLineItems([]);
-          }
-        } else {
-          // No items in summary, so no line items exist
-          setLineItems([]);
+          }));
+        }
+
+        if (shipping.addressLine) {
+          setFormData(prev => ({
+            ...prev,
+            shippingAddress: {
+              type: 'shipping' as const,
+              label: 'Shipping Address',
+              name: shipping.name,
+              street: shipping.addressLine,
+              city: shipping.city,
+              state: shipping.state,
+              zipCode: shipping.zipCode,
+              country: shipping.country || 'US',
+              isPrimary: false,
+            }
+          }));
         }
       }
       
     } catch (error) {
-      console.error('Error fetching sale data:', error);
-      setSaleSummary(null);
+      console.error('Error fetching quote details:', error);
+      showToast.error('Failed to load quote details');
       setLineItems([]);
+      setSaleSummary(null);
     } finally {
       setIsLoadingLineItems(false);
     }
@@ -202,7 +229,9 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
 
   useEffect(() => {
     if (isEditing && quote) {
-      setSelectedCustomer(mockCustomer);
+      // Use the quote ID to fetch details
+      fetchQuoteDetails(quote.id);
+      
       setFormData({
         customer: quote.customer,
         customerEmail: quote.customerEmail,
@@ -216,6 +245,7 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
       });
       setCurrentStep('customer-address');
     } else {
+      // For new quotes, use default data and fetch default quote details for demo
       setSelectedCustomer(mockCustomer);
       setFormData({
         customer: mockCustomer.firstName + ' ' + mockCustomer.lastName,
@@ -228,20 +258,21 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
         shippingAddress: mockAddresses.shipping,
         sameAsShipping: false,
       });
-    }
-    
-    // Always fetch existing data when component mounts or quote changes
-    // Use a timeout to prevent rapid successive calls
-    const timeoutId = setTimeout(() => {
-      fetchExistingLineItems();
-    }, 100);
 
-    return () => clearTimeout(timeoutId);
+      // Fetch default quote details for demo purposes
+      const timeoutId = setTimeout(() => {
+        fetchQuoteDetails(DEFAULT_QUOTE_ID);
+      }, 100);
+
+      return () => clearTimeout(timeoutId);
+    }
   }, [quote, isEditing]);
 
   const fetchSaleSummary = async () => {
+    if (!currentSaleId) return;
+    
     try {
-      const response = await post(`https://api.promowe.com/Admin/SaleEditor/GetSaleSummary?saleId=${DEFAULT_SALE_ID}`);
+      const response = await post(`https://api.promowe.com/Admin/SaleEditor/GetSaleSummary?saleId=${currentSaleId}`);
       if (response) {
         setSaleSummary(response);
         setFormData(prev => ({
@@ -257,9 +288,14 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
   };
 
   const handleAddEmptyLineItem = async () => {
+    if (!currentSaleId) {
+      showToast.error('No sale ID available to add line item');
+      return;
+    }
+
     try {
       const response = await post('https://api.promowe.com/Admin/SaleEditor/AddEmptyLineItem', {
-        saleId: DEFAULT_SALE_ID
+        saleId: currentSaleId
       });
       
       if (response && response.lineItems) {
@@ -280,9 +316,14 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
   };
 
   const handleRemoveLineItem = async (itemId: string) => {
+    if (!currentSaleId) {
+      showToast.error('No sale ID available to remove line item');
+      return;
+    }
+
     try {
       const response = await post('https://api.promowe.com/Admin/SaleEditor/RemoveLineItems', {
-        saleId: DEFAULT_SALE_ID,
+        saleId: currentSaleId,
         lineItemIds: [itemId]
       });
       
@@ -481,7 +522,7 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
             Customer Selection
           </h4>
           
-          {isEditing && selectedCustomer ? (
+          {selectedCustomer ? (
             <Card className="p-4 bg-blue-50 border-blue-200">
               <div className="flex items-center space-x-4">
                 <EntityAvatar
@@ -670,7 +711,7 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
               key={item.id}
               item={item}
               index={index}
-              saleId={DEFAULT_SALE_ID}
+              saleId={currentSaleId}
               onRemove={handleRemoveLineItem}
               onUpdate={handleUpdateLineItem}
               isNew={false}
@@ -877,7 +918,7 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
         {renderCurrentStep()}
       </form>
 
-      {isEditing && quote && (
+      {isEditing && quote && quoteDetails && (
         <div className="border-t border-gray-200 p-6 bg-gray-50">
           <h4 className="text-sm font-medium text-gray-700 mb-4">Quote Information</h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
@@ -908,7 +949,31 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
               <span className="text-gray-500">Images:</span>
               <span className="font-medium">{lineItems.reduce((sum, item) => sum + (item.images?.length || 0), 0)} total</span>
             </div>
+            <div className="flex items-center gap-2">
+              <Package className="w-4 h-4 text-gray-400" />
+              <span className="text-gray-500">Sale ID:</span>
+              <span className="font-medium">{currentSaleId}</span>
+            </div>
           </div>
+
+          {quoteDetails.quote.sale.comments.length > 0 && (
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <h5 className="font-medium text-blue-800 mb-2 text-sm">Recent Comments</h5>
+              <div className="space-y-2">
+                {quoteDetails.quote.sale.comments.map((comment, index) => (
+                  <div key={comment.id} className="text-sm">
+                    <div className="flex items-center gap-2 mb-1">
+                      <MessageSquare className="w-3 h-3 text-blue-600" />
+                      <span className="text-xs text-blue-600">
+                        {new Date(comment.createdAt).toLocaleString()}
+                      </span>
+                    </div>
+                    <p className="text-blue-700 ml-5">{comment.comment}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

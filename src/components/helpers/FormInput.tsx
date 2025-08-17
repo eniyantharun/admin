@@ -26,7 +26,7 @@ export const FormInput: React.FC<FormInputProps> = ({
   disabled
 }) => (
   <div className="form-input-group">
-    <label htmlFor={name} className="form-label block text-sm font-medium text-gray-700 mb-1">
+    <label htmlFor={name} className="form-label block text-xs font-medium text-gray-700 mb-1">
       {label} {required && <span className="text-red-500">*</span>}
     </label>
     {type === 'checkbox' ? (
@@ -40,7 +40,7 @@ export const FormInput: React.FC<FormInputProps> = ({
           className="form-checkbox h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
           disabled={disabled}
         />
-        <span className="ml-2 text-sm text-gray-600">{placeholder}</span>
+        <span className="ml-2 text-xs text-gray-600">{placeholder}</span>
       </div>
     ) : (
       // For all other types (text, email, number, etc.), render a standard input

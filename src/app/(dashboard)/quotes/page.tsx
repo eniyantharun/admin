@@ -298,7 +298,7 @@ export default function QuotesPage() {
                         className="hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
                         onClick={() => openEditQuoteDrawer(quote)}
                       >
-                        <td className="px-4 py-2 whitespace-nowrap">
+                        <td className="px-2 py-2">
                           <div className="flex items-center">
                             <div className="flex-shrink-0">
                               <div className={`w-8 h-8 bg-gradient-to-br ${statusConfig.bgGradient} rounded-lg flex items-center justify-center`}>
@@ -307,15 +307,9 @@ export default function QuotesPage() {
                             </div>
                             <div className="ml-3">
                               <div className="text-sm font-medium text-gray-900">
-                                {quote.quoteNumber}
-                              </div>
-                              <div className="text-xs text-gray-500">
                                 ID: {quote.id}
                               </div>
-                              <div
-                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${statusConfig.bgSolid} ${statusConfig.textColor}`}
-                              >
-                                <StatusIcon className="w-3 h-3 mr-1" />
+                              <div className={`inline-flex items-center px-2 py-0.5 rounded-full text-2xs font-medium mt-1 ${statusConfig.bgSolid} ${statusConfig.textColor}`}>
                                 {statusConfig.label.enabled}
                               </div>
                             </div>
