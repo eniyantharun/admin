@@ -72,16 +72,16 @@ export const QuoteCustomerStep: React.FC<QuoteCustomerStepProps> = ({
   };
 
   return (
-    <div className="space-y-4">
-      <Card className="p-4">
-        <h4 className="font-medium text-gray-900 text-sm mb-3 flex items-center gap-2">
+    <div className="space-y-2">
+      <Card className="p-2">
+        <h4 className="font-medium text-gray-900 text-sm mb-1 flex items-center gap-1">
           <User className="w-4 h-4 text-blue-500" />
           Customer Selection
         </h4>
         
         {selectedCustomer ? (
-          <Card className="p-4 bg-blue-50 border-blue-200">
-            <div className="flex items-center space-x-4">
+          <Card className="p-2 bg-blue-50 border-blue-200">
+            <div className="flex items-center space-x-2">
               <EntityAvatar
                 name={`${selectedCustomer.firstName} ${selectedCustomer.lastName}`}
                 id={selectedCustomer.idNum}
@@ -89,27 +89,32 @@ export const QuoteCustomerStep: React.FC<QuoteCustomerStepProps> = ({
                 size="lg"
               />
               <div className="flex-1">
-                <div className="flex items-center space-x-2 mb-2">
-                  <h3 className="text-lg font-semibold text-blue-800">
+                <div className="flex items-center space-x-1 mb-1">
+                  <h6 className="text-sm font-semibold text-blue-800">
                     {selectedCustomer.firstName} {selectedCustomer.lastName}
-                  </h3>
-                  {selectedCustomer.isBusinessCustomer && (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      Business Customer
-                    </span>
-                  )}
+                  </h6>
+                  {selectedCustomer.isBusinessCustomer ? (
+                      <span className="inline-flex items-center px-1 py-1 rounded-full text-2xs font-medium bg-blue-100 text-blue-800">
+                        Business Customer
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-1 py-1 rounded-full text-2xs font-medium bg-gray-100 text-gray-800">
+                        Individual Customer
+                      </span>
+                    )}
+
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                  <div className="flex items-center gap-2 text-blue-700">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-xs">
+                  <div className="flex items-center gap-1 text-blue-700">
                     <Mail className="w-4 h-4" />
                     <span>{selectedCustomer.email}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-blue-700">
+                  <div className="flex items-center gap-1 text-blue-700">
                     <Phone className="w-4 h-4" />
                     <span>{selectedCustomer.phone}</span>
                   </div>
                   {selectedCustomer.companyName && (
-                    <div className="flex items-center gap-2 text-blue-700 sm:col-span-2">
+                    <div className="flex items-center gap-1 text-blue-700 sm:col-span-2">
                       <Building className="w-4 h-4" />
                       <span>{selectedCustomer.companyName}</span>
                     </div>
@@ -129,9 +134,9 @@ export const QuoteCustomerStep: React.FC<QuoteCustomerStepProps> = ({
       </Card>
 
       {selectedCustomer && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
           <Card className="p-4">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-1">
               <h4 className="font-medium text-gray-900 text-sm flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-green-500" />
                 Billing Address
