@@ -10,7 +10,7 @@ import { DateDisplay } from "@/components/helpers/DateDisplay";
 import { EmptyState, LoadingState } from "@/components/helpers/EmptyLoadingStates";
 import { PaginationControls } from "@/components/helpers/PaginationControls";
 import { EntityDrawer } from "@/components/helpers/EntityDrawer";
-import { QuoteForm } from "@/components/forms/QuoteForm";
+import { QuoteForm } from "@/components/forms/QuoteForm/QuoteForm";
 import { useQuotesHeaderContext } from "@/hooks/useHeaderContext";
 import { iQuote, iQuoteFormData, iApiQuote } from "@/types/quotes";
 import { iApiSale, iApiSalesResponse, iApiSalesRequest } from "@/types/order";
