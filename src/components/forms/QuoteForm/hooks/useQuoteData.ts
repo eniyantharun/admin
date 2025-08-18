@@ -4,8 +4,6 @@ import { showToast } from '@/components/ui/toast';
 import { iCustomer, iCustomerAddress } from '@/types/customer';
 import { iQuote, iQuoteFormData, LineItemData, SaleSummary, QuoteDetailsResponse } from '@/types/quotes';
 
-const DEFAULT_QUOTE_ID = 10489;
-
 export const useQuoteData = (
   quote: iQuote | null | undefined,
   isEditing: boolean,
@@ -62,7 +60,7 @@ export const useQuoteData = (
   const fetchQuoteDetails = async (quoteId: number) => {
     setIsLoadingLineItems(true);
     try {
-      const response = await get(`https://api.promowe.com/Admin/SaleEditor/GetQuoteDetail?id=${DEFAULT_QUOTE_ID}`) as QuoteDetailsResponse;
+      const response = await get(`https://api.promowe.com/Admin/SaleEditor/GetQuoteDetail?id=${quoteId}`) as QuoteDetailsResponse;
       
       if (response?.quote?.sale) {
         setQuoteDetails(response);
@@ -245,6 +243,7 @@ export const useQuoteData = (
 
   useEffect(() => {
     if (isEditing && quote) {
+      // Use the actual quote ID instead of a hardcoded value
       fetchQuoteDetails(quote.id);
       
       setFormData({
@@ -286,13 +285,10 @@ export const useQuoteData = (
         customer: '',
         customerEmail: '',
       }));
-
-      // Load demo data for development
-      const timeoutId = setTimeout(() => {
-        fetchQuoteDetails(DEFAULT_QUOTE_ID);
-      }, 100);
-
-      return () => clearTimeout(timeoutId);
+      setLineItems([]);
+      setSaleSummary(null);
+      setQuoteDetails(null);
+      setCurrentSaleId('');
     }
   }, [quote, isEditing]);
 

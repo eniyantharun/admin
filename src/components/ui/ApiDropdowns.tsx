@@ -88,6 +88,7 @@ export const VariantDropdown: React.FC<VariantDropdownProps> = ({
 
   const fetchVariants = async () => {
     try {
+      // Updated API URL to match the provided endpoint
       const response = await get(`https://api.promowe.com/Admin/ProductEditor/GetVariantsList?productId=${productId}`) as ApiVariantsResponse;
       
       if (response?.variants) {
@@ -121,10 +122,10 @@ export const VariantDropdown: React.FC<VariantDropdownProps> = ({
     <div className={`relative ${className}`} ref={dropdownRef}>
       <button
         type="button"
-        onClick={() => !disabled && setIsOpen(!isOpen)}
-        disabled={disabled || loading}
+        onClick={() => !disabled && productId && setIsOpen(!isOpen)}
+        disabled={disabled || loading || !productId}
         className={`w-full flex items-center justify-between px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 ${
-          disabled || loading ? 'bg-gray-100 cursor-not-allowed' : 'bg-white hover:border-gray-400'
+          disabled || loading || !productId ? 'bg-gray-100 cursor-not-allowed' : 'bg-white hover:border-gray-400'
         }`}
       >
         <div className="flex items-center gap-2">
@@ -235,6 +236,7 @@ export const MethodDropdown: React.FC<MethodDropdownProps> = ({
 
   const fetchMethods = async () => {
     try {
+      // Updated API URL to match the provided endpoint
       const response = await get(`https://api.promowe.com/Admin/ProductEditor/GetDecorationMethods?productId=${productId}`) as ApiMethodsResponse;
       
       if (response?.methods) {
@@ -271,10 +273,10 @@ export const MethodDropdown: React.FC<MethodDropdownProps> = ({
     <div className={`relative ${className}`} ref={dropdownRef}>
       <button
         type="button"
-        onClick={() => !disabled && setIsOpen(!isOpen)}
-        disabled={disabled || loading}
+        onClick={() => !disabled && productId && setIsOpen(!isOpen)}
+        disabled={disabled || loading || !productId}
         className={`w-full flex items-center justify-between px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 ${
-          disabled || loading ? 'bg-gray-100 cursor-not-allowed' : 'bg-white hover:border-gray-400'
+          disabled || loading || !productId ? 'bg-gray-100 cursor-not-allowed' : 'bg-white hover:border-gray-400'
         }`}
       >
         <div className="flex items-center gap-2">
@@ -380,6 +382,7 @@ export const ColorDropdown: React.FC<ColorDropdownProps> = ({
 
   const fetchColors = async () => {
     try {
+      // Updated API URL to match the provided endpoint
       const response = await get(`https://api.promowe.com/Admin/ProductEditor/GetProductColorOptionsList?productId=${productId}`) as ApiColorsResponse;
       
       if (response?.colors) {
@@ -413,10 +416,10 @@ export const ColorDropdown: React.FC<ColorDropdownProps> = ({
     <div className={`relative ${className}`} ref={dropdownRef}>
       <button
         type="button"
-        onClick={() => !disabled && setIsOpen(!isOpen)}
-        disabled={disabled || loading}
+        onClick={() => !disabled && productId && setIsOpen(!isOpen)}
+        disabled={disabled || loading || !productId}
         className={`w-full flex items-center justify-between px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 ${
-          disabled || loading ? 'bg-gray-100 cursor-not-allowed' : 'bg-white hover:border-gray-400'
+          disabled || loading || !productId ? 'bg-gray-100 cursor-not-allowed' : 'bg-white hover:border-gray-400'
         }`}
       >
         <div className="flex items-center gap-2">
