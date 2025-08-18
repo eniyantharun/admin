@@ -38,7 +38,7 @@ export const QuoteStepIndicator: React.FC<QuoteStepIndicatorProps> = ({
   };
 
   return (
-    <div className="flex items-center justify-between mb-4 bg-gray-50 p-3 rounded-lg">
+    <div className="flex items-center justify-between mb-0 bg-gray-50 p-0 rounded-lg">
       <Button
         type="button"
         onClick={onPrevStep}
@@ -69,7 +69,7 @@ export const QuoteStepIndicator: React.FC<QuoteStepIndicatorProps> = ({
                 {getStepTitle(step)}
               </div>
               {index < steps.length - 1 && (
-                <div className={`w-6 h-0.5 ${
+                <div className={`w-8 h-0.5 ${
                   isStepCompleted(steps[index]) ? 'bg-green-300' : 'bg-gray-200'
                 }`} />
               )}
@@ -85,7 +85,7 @@ export const QuoteStepIndicator: React.FC<QuoteStepIndicatorProps> = ({
           size="sm"
           icon={CheckCircle}
           iconOnly
-          className="w-8 h-8 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+          className="w-8 h-8 hover:to-indigo-700"
           title={isEditing ? "Update Quote" : "Create Quote"}
           onClick={onSubmit}
         />

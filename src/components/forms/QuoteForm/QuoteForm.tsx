@@ -183,8 +183,8 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="p-6 border-b border-gray-200">
+    <div className="space-y-2">
+      <div className="p-2 border-b border-gray-200">
         <QuoteStepIndicator
           steps={steps}
           currentStep={currentStep}
@@ -198,10 +198,6 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
         />
       </div>
 
-      <form onSubmit={handleSubmit} className="p-2 space-y-2">
-        {renderCurrentStep()}
-      </form>
-
       {isEditing && quote && quoteDetails && (
         <QuoteInformation
           quote={quote}
@@ -210,6 +206,12 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
           currentSaleId={currentSaleId}
         />
       )}
+
+      <form onSubmit={handleSubmit} className="p-2 space-y-2">
+        {renderCurrentStep()}
+      </form>
+
+      
     </div>
   );
 };
