@@ -1,30 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useApi } from '@/hooks/useApi';
 import { showToast } from '@/components/ui/toast';
-import { iCustomer } from '@/types/customer';
+import { iCustomer, iCustomerAddress } from '@/types/customer';
 import { iQuote, iQuoteFormData, LineItemData, SaleSummary, QuoteDetailsResponse } from '@/types/quotes';
 
-const DEFAULT_QUOTE_ID = 10698;
-
-const mockCustomer: iCustomer = {
-  id: '12345',
-  idNum: 67890,
-  firstName: 'Christina',
-  lastName: 'Johnson',
-  email: 'christina.johnson@example.com',
-  phone: '(555) 123-4567',
-  website: 'promotionalproductinc.com',
-  companyName: 'Johnson Marketing LLC',
-  isBlocked: false,
-  isBusinessCustomer: true,
-  createdAt: '2025-01-15T10:00:00Z',
-};
+const DEFAULT_QUOTE_ID = 10489;
 
 export const useQuoteData = (
   quote: iQuote | null | undefined,
   isEditing: boolean,
   formData: iQuoteFormData,
-  setFormData: React.Dispatch<React.SetStateAction<iQuoteFormData>>
+  setFormData: React.Dispatch<React.SetStateAction<iQuoteFormData>>,
+  setCustomerAddresses: React.Dispatch<React.SetStateAction<iCustomerAddress[]>>
 ) => {
   const [selectedCustomer, setSelectedCustomer] = useState<iCustomer | null>(null);
   const [lineItems, setLineItems] = useState<LineItemData[]>([]);
@@ -37,6 +24,18 @@ export const useQuoteData = (
     cancelOnUnmount: false,
     dedupe: false,
   });
+
+  const fetchCustomerAddresses = useCallback(async (customerId: string) => {
+    try {
+      const response = await get(`/Admin/CustomerEditor/GetCustomerById?customerId=${customerId}`);
+      if (response?.addresses) {
+        setCustomerAddresses(response.addresses);
+      }
+    } catch (error) {
+      console.error('Error fetching customer addresses:', error);
+      showToast.error('Failed to load customer addresses');
+    }
+  }, [get, setCustomerAddresses]);
 
   const transformApiLineItem = (apiItem: any): LineItemData => ({
     id: apiItem.id,
@@ -121,6 +120,11 @@ export const useQuoteData = (
           createdAt: customer.createdAt,
         };
         setSelectedCustomer(customerData);
+
+        // Fetch customer addresses
+        if (customer.id) {
+          await fetchCustomerAddresses(customer.id);
+        }
 
         const billing = response.quote.sale.billingAddress;
         const shipping = response.quote.sale.shippingAddress;
@@ -252,36 +256,38 @@ export const useQuoteData = (
         notes: quote.notes || '',
         billingAddress: {
           type: 'billing' as const,
-          label: 'Corporate Office',
-          name: 'Christina Johnson',
-          street: '123 Business Park Drive',
-          city: 'Atlanta',
-          state: 'GA',
-          zipCode: '30309',
+          label: '',
+          name: '',
+          street: '',
+          city: '',
+          state: '',
+          zipCode: '',
           country: 'US',
-          isPrimary: true,
+          isPrimary: false,
         },
         shippingAddress: {
           type: 'shipping' as const,
-          label: 'Warehouse',
-          name: 'Christina Johnson',
-          street: '456 Industrial Blvd',
-          city: 'Atlanta',
-          state: 'GA',
-          zipCode: '30310',
+          label: '',
+          name: '',
+          street: '',
+          city: '',
+          state: '',
+          zipCode: '',
           country: 'US',
           isPrimary: false,
         },
         sameAsShipping: false,
       });
     } else {
-      setSelectedCustomer(mockCustomer);
+      // For new quotes, start with empty form
+      setSelectedCustomer(null);
       setFormData(prev => ({
         ...prev,
-        customer: mockCustomer.firstName + ' ' + mockCustomer.lastName,
-        customerEmail: mockCustomer.email,
+        customer: '',
+        customerEmail: '',
       }));
 
+      // Load demo data for development
       const timeoutId = setTimeout(() => {
         fetchQuoteDetails(DEFAULT_QUOTE_ID);
       }, 100);
@@ -303,6 +309,7 @@ export const useQuoteData = (
     handleAddEmptyLineItem,
     handleUpdateLineItem,
     handleRemoveLineItem,
-    fetchSaleSummary
+    fetchSaleSummary,
+    fetchCustomerAddresses
   };
 };

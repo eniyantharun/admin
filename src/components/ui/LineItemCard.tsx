@@ -122,6 +122,14 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
     }
   };
 
+  const handleVariantChange = (variant: ApiVariant | null) => {
+    if (variant) {
+      handleVariantSelect(variant.name, variant.id);
+    } else {
+      handleVariantSelect('No Variant', -1);
+    }
+  };
+
   const handleMethodSelect = (methodName: string, methodId?: string | number) => {
     setFormData(prev => ({
       ...prev,
@@ -135,6 +143,14 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
     }
   };
 
+  const handleMethodChange = (method: ApiMethod | null) => {
+    if (method) {
+      handleMethodSelect(method.name, method.id);
+    } else {
+      handleMethodSelect('No Method', -1);
+    }
+  };
+
   const handleColorSelect = (colorName: string, colorId?: string | number) => {
     setFormData(prev => ({
       ...prev,
@@ -145,6 +161,14 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
     // Refresh sale summary after color selection
     if (onRefreshSummary) {
       setTimeout(onRefreshSummary, 100);
+    }
+  };
+
+  const handleColorChange = (color: ApiColor | null) => {
+    if (color) {
+      handleColorSelect(color.name, color.id);
+    } else {
+      handleColorSelect('No Color', '-1');
     }
   };
 
@@ -165,7 +189,10 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
           supplierPricePerQuantity: formData.supplierPricePerQuantity,
           supplierSetupCharge: formData.supplierSetupCharge,
           artworkText: formData.artworkText || null,
-          artworkSpecialInstructions: formData.artworkSpecialInstructions || null
+          artworkSpecialInstructions: formData.artworkSpecialInstructions || null,
+          variantId: formData.variantId || null,
+          methodId: formData.methodId || null,
+          colorId: formData.colorId || null
         }
       };
 
@@ -330,11 +357,7 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
                 productId={productId}
                 value={formData.variantName || ''}
                 onChange={handleVariantSelect}
-                onVariantSelect={(variant) => {
-                  if (variant) {
-                    console.log('Selected variant:', variant);
-                  }
-                }}
+                onVariantSelect={handleVariantChange}
                 disabled={!productId}
               />
             </div>
@@ -347,11 +370,7 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
                 productId={productId}
                 value={formData.methodName || ''}
                 onChange={handleMethodSelect}
-                onMethodSelect={(method) => {
-                  if (method) {
-                    console.log('Selected method:', method);
-                  }
-                }}
+                onMethodSelect={handleMethodChange}
                 disabled={!productId}
               />
             </div>
@@ -364,11 +383,7 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
                 productId={productId}
                 value={formData.color || ''}
                 onChange={handleColorSelect}
-                onColorSelect={(color) => {
-                  if (color) {
-                    console.log('Selected color:', color);
-                  }
-                }}
+                onColorSelect={handleColorChange}
                 disabled={!productId}
               />
             </div>

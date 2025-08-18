@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ChevronDown, Package, Palette, Settings } from 'lucide-react';
 import { useApi } from '@/hooks/useApi';
 import { showToast } from '@/components/ui/toast';
@@ -56,11 +56,27 @@ export const VariantDropdown: React.FC<VariantDropdownProps> = ({
 }) => {
   const [variants, setVariants] = useState<ApiVariant[]>([]);
   const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  
   const { get, loading } = useApi({
     cancelOnUnmount: true,
     dedupe: true,
     cacheDuration: 60000,
   });
+
+  // Handle click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (productId) {
@@ -102,7 +118,7 @@ export const VariantDropdown: React.FC<VariantDropdownProps> = ({
   const hasVariants = variants.length > 0;
 
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative ${className}`} ref={dropdownRef}>
       <button
         type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
@@ -187,11 +203,27 @@ export const MethodDropdown: React.FC<MethodDropdownProps> = ({
 }) => {
   const [methods, setMethods] = useState<ApiMethod[]>([]);
   const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  
   const { get, loading } = useApi({
     cancelOnUnmount: true,
     dedupe: true,
     cacheDuration: 60000,
   });
+
+  // Handle click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (productId) {
@@ -236,7 +268,7 @@ export const MethodDropdown: React.FC<MethodDropdownProps> = ({
   const hasMethods = methods.length > 0;
 
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative ${className}`} ref={dropdownRef}>
       <button
         type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
@@ -266,7 +298,6 @@ export const MethodDropdown: React.FC<MethodDropdownProps> = ({
             </div>
           ) : (
             <div className="py-1">
-              {/* No Method Option */}
               <button
                 type="button"
                 onClick={() => handleSelect(null)}
@@ -303,7 +334,6 @@ export const MethodDropdown: React.FC<MethodDropdownProps> = ({
   );
 };
 
-// Color Dropdown Component
 interface ColorDropdownProps extends Omit<BaseDropdownProps, 'icon' | 'placeholder'> {
   onColorSelect?: (color: ApiColor | null) => void;
 }
@@ -318,11 +348,27 @@ export const ColorDropdown: React.FC<ColorDropdownProps> = ({
 }) => {
   const [colors, setColors] = useState<ApiColor[]>([]);
   const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  
   const { get, loading } = useApi({
     cancelOnUnmount: true,
     dedupe: true,
     cacheDuration: 60000,
   });
+
+  // Handle click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (productId) {
@@ -364,7 +410,7 @@ export const ColorDropdown: React.FC<ColorDropdownProps> = ({
   const hasColors = colors.length > 0;
 
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative ${className}`} ref={dropdownRef}>
       <button
         type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
@@ -394,7 +440,6 @@ export const ColorDropdown: React.FC<ColorDropdownProps> = ({
             </div>
           ) : (
             <div className="py-1">
-              {/* No Color Option */}
               <button
                 type="button"
                 onClick={() => handleSelect(null)}

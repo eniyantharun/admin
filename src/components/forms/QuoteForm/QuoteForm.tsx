@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { EntityDrawer } from '@/components/helpers/EntityDrawer';
-import { iCustomer } from '@/types/customer';
+import { iCustomer, iCustomerAddress } from '@/types/customer';
 import { iQuoteFormData, iQuoteFormProps, iQuote, LineItemData, SaleSummary, QuoteDetailsResponse } from '@/types/quotes';
 import { useApi } from '@/hooks/useApi';
 import { showToast } from '@/components/ui/toast';
@@ -32,29 +32,30 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
     notes: '',
     billingAddress: {
       type: 'billing' as const,
-      label: 'Corporate Office',
-      name: 'Christina Johnson',
-      street: '123 Business Park Drive',
-      city: 'Atlanta',
-      state: 'GA',
-      zipCode: '30309',
+      label: '',
+      name: '',
+      street: '',
+      city: '',
+      state: '',
+      zipCode: '',
       country: 'US',
-      isPrimary: true,
+      isPrimary: false,
     },
     shippingAddress: {
       type: 'shipping' as const,
-      label: 'Warehouse',
-      name: 'Christina Johnson',
-      street: '456 Industrial Blvd',
-      city: 'Atlanta',
-      state: 'GA',
-      zipCode: '30310',
+      label: '',
+      name: '',
+      street: '',
+      city: '',
+      state: '',
+      zipCode: '',
       country: 'US',
       isPrimary: false,
     },
     sameAsShipping: false,
   });
   const [formErrors, setFormErrors] = useState<Partial<iQuoteFormData>>({});
+  const [customerAddresses, setCustomerAddresses] = useState<iCustomerAddress[]>([]);
 
   const {
     selectedCustomer,
@@ -69,8 +70,9 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
     handleAddEmptyLineItem,
     handleUpdateLineItem,
     handleRemoveLineItem,
-    fetchSaleSummary
-  } = useQuoteData(quote, isEditing, formData, setFormData);
+    fetchSaleSummary,
+    fetchCustomerAddresses
+  } = useQuoteData(quote, isEditing, formData, setFormData, setCustomerAddresses);
 
   const steps: FormStep[] = ['customer-address', 'items', 'quote', 'notes'];
 
@@ -144,6 +146,8 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
             onCustomerSelect={setSelectedCustomer}
             formData={formData}
             setFormData={setFormData}
+            customerAddresses={customerAddresses}
+            onFetchCustomerAddresses={fetchCustomerAddresses}
           />
         );
       case 'items':
@@ -210,8 +214,6 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
       <form onSubmit={handleSubmit} className="p-2 space-y-2">
         {renderCurrentStep()}
       </form>
-
-      
     </div>
   );
 };

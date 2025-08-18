@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
-import { User, MapPin, CheckCircle, ChevronDown, ChevronRight, Mail, Phone, Building } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { User, MapPin, CheckCircle, ChevronDown, ChevronRight, Mail, Phone, Building, Edit, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { EntityAvatar } from '@/components/helpers/EntityAvatar';
 import { CustomerSearch } from '@/components/helpers/CustomerSearch';
 import { AddressForm } from '@/components/forms/AddressForm';
-import { iCustomer, iCustomerAddressFormData } from '@/types/customer';
+import { iCustomer, iCustomerAddressFormData, iCustomerAddress } from '@/types/customer';
 import { iQuoteFormData } from '@/types/quotes';
 
 interface QuoteCustomerStepProps {
@@ -13,62 +13,112 @@ interface QuoteCustomerStepProps {
   onCustomerSelect: (customer: iCustomer) => void;
   formData: iQuoteFormData;
   setFormData: React.Dispatch<React.SetStateAction<iQuoteFormData>>;
+  customerAddresses: iCustomerAddress[];
+  onFetchCustomerAddresses: (customerId: string) => Promise<void>;
 }
 
 export const QuoteCustomerStep: React.FC<QuoteCustomerStepProps> = ({
   selectedCustomer,
   onCustomerSelect,
   formData,
-  setFormData
+  setFormData,
+  customerAddresses,
+  onFetchCustomerAddresses
 }) => {
   const [showBillingAddressForm, setShowBillingAddressForm] = useState(false);
   const [showShippingAddressForm, setShowShippingAddressForm] = useState(false);
+  const [editingAddress, setEditingAddress] = useState<'billing' | 'shipping' | null>(null);
 
-  const handleCustomerSelect = (customer: iCustomer) => {
+  const handleCustomerSelect = async (customer: iCustomer) => {
     onCustomerSelect(customer);
     setFormData(prev => ({
       ...prev,
       customer: `${customer.firstName} ${customer.lastName}`,
       customerEmail: customer.email,
-      billingAddress: {
-        type: 'billing' as const,
-        label: 'Corporate Office',
-        name: `${customer.firstName} ${customer.lastName}`,
-        street: '123 Business Park Drive',
-        city: 'Atlanta',
-        state: 'GA',
-        zipCode: '30309',
-        country: 'US',
-        isPrimary: true,
-      },
-      shippingAddress: {
-        type: 'shipping' as const,
-        label: 'Warehouse',
-        name: `${customer.firstName} ${customer.lastName}`,
-        street: '456 Industrial Blvd',
-        city: 'Atlanta',
-        state: 'GA',
-        zipCode: '30310',
-        country: 'US',
-        isPrimary: false,
+    }));
+    
+    // Fetch customer addresses
+    if (customer.id) {
+      await onFetchCustomerAddresses(customer.id);
+    }
+  };
+
+  useEffect(() => {
+    // Auto-populate addresses when customer addresses are loaded
+    if (customerAddresses.length > 0 && selectedCustomer) {
+      const billingAddress = customerAddresses.find(addr => addr.type === 'billing' && addr.isPrimary) || 
+                            customerAddresses.find(addr => addr.type === 'billing') ||
+                            customerAddresses[0];
+      
+      const shippingAddress = customerAddresses.find(addr => addr.type === 'shipping' && addr.isPrimary) || 
+                             customerAddresses.find(addr => addr.type === 'shipping') ||
+                             customerAddresses[0];
+
+      if (billingAddress && !formData.billingAddress.street) {
+        setFormData(prev => ({
+          ...prev,
+          billingAddress: {
+            type: 'billing' as const,
+            label: billingAddress.label,
+            name: billingAddress.name,
+            street: billingAddress.street,
+            city: billingAddress.city,
+            state: billingAddress.state,
+            zipCode: billingAddress.zipCode,
+            country: billingAddress.country,
+            isPrimary: billingAddress.isPrimary,
+          }
+        }));
+      }
+
+      if (shippingAddress && !formData.shippingAddress.street) {
+        setFormData(prev => ({
+          ...prev,
+          shippingAddress: {
+            type: 'shipping' as const,
+            label: shippingAddress.label,
+            name: shippingAddress.name,
+            street: shippingAddress.street,
+            city: shippingAddress.city,
+            state: shippingAddress.state,
+            zipCode: shippingAddress.zipCode,
+            country: shippingAddress.country,
+            isPrimary: shippingAddress.isPrimary,
+          }
+        }));
+      }
+    }
+  }, [customerAddresses, selectedCustomer, formData.billingAddress.street, formData.shippingAddress.street, setFormData]);
+
+  const handleAddressSelect = (address: iCustomerAddress, type: 'billing' | 'shipping') => {
+    setFormData(prev => ({
+      ...prev,
+      [type === 'billing' ? 'billingAddress' : 'shippingAddress']: {
+        type: type,
+        label: address.label,
+        name: address.name,
+        street: address.street,
+        city: address.city,
+        state: address.state,
+        zipCode: address.zipCode,
+        country: address.country,
+        isPrimary: address.isPrimary,
       }
     }));
   };
 
-  const handleBillingAddressSubmit = (addressData: iCustomerAddressFormData) => {
+  const handleNewAddressSubmit = (addressData: iCustomerAddressFormData, type: 'billing' | 'shipping') => {
     setFormData(prev => ({
       ...prev,
-      billingAddress: addressData
+      [type === 'billing' ? 'billingAddress' : 'shippingAddress']: addressData
     }));
-    setShowBillingAddressForm(false);
-  };
-
-  const handleShippingAddressSubmit = (addressData: iCustomerAddressFormData) => {
-    setFormData(prev => ({
-      ...prev,
-      shippingAddress: addressData
-    }));
-    setShowShippingAddressForm(false);
+    
+    if (type === 'billing') {
+      setShowBillingAddressForm(false);
+    } else {
+      setShowShippingAddressForm(false);
+    }
+    setEditingAddress(null);
   };
 
   return (
@@ -102,7 +152,6 @@ export const QuoteCustomerStep: React.FC<QuoteCustomerStepProps> = ({
                         Individual Customer
                       </span>
                     )}
-
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-xs">
                   <div className="flex items-center gap-1 text-blue-700">
@@ -123,6 +172,18 @@ export const QuoteCustomerStep: React.FC<QuoteCustomerStepProps> = ({
               </div>
               <CheckCircle className="w-6 h-6 text-green-500" />
             </div>
+            
+            {/* Customer Change Button */}
+            <div className="mt-2 pt-2 border-t border-blue-200">
+              <Button
+                onClick={() => onCustomerSelect(null as any)}
+                variant="secondary"
+                size="sm"
+                className="bg-white border-blue-300 text-blue-700 hover:bg-blue-50"
+              >
+                Change Customer
+              </Button>
+            </div>
           </Card>
         ) : (
           <CustomerSearch 
@@ -136,20 +197,42 @@ export const QuoteCustomerStep: React.FC<QuoteCustomerStepProps> = ({
       {selectedCustomer && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
           <Card className="p-4">
-            <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center justify-between mb-3">
               <h4 className="font-medium text-gray-900 text-sm flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-green-500" />
                 Billing Address
               </h4>
-              <Button
-                onClick={() => setShowBillingAddressForm(!showBillingAddressForm)}
-                variant="secondary"
-                size="sm"
-                icon={showBillingAddressForm ? ChevronDown : ChevronRight}
-                className="h-7"
-              >
-                {formData.billingAddress.street ? 'Edit' : 'Add'}
-              </Button>
+              <div className="flex items-center gap-2">
+                {customerAddresses.filter(addr => addr.type === 'billing').length > 0 && (
+                  <select
+                    onChange={(e) => {
+                      const selectedAddr = customerAddresses.find(addr => addr.id === e.target.value);
+                      if (selectedAddr) handleAddressSelect(selectedAddr, 'billing');
+                    }}
+                    className="text-xs border border-gray-300 rounded px-2 py-1"
+                    defaultValue=""
+                  >
+                    <option value="">Select saved address</option>
+                    {customerAddresses.filter(addr => addr.type === 'billing').map(addr => (
+                      <option key={addr.id} value={addr.id}>
+                        {addr.label} - {addr.street}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <Button
+                  onClick={() => {
+                    setShowBillingAddressForm(!showBillingAddressForm);
+                    setEditingAddress('billing');
+                  }}
+                  variant="secondary"
+                  size="sm"
+                  icon={formData.billingAddress.street ? Edit : Plus}
+                  className="h-7"
+                >
+                  {formData.billingAddress.street ? 'Edit' : 'Add'}
+                </Button>
+              </div>
             </div>
             
             {formData.billingAddress.street && (
@@ -164,9 +247,12 @@ export const QuoteCustomerStep: React.FC<QuoteCustomerStepProps> = ({
             {showBillingAddressForm && (
               <div className="border-t pt-3 mt-3">
                 <AddressForm
-                  address={formData.billingAddress}
-                  onSubmit={handleBillingAddressSubmit}
-                  onCancel={() => setShowBillingAddressForm(false)}
+                  address={editingAddress === 'billing' ? formData.billingAddress : undefined}
+                  onSubmit={(data) => handleNewAddressSubmit(data, 'billing')}
+                  onCancel={() => {
+                    setShowBillingAddressForm(false);
+                    setEditingAddress(null);
+                  }}
                 />
               </div>
             )}
@@ -194,11 +280,31 @@ export const QuoteCustomerStep: React.FC<QuoteCustomerStepProps> = ({
                   />
                   Same as billing
                 </label>
+                {!formData.sameAsShipping && customerAddresses.filter(addr => addr.type === 'shipping').length > 0 && (
+                  <select
+                    onChange={(e) => {
+                      const selectedAddr = customerAddresses.find(addr => addr.id === e.target.value);
+                      if (selectedAddr) handleAddressSelect(selectedAddr, 'shipping');
+                    }}
+                    className="text-xs border border-gray-300 rounded px-2 py-1"
+                    defaultValue=""
+                  >
+                    <option value="">Select saved address</option>
+                    {customerAddresses.filter(addr => addr.type === 'shipping').map(addr => (
+                      <option key={addr.id} value={addr.id}>
+                        {addr.label} - {addr.street}
+                      </option>
+                    ))}
+                  </select>
+                )}
                 <Button
-                  onClick={() => setShowShippingAddressForm(!showShippingAddressForm)}
+                  onClick={() => {
+                    setShowShippingAddressForm(!showShippingAddressForm);
+                    setEditingAddress('shipping');
+                  }}
                   variant="secondary"
                   size="sm"
-                  icon={showShippingAddressForm ? ChevronDown : ChevronRight}
+                  icon={formData.shippingAddress.street ? Edit : Plus}
                   disabled={formData.sameAsShipping}
                   className="h-7"
                 >
@@ -219,9 +325,12 @@ export const QuoteCustomerStep: React.FC<QuoteCustomerStepProps> = ({
             {showShippingAddressForm && !formData.sameAsShipping && (
               <div className="border-t pt-3 mt-3">
                 <AddressForm
-                  address={formData.shippingAddress}
-                  onSubmit={handleShippingAddressSubmit}
-                  onCancel={() => setShowShippingAddressForm(false)}
+                  address={editingAddress === 'shipping' ? formData.shippingAddress : undefined}
+                  onSubmit={(data) => handleNewAddressSubmit(data, 'shipping')}
+                  onCancel={() => {
+                    setShowShippingAddressForm(false);
+                    setEditingAddress(null);
+                  }}
                 />
               </div>
             )}

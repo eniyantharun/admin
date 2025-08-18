@@ -1,3 +1,4 @@
+import { iCustomerAddressFormData } from './customer';
 export interface iQuote {
   id: number;
   quoteNumber: string;
@@ -328,4 +329,223 @@ export interface QuoteDetailsResponse {
   };
 }
 
+export interface iQuoteAddress {
+  type: 'billing' | 'shipping';
+  label: string;
+  name: string;
+  street: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  country: string;
+  isPrimary: boolean;
+}
 
+export interface iQuoteFormData {
+  customer: string;
+  customerEmail: string;
+  status: string;
+  customerTotal: string;
+  inHandDate: string;
+  notes: string;
+  billingAddress: iQuoteAddress;
+  shippingAddress: iQuoteAddress;
+  sameAsShipping: boolean;
+  checkoutDetails?: iQuoteCheckoutDetails;
+  shippingDetails?: iQuoteShippingDetails;
+}
+
+export interface iQuote {
+  id: number;
+  quoteNumber: string;
+  customer: string;
+  customerEmail: string;
+  status: 'new-quote' | 'quote-sent-to-customer' | 'quote-converted-to-order';
+  dateTime: string;
+  inHandDate: string | null;
+  customerTotal: number;
+  notes?: string;
+  billingAddress?: iQuoteAddress;
+  shippingAddress?: iQuoteAddress;
+  checkoutDetails?: iQuoteCheckoutDetails;
+  shippingDetails?: iQuoteShippingDetails;
+}
+
+export interface iQuoteCheckoutDetails {
+  inHandDate?: string;
+  additionalInstructions?: string;
+  paymentMethod?: string;
+  paymentDate?: string;
+  paymentStatus?: 'Pending' | 'Paid' | 'Failed';
+}
+
+export interface iQuoteShippingDetails {
+  type?: 'Ground' | 'Express' | 'Overnight';
+  company?: 'UPS' | 'FedEx' | 'USPS' | 'DHL';
+  cost?: number;
+  date?: string;
+  trackingNumber?: string;
+}
+
+export interface iQuoteFormProps {
+  quote?: iQuote | null;
+  isEditing: boolean;
+  onSubmit: (data: iQuoteFormData) => Promise<void>;
+  loading?: boolean;
+}
+
+export interface LineItemData {
+  id: string;
+  productName: string;
+  variantName?: string;
+  methodName?: string;
+  color?: string;
+  quantity: number;
+  productItemNumber?: string;
+  supplierItemNumber?: string;
+  customerPricePerQuantity: number;
+  customerSetupCharge: number;
+  supplierPricePerQuantity: number;
+  supplierSetupCharge: number;
+  artworkText?: string;
+  artworkSpecialInstructions?: string;
+  customization?: string;
+  description?: string;
+  images?: string[];
+  selectedProduct?: any;
+  variantId?: number;
+  methodId?: number;
+  colorId?: string;
+}
+
+export interface SaleSummary {
+  customerSummary: {
+    itemsTotal: number;
+    setupCharge: number;
+    subTotal: number;
+    total: number;
+  };
+  totalSupplierSummary: {
+    itemsTotal: number;
+    setupCharge: number;
+    subTotal: number;
+    total: number;
+  };
+  profit: number;
+}
+
+export interface QuoteDetailsResponse {
+  quote: {
+    id: number;
+    status: string;
+    followups: any[];
+    saleId: string;
+    sale: {
+      saleId: string;
+      customer: {
+        id: string;
+        idNum: number;
+        form: {
+          companyName: string | null;
+          firstName: string;
+          lastName: string;
+          phoneNumber: string;
+          email: string;
+        };
+        createdAt: string;
+        createdBy: string | null;
+        website: string;
+      };
+      dates: {
+        convertedFromQuoteId: number | null;
+        convertedIntoOrderId: number | null;
+        inHandDate: string;
+        paidAt: string | null;
+        createdAt: string;
+        updatedAt: string;
+        createdBy: string | null;
+        updatedBy: string | null;
+      };
+      summary: {
+        shippingCost: number;
+        discount: number;
+      };
+      shippingDetails: {
+        shippingCompany: string;
+        shippingType: string;
+        shippingCost: number;
+        shippingDate: string | null;
+        shippingTrackingNumber: string | null;
+      };
+      checkoutDetails: {
+        dateOrderNeededBy: string;
+        additionalInstructions: string | null;
+      };
+      shippingAddress: {
+        name: string;
+        addressLine: string;
+        addressLine2: string;
+        country: string;
+        state: string;
+        city: string;
+        zipCode: string;
+      };
+      billingAddress: {
+        name: string;
+        addressLine: string;
+        addressLine2: string;
+        country: string;
+        state: string;
+        city: string;
+        zipCode: string;
+      };
+      lineItems: Array<{
+        id: string;
+        form: {
+          productName: string;
+          variantName: string;
+          methodName: string;
+          color: string | null;
+          quantity: number;
+          productItemNumber: string;
+          supplierItemNumber: string;
+          customerPricePerQuantity: number;
+          customerSetupCharge: number;
+          supplierPricePerQuantity: number;
+          supplierSetupCharge: number;
+          artworkText: string | null;
+          artworkSpecialInstructions: string | null;
+        };
+        customThumbnail: string | null;
+        customPicture: string | null;
+        product: any;
+        supplier: any;
+        customerEstimates: {
+          quantity: number;
+          setupCharge: number;
+          pricePerQuantity: number;
+          subTotal: number;
+          total: number;
+        };
+        supplierEstimates: {
+          quantity: number;
+          setupCharge: number;
+          pricePerQuantity: number;
+          subTotal: number;
+          total: number;
+        };
+        profit: number;
+        artworkType: string | null;
+        artworkImage: string | null;
+        supplierPage: any;
+      }>;
+      notesId: string | null;
+      comments: Array<{
+        id: string;
+        createdAt: string;
+        comment: string;
+        assets: any[];
+      }>;
+    };
+  };
+}
