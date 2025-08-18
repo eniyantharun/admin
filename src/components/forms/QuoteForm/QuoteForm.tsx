@@ -155,6 +155,7 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
             onAddEmptyLineItem={handleAddEmptyLineItem}
             onUpdateLineItem={handleUpdateLineItem}
             onRemoveLineItem={handleRemoveLineItem}
+            onRefreshSummary={fetchSaleSummary}
             currentSaleId={currentSaleId}
           />
         );

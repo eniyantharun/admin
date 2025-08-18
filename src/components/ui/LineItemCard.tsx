@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { FormInput } from '@/components/helpers/FormInput';
 import { ImageGallery } from '@/components/ui/ImageGallery';
+import { VariantDropdown, MethodDropdown, ColorDropdown, ApiVariant, ApiMethod, ApiColor } from '@/components/ui/ApiDropdowns';
 import { useApi } from '@/hooks/useApi';
 import { showToast } from '@/components/ui/toast';
 import { ProductDropdown } from './ProductDropdown';
@@ -27,6 +28,9 @@ interface LineItemData {
   description?: string;
   images?: string[];
   selectedProduct?: any;
+  variantId?: number;
+  methodId?: number;
+  colorId?: string;
 }
 
 interface LineItemCardProps {
@@ -35,6 +39,7 @@ interface LineItemCardProps {
   saleId: string;
   onRemove: (itemId: string) => void;
   onUpdate: (itemId: string, updatedItem: LineItemData) => void;
+  onRefreshSummary?: () => void;
   isNew?: boolean;
 }
 
@@ -44,6 +49,7 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
   saleId,
   onRemove,
   onUpdate,
+  onRefreshSummary,
   isNew = false
 }) => {
   const [formData, setFormData] = useState<LineItemData>(item);
@@ -79,13 +85,66 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
         productName: product.name,
         customerPricePerQuantity: product.minPrice || prev.customerPricePerQuantity,
         customerSetupCharge: product.setupCharge || prev.customerSetupCharge,
-        productItemNumber: product.id?.toString() || prev.productItemNumber
+        productItemNumber: product.id?.toString() || prev.productItemNumber,
+        // Reset variant, method, and color when product changes
+        variantName: '',
+        methodName: '',
+        color: '',
+        variantId: undefined,
+        methodId: undefined,
+        colorId: undefined
       }));
     } else {
       setFormData(prev => ({
         ...prev,
-        selectedProduct: null
+        selectedProduct: null,
+        variantName: '',
+        methodName: '',
+        color: '',
+        variantId: undefined,
+        methodId: undefined,
+        colorId: undefined
       }));
+    }
+  };
+
+  const handleVariantSelect = (variantName: string, variantId?: string | number) => {
+    setFormData(prev => ({
+      ...prev,
+      variantName,
+      variantId: typeof variantId === 'number' ? variantId : undefined,
+      supplierItemNumber: variantId && variantId !== -1 ? variantId.toString() : prev.supplierItemNumber
+    }));
+    
+    // Refresh sale summary after variant selection
+    if (onRefreshSummary) {
+      setTimeout(onRefreshSummary, 100);
+    }
+  };
+
+  const handleMethodSelect = (methodName: string, methodId?: string | number) => {
+    setFormData(prev => ({
+      ...prev,
+      methodName,
+      methodId: typeof methodId === 'number' ? methodId : undefined
+    }));
+    
+    // Refresh sale summary after method selection
+    if (onRefreshSummary) {
+      setTimeout(onRefreshSummary, 100);
+    }
+  };
+
+  const handleColorSelect = (colorName: string, colorId?: string | number) => {
+    setFormData(prev => ({
+      ...prev,
+      color: colorName,
+      colorId: typeof colorId === 'string' ? colorId : undefined
+    }));
+    
+    // Refresh sale summary after color selection
+    if (onRefreshSummary) {
+      setTimeout(onRefreshSummary, 100);
     }
   };
 
@@ -113,6 +172,12 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
       await post('https://api.promowe.com/Admin/SaleEditor/SetLineItemDetail', payload);
       onUpdate(item.id, formData);
       setHasUnsavedChanges(false);
+      
+      // Refresh sale summary after saving
+      if (onRefreshSummary) {
+        onRefreshSummary();
+      }
+      
       showToast.success('Line item updated successfully');
     } catch (error) {
       showToast.error('Failed to update line item');
@@ -122,6 +187,8 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
   const customerTotal = formData.quantity * formData.customerPricePerQuantity + formData.customerSetupCharge;
   const supplierTotal = formData.quantity * formData.supplierPricePerQuantity + formData.supplierSetupCharge;
   const profit = customerTotal - supplierTotal;
+
+  const productId = formData.selectedProduct?.id || formData.productItemNumber;
 
   return (
     <Card className="overflow-hidden border border-gray-200 hover:border-purple-300 transition-all duration-200">
@@ -135,7 +202,8 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
                 src={`https://images.4imprint.com/prod/${formData.selectedProduct.pictures[0]}/300x300`}
                 alt={formData.productName}
                 className="w-full h-full object-cover"
-                onError={(e) => { e.currentTarget.style.display = 'none';
+                onError={(e) => { 
+                  e.currentTarget.style.display = 'none';
                   const fallback = e.currentTarget.nextElementSibling as HTMLElement | null;
                   if (fallback) {
                     fallback.style.display = 'flex';
@@ -171,6 +239,20 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
                     <span className="text-orange-600">Profit: ${profit.toFixed(2)}</span>
                   )}
                 </div>
+                {/* Display variant, method, color info in header */}
+                {(formData.variantName || formData.methodName || formData.color) && (
+                  <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
+                    {formData.variantName && formData.variantName !== 'No Variant' && (
+                      <span className="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">{formData.variantName}</span>
+                    )}
+                    {formData.methodName && formData.methodName !== 'No Method' && (
+                      <span className="bg-green-100 text-green-700 px-1.5 py-0.5 rounded">{formData.methodName}</span>
+                    )}
+                    {formData.color && formData.color !== 'No Color' && (
+                      <span className="bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded">{formData.color}</span>
+                    )}
+                  </div>
+                )}
               </div>
               
               <div className="flex items-center gap-1 ml-2">
@@ -238,35 +320,72 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
             />
           </div>
 
-          {/* Product Details */}
+          {/* Product Details with API Dropdowns */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-            <FormInput
-              label="Variant"
-              name="variantName"
-              value={formData.variantName || ''}
-              onChange={(e) => handleInputChange('variantName', e.target.value)}
-              placeholder="Size, style"
-            />
-            <FormInput
-              label="Method"
-              name="methodName"
-              value={formData.methodName || ''}
-              onChange={(e) => handleInputChange('methodName', e.target.value)}
-              placeholder="Print method"
-            />
-            <FormInput
-              label="Color"
-              name="color"
-              value={formData.color || ''}
-              onChange={(e) => handleInputChange('color', e.target.value)}
-              placeholder="Product color"
-            />
+            <div className="form-input-group">
+              <label className="form-label block text-xs font-medium text-gray-700 mb-1">
+                Variant
+              </label>
+              <VariantDropdown
+                productId={productId}
+                value={formData.variantName || ''}
+                onChange={handleVariantSelect}
+                onVariantSelect={(variant) => {
+                  if (variant) {
+                    console.log('Selected variant:', variant);
+                  }
+                }}
+                disabled={!productId}
+              />
+            </div>
+            
+            <div className="form-input-group">
+              <label className="form-label block text-xs font-medium text-gray-700 mb-1">
+                Method
+              </label>
+              <MethodDropdown
+                productId={productId}
+                value={formData.methodName || ''}
+                onChange={handleMethodSelect}
+                onMethodSelect={(method) => {
+                  if (method) {
+                    console.log('Selected method:', method);
+                  }
+                }}
+                disabled={!productId}
+              />
+            </div>
+            
+            <div className="form-input-group">
+              <label className="form-label block text-xs font-medium text-gray-700 mb-1">
+                Color
+              </label>
+              <ColorDropdown
+                productId={productId}
+                value={formData.color || ''}
+                onChange={handleColorSelect}
+                onColorSelect={(color) => {
+                  if (color) {
+                    console.log('Selected color:', color);
+                  }
+                }}
+                disabled={!productId}
+              />
+            </div>
+            
             <FormInput
               label="Quantity"
               name="quantity"
               type="number"
               value={formData.quantity.toString()}
-              onChange={(e) => handleInputChange('quantity', parseInt(e.target.value) || 1)}
+              onChange={(e) => {
+                const newQuantity = parseInt(e.target.value) || 1;
+                handleInputChange('quantity', newQuantity);
+                // Refresh sale summary when quantity changes
+                if (onRefreshSummary) {
+                  setTimeout(onRefreshSummary, 100);
+                }
+              }}
               placeholder="1"
             />
           </div>
@@ -278,7 +397,14 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
               name="customerPricePerQuantity"
               type="number"
               value={formData.customerPricePerQuantity.toString()}
-              onChange={(e) => handleInputChange('customerPricePerQuantity', parseFloat(e.target.value) || 0)}
+              onChange={(e) => {
+                const newPrice = parseFloat(e.target.value) || 0;
+                handleInputChange('customerPricePerQuantity', newPrice);
+                // Refresh sale summary when price changes
+                if (onRefreshSummary) {
+                  setTimeout(onRefreshSummary, 100);
+                }
+              }}
               placeholder="0.00"
             />
             <FormInput
@@ -286,7 +412,14 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
               name="customerSetupCharge"
               type="number"
               value={formData.customerSetupCharge.toString()}
-              onChange={(e) => handleInputChange('customerSetupCharge', parseFloat(e.target.value) || 0)}
+              onChange={(e) => {
+                const newSetup = parseFloat(e.target.value) || 0;
+                handleInputChange('customerSetupCharge', newSetup);
+                // Refresh sale summary when setup charge changes
+                if (onRefreshSummary) {
+                  setTimeout(onRefreshSummary, 100);
+                }
+              }}
               placeholder="0.00"
             />
             <FormInput
@@ -294,7 +427,14 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
               name="supplierPricePerQuantity"
               type="number"
               value={formData.supplierPricePerQuantity.toString()}
-              onChange={(e) => handleInputChange('supplierPricePerQuantity', parseFloat(e.target.value) || 0)}
+              onChange={(e) => {
+                const newPrice = parseFloat(e.target.value) || 0;
+                handleInputChange('supplierPricePerQuantity', newPrice);
+                // Refresh sale summary when supplier price changes
+                if (onRefreshSummary) {
+                  setTimeout(onRefreshSummary, 100);
+                }
+              }}
               placeholder="0.00"
             />
             <FormInput
@@ -302,7 +442,14 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
               name="supplierSetupCharge"
               type="number"
               value={formData.supplierSetupCharge.toString()}
-              onChange={(e) => handleInputChange('supplierSetupCharge', parseFloat(e.target.value) || 0)}
+              onChange={(e) => {
+                const newSetup = parseFloat(e.target.value) || 0;
+                handleInputChange('supplierSetupCharge', newSetup);
+                // Refresh sale summary when supplier setup changes
+                if (onRefreshSummary) {
+                  setTimeout(onRefreshSummary, 100);
+                }
+              }}
               placeholder="0.00"
             />
           </div>

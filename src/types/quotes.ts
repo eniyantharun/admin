@@ -191,6 +191,9 @@ export interface LineItemData {
   description?: string;
   images?: string[];
   selectedProduct?: any;
+  variantId?: number;
+  methodId?: number;
+  colorId?: string;
 }
 
 export interface SaleSummary {
@@ -324,3 +327,5 @@ export interface QuoteDetailsResponse {
     };
   };
 }
+
+

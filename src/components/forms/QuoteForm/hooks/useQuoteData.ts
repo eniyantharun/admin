@@ -54,7 +54,10 @@ export const useQuoteData = (
     artworkText: apiItem.form?.artworkText || '',
     artworkSpecialInstructions: apiItem.form?.artworkSpecialInstructions || '',
     images: [],
-    selectedProduct: apiItem.product || null
+    selectedProduct: apiItem.product || null,
+    variantId: apiItem.form?.variantId,
+    methodId: apiItem.form?.methodId,
+    colorId: apiItem.form?.colorId
   });
 
   const fetchQuoteDetails = async (quoteId: number) => {
@@ -167,7 +170,7 @@ export const useQuoteData = (
     }
   };
 
-  const fetchSaleSummary = async () => {
+  const fetchSaleSummary = useCallback(async () => {
     if (!currentSaleId) return;
     
     try {
@@ -183,7 +186,7 @@ export const useQuoteData = (
       console.error('Failed to fetch sale summary:', error);
       showToast.error('Failed to fetch sale summary');
     }
-  };
+  }, [currentSaleId, post, setFormData]);
 
   const handleAddEmptyLineItem = async () => {
     if (!currentSaleId) {

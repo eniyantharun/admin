@@ -12,6 +12,7 @@ interface QuoteItemsStepProps {
   onAddEmptyLineItem: () => Promise<void>;
   onUpdateLineItem: (itemId: string, updatedItem: LineItemData) => Promise<void>;
   onRemoveLineItem: (itemId: string) => Promise<void>;
+  onRefreshSummary: () => Promise<void>;
   currentSaleId: string;
 }
 
@@ -22,6 +23,7 @@ export const QuoteItemsStep: React.FC<QuoteItemsStepProps> = ({
   onAddEmptyLineItem,
   onUpdateLineItem,
   onRemoveLineItem,
+  onRefreshSummary,
   currentSaleId
 }) => {
   return (
@@ -69,6 +71,7 @@ export const QuoteItemsStep: React.FC<QuoteItemsStepProps> = ({
               saleId={currentSaleId}
               onRemove={onRemoveLineItem}
               onUpdate={onUpdateLineItem}
+              onRefreshSummary={onRefreshSummary}
               isNew={false}
             />
           ))}
