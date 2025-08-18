@@ -84,7 +84,7 @@ export const Header: React.FC<IHeaderProps> = ({ contextData }) => {
   };
 
   const getPageConfig = (): IPageConfig => {
-    const basePath = pathname.split("/")[1];
+      const basePath = typeof window !== "undefined" ? window.location.pathname.split("/")[1] : "";
 
     const configs: Record<string, IPageConfig> = {
       dashboard: {
