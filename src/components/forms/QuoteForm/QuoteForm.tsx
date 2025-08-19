@@ -14,7 +14,7 @@ import { QuoteDetailsStep } from './components/QuoteDetailsStep';
 import { QuoteNotesStep } from './components/QuoteNotesStep';
 import { QuoteInformation } from './components/QuoteInformation';
 
-type FormStep = 'customer-address' | 'items' | 'quote' | 'notes';
+type FormStep = 'customer-address' | 'items' | 'quote' | 'shipping' | 'notes';
 
 
 export const QuoteForm: React.FC<iQuoteFormProps> = ({

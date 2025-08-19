@@ -2,7 +2,7 @@ import React from 'react';
 import { CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
-type FormStep = 'customer-address' | 'items' | 'quote' | 'notes';
+type FormStep = 'customer-address' | 'items' | 'quote' | 'shipping' | 'notes';
 
 interface QuoteStepIndicatorProps {
   steps: FormStep[];

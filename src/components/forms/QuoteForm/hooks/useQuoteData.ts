@@ -176,7 +176,7 @@ export const useQuoteData = (
     if (!currentSaleId) return;
     
     try {
-      const response = await post(`/Admin/SaleEditor/GetSaleSummary?saleId=${currentSaleId}`);
+      const response = await post(`https://api.promowe.com/Admin/SaleEditor/GetSaleSummary?saleId=${currentSaleId}`);
       if (response) {
         setSaleSummary(response);
         setFormData(prev => ({
