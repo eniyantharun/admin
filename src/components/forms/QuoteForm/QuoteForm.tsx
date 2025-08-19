@@ -13,6 +13,7 @@ import { QuoteItemsStep } from './components/QuoteItemsStep';
 import { QuoteDetailsStep } from './components/QuoteDetailsStep';
 import { QuoteNotesStep } from './components/QuoteNotesStep';
 import { QuoteInformation } from './components/QuoteInformation';
+import { QuoteShippingStep } from './components/QuoteShippingStep';
 
 type FormStep = 'customer-address' | 'items' | 'quote' | 'shipping' | 'notes';
 
@@ -75,7 +76,7 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
     fetchCustomerAddresses
   } = useQuoteData(quote, isEditing, formData, setFormData, setCustomerAddresses);
 
-  const steps: FormStep[] = ['customer-address', 'items', 'quote', 'notes'];
+  const steps: FormStep[] = ['customer-address', 'items', 'quote', 'shipping', 'notes'];
 
   const { post } = useApi();
 
@@ -150,6 +151,7 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
       case 'items': return lineItems.length > 0;
       case 'quote': return !!(formData.customerTotal && parseFloat(formData.customerTotal) > 0);
       case 'notes': return true;
+      case 'shipping': return true;
       default: return false;
     }
   };
@@ -190,6 +192,15 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
             isEditing={isEditing}
           />
         );
+
+        case 'shipping':
+      return (
+        <QuoteShippingStep
+          formData={formData}
+          handleInputChange={handleInputChange}
+          saleSummary={saleSummary}
+        />
+      );
       case 'notes':
         return (
           <QuoteNotesStep

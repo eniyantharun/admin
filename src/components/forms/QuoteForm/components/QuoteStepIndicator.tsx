@@ -28,14 +28,15 @@ export const QuoteStepIndicator: React.FC<QuoteStepIndicatorProps> = ({
   loading
 }) => {
   const getStepTitle = (step: FormStep) => {
-    switch (step) {
-      case 'customer-address': return 'Customer & Address';
-      case 'items': return 'Items';
-      case 'quote': return 'Quote Details';
-      case 'notes': return 'Notes';
-      default: return 'Quote';
-    }
-  };
+  switch (step) {
+    case 'customer-address': return 'Customer & Address';
+    case 'items': return 'Items';
+    case 'quote': return 'Quote Details';
+    case 'shipping': return 'Shipping';
+    case 'notes': return 'Notes';
+    default: return 'Quote';
+  }
+};
 
   return (
     <div className="flex items-center justify-between mb-0 bg-gray-50 p-0 rounded-lg">
