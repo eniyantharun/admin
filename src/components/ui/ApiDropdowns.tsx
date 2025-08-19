@@ -60,8 +60,8 @@ export const VariantDropdown: React.FC<VariantDropdownProps> = ({
   
   const { get, loading } = useApi({
     cancelOnUnmount: true,
-    dedupe: true,
-    cacheDuration: 60000,
+    dedupe: false,
+    cacheDuration: 0,
   });
 
   // Handle click outside
@@ -79,30 +79,28 @@ export const VariantDropdown: React.FC<VariantDropdownProps> = ({
   }, [isOpen]);
 
   useEffect(() => {
-    if (productId) {
-      fetchVariants();
+  if (!productId) {
+    setVariants([]);
+  }
+}, [productId]);
+
+  const fetchVariants = async () => {
+  setVariants([]); // Clear existing data
+  try {
+    const response = await get(`https://api.promowe.com/Admin/ProductEditor/GetVariantsList?productId=${productId}&_t=${Date.now()}`) as ApiVariantsResponse;
+    
+    if (response?.variants) {
+      setVariants(response.variants);
     } else {
       setVariants([]);
     }
-  }, [productId]);
-
-  const fetchVariants = async () => {
-    try {
-      // Updated API URL to match the provided endpoint
-      const response = await get(`https://api.promowe.com/Admin/ProductEditor/GetVariantsList?productId=${productId}`) as ApiVariantsResponse;
-      
-      if (response?.variants) {
-        setVariants(response.variants);
-      } else {
-        setVariants([]);
-      }
-    } catch (error: any) {
-      if (error?.name !== 'CanceledError') {
-        showToast.error('Failed to load variants');
-        setVariants([]);
-      }
+  } catch (error: any) {
+    if (error?.name !== 'CanceledError') {
+      showToast.error('Failed to load variants');
+      setVariants([]);
     }
-  };
+  }
+};
 
   const handleSelect = (variant: ApiVariant | null) => {
     if (variant) {
@@ -122,7 +120,15 @@ export const VariantDropdown: React.FC<VariantDropdownProps> = ({
     <div className={`relative ${className}`} ref={dropdownRef}>
       <button
         type="button"
-        onClick={() => !disabled && productId && setIsOpen(!isOpen)}
+        onClick={() => {
+          if (!disabled && productId) {
+            if (!isOpen) {
+              // Always fetch when opening dropdown
+              fetchVariants();
+            }
+            setIsOpen(!isOpen);
+          }
+        }}
         disabled={disabled || loading || !productId}
         className={`w-full flex items-center justify-between px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 ${
           disabled || loading || !productId ? 'bg-gray-100 cursor-not-allowed' : 'bg-white hover:border-gray-400'
@@ -235,25 +241,26 @@ export const MethodDropdown: React.FC<MethodDropdownProps> = ({
   }, [productId]);
 
   const fetchMethods = async () => {
-    try {
-      // Updated API URL to match the provided endpoint
-      const response = await get(`https://api.promowe.com/Admin/ProductEditor/GetDecorationMethods?productId=${productId}`) as ApiMethodsResponse;
-      
-      if (response?.methods) {
-        const filteredMethods = response.methods.filter(
-          method => method.id !== -1 && method.id !== 2 && method.name !== 'Default' && method.name !== 'test method'
-        );
-        setMethods(filteredMethods);
-      } else {
-        setMethods([]);
-      }
-    } catch (error: any) {
-      if (error?.name !== 'CanceledError') {
-        showToast.error('Failed to load decoration methods');
-        setMethods([]);
-      }
+  setMethods([]); // Clear existing data
+  try {
+    const response = await get(`https://api.promowe.com/Admin/ProductEditor/GetDecorationMethods?productId=${productId}&_t=${Date.now()}`) as ApiMethodsResponse;
+    
+    if (response?.methods) {
+      const filteredMethods = response.methods.filter(
+        method => method.id !== -1 && method.id !== 2 && method.name !== 'Default' && method.name !== 'test method'
+      );
+      setMethods(filteredMethods);
+    } else {
+      setMethods([]);
     }
-  };
+  } catch (error: any) {
+    if (error?.name !== 'CanceledError') {
+      showToast.error('Failed to load decoration methods');
+      setMethods([]);
+    }
+  }
+};
+
 
   const handleSelect = (method: ApiMethod | null) => {
     if (method) {
@@ -381,22 +388,22 @@ export const ColorDropdown: React.FC<ColorDropdownProps> = ({
   }, [productId]);
 
   const fetchColors = async () => {
-    try {
-      // Updated API URL to match the provided endpoint
-      const response = await get(`https://api.promowe.com/Admin/ProductEditor/GetProductColorOptionsList?productId=${productId}`) as ApiColorsResponse;
-      
-      if (response?.colors) {
-        setColors(response.colors);
-      } else {
-        setColors([]);
-      }
-    } catch (error: any) {
-      if (error?.name !== 'CanceledError') {
-        showToast.error('Failed to load colors');
-        setColors([]);
-      }
+  setColors([]); // Clear existing data
+  try {
+    const response = await get(`https://api.promowe.com/Admin/ProductEditor/GetProductColorOptionsList?productId=${productId}&_t=${Date.now()}`) as ApiColorsResponse;
+    
+    if (response?.colors) {
+      setColors(response.colors);
+    } else {
+      setColors([]);
     }
-  };
+  } catch (error: any) {
+    if (error?.name !== 'CanceledError') {
+      showToast.error('Failed to load colors');
+      setColors([]);
+    }
+  }
+};
 
   const handleSelect = (color: ApiColor | null) => {
     if (color) {

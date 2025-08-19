@@ -1,10 +1,12 @@
 import { iCustomerAddressFormData } from './customer';
+import { QuoteStatus } from '@/lib/enums';
+
 export interface iQuote {
   id: number;
   quoteNumber: string;
   customer: string;
   customerEmail: string;
-  status: 'new-quote' | 'quote-sent-to-customer' | 'quote-converted-to-order';
+  status: QuoteStatus;
   dateTime: string;
   inHandDate: string | null;
   customerTotal: number;
@@ -156,21 +158,6 @@ export interface iApiQuote extends iApiSale {
   };
 }
 
-export interface iQuote {
-  id: number;
-  quoteNumber: string;
-  customer: string;
-  customerEmail: string;
-  status: 'new-quote' | 'quote-sent-to-customer' | 'quote-converted-to-order';
-  dateTime: string;
-  inHandDate: string | null;
-  customerTotal: number;
-  notes?: string;
-  billingAddress?: iQuoteAddress;
-  shippingAddress?: iQuoteAddress;
-  checkoutDetails?: iQuoteCheckoutDetails;
-  shippingDetails?: iQuoteShippingDetails;
-}
 
 
 export interface LineItemData {
@@ -354,23 +341,6 @@ export interface iQuoteFormData {
   checkoutDetails?: iQuoteCheckoutDetails;
   shippingDetails?: iQuoteShippingDetails;
 }
-
-export interface iQuote {
-  id: number;
-  quoteNumber: string;
-  customer: string;
-  customerEmail: string;
-  status: 'new-quote' | 'quote-sent-to-customer' | 'quote-converted-to-order';
-  dateTime: string;
-  inHandDate: string | null;
-  customerTotal: number;
-  notes?: string;
-  billingAddress?: iQuoteAddress;
-  shippingAddress?: iQuoteAddress;
-  checkoutDetails?: iQuoteCheckoutDetails;
-  shippingDetails?: iQuoteShippingDetails;
-}
-
 export interface iQuoteCheckoutDetails {
   inHandDate?: string;
   additionalInstructions?: string;

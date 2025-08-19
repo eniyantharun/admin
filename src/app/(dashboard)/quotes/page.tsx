@@ -122,31 +122,43 @@ export default function QuotesPage() {
   }, []);
 
   const mapApiStatusToQuoteStatus = useCallback((apiStatus: string): iQuote['status'] => {
-    switch (apiStatus) {
-      case QuoteStatus.NEW_QUOTE:
-        return 'new-quote';
-      case QuoteStatus.QUOTE_SENT_TO_CUSTOMER:
-        return 'quote-sent-to-customer';
-      case QuoteStatus.QUOTE_CONVERTED_TO_ORDER:
-      case QuoteStatus.CONVERTED_TO_ORDER_BY_CUSTOMER:
-        return 'quote-converted-to-order';
-      default:
-        return 'new-quote';
-    }
-  }, []);
+  switch (apiStatus) {
+    case QuoteStatus.NEW_QUOTE:
+      return QuoteStatus.NEW_QUOTE;
+    case QuoteStatus.WAITING_FOR_SUPPLIER:
+      return QuoteStatus.WAITING_FOR_SUPPLIER;
+    case QuoteStatus.QUOTE_SENT_TO_CUSTOMER:
+      return QuoteStatus.QUOTE_SENT_TO_CUSTOMER;
+    case QuoteStatus.ON_HOLD:
+      return QuoteStatus.ON_HOLD;
+    case QuoteStatus.QUOTE_CONVERTED_TO_ORDER:
+    case QuoteStatus.CONVERTED_TO_ORDER_BY_CUSTOMER:
+      return QuoteStatus.QUOTE_CONVERTED_TO_ORDER;
+    case QuoteStatus.CANCELLED:
+      return QuoteStatus.CANCELLED;
+    default:
+      return QuoteStatus.NEW_QUOTE;
+  }
+}, []);
 
   const mapStatusFilterToApi = useCallback((filter: string): string[] => {
-    switch (filter) {
-      case 'new-quote':
-        return [QuoteStatus.NEW_QUOTE];
-      case 'quote-sent-to-customer':
-        return [QuoteStatus.QUOTE_SENT_TO_CUSTOMER];
-      case 'quote-converted-to-order':
-        return [QuoteStatus.QUOTE_CONVERTED_TO_ORDER, QuoteStatus.CONVERTED_TO_ORDER_BY_CUSTOMER];
-      default:
-        return [];
-    }
-  }, []);
+  switch (filter) {
+    case QuoteStatus.NEW_QUOTE:
+      return [QuoteStatus.NEW_QUOTE];
+    case QuoteStatus.WAITING_FOR_SUPPLIER:
+      return [QuoteStatus.WAITING_FOR_SUPPLIER];
+    case QuoteStatus.QUOTE_SENT_TO_CUSTOMER:
+      return [QuoteStatus.QUOTE_SENT_TO_CUSTOMER];
+    case QuoteStatus.ON_HOLD:
+      return [QuoteStatus.ON_HOLD];
+    case QuoteStatus.QUOTE_CONVERTED_TO_ORDER:
+      return [QuoteStatus.QUOTE_CONVERTED_TO_ORDER, QuoteStatus.CONVERTED_TO_ORDER_BY_CUSTOMER];
+    case QuoteStatus.CANCELLED:
+      return [QuoteStatus.CANCELLED];
+    default:
+      return [];
+  }
+}, []);
 
   const fetchQuotes = useCallback(async () => {
     if (loading) return;

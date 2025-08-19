@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { Download, RefreshCw, FileText, Mail, BarChart3, LayoutGrid, List } from 'lucide-react';
 import { IActionConfig, IFilterConfig, IHeaderContextData, IUseHeaderContextProps } from '@/types/headerContext';
-
+import { QuoteStatus } from '@/lib/enums';
 
 export const useHeaderContext = ({
   totalCount,
@@ -82,39 +82,27 @@ export const useCustomersHeaderContext = ({
   const [searchTerm, setSearchTerm] = useState('');
 
   const filters: IFilterConfig[] = [
-    {
-      key: 'status',
-      label: 'Status',
-      type: 'select',
-      value: statusFilter,
-      onChange: (value: string | boolean) => {
-        if (typeof value === 'string') {
-          onStatusFilterChange(value);
-        }
-      },
-      options: [
-        { value: 'all', label: 'All Status' },
-        { value: 'active', label: 'Active' },
-        { value: 'disabled', label: 'Disabled' }
-      ]
+  {
+    key: 'status',
+    label: 'Status',
+    type: 'select',
+    value: statusFilter,
+    onChange: (value: string | boolean) => {
+      if (typeof value === 'string') {
+        onStatusFilterChange(value);
+      }
     },
-    {
-      key: 'business',
-      label: 'Type',
-      type: 'select',
-      value: businessFilter,
-      onChange: (value: string | boolean) => {
-        if (typeof value === 'string') {
-          onBusinessFilterChange(value);
-        }
-      },
-      options: [
-        { value: 'all', label: 'All Types' },
-        { value: 'business', label: 'Business' },
-        { value: 'individual', label: 'Individual' }
-      ]
-    }
-  ];
+    options: [
+      { value: 'all', label: 'All Quotes' },
+      { value: QuoteStatus.NEW_QUOTE, label: 'New Quotes' },
+      { value: QuoteStatus.WAITING_FOR_SUPPLIER, label: 'Waiting for Supplier' },
+      { value: QuoteStatus.QUOTE_SENT_TO_CUSTOMER, label: 'Sent to Customer' },
+      { value: QuoteStatus.ON_HOLD, label: 'On Hold' },
+      { value: QuoteStatus.QUOTE_CONVERTED_TO_ORDER, label: 'Converted to Order' },
+      { value: QuoteStatus.CANCELLED, label: 'Cancelled' }
+    ]
+  }
+];
 
   const actions: IActionConfig[] = [];
   

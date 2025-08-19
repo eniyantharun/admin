@@ -16,6 +16,7 @@ import { QuoteInformation } from './components/QuoteInformation';
 
 type FormStep = 'customer-address' | 'items' | 'quote' | 'notes';
 
+
 export const QuoteForm: React.FC<iQuoteFormProps> = ({
   quote,
   isEditing,
@@ -76,6 +77,9 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
 
   const steps: FormStep[] = ['customer-address', 'items', 'quote', 'notes'];
 
+  const { post } = useApi();
+
+
   const handleNextStep = () => {
     const currentIndex = steps.indexOf(currentStep);
     if (currentIndex < steps.length - 1) {
@@ -107,11 +111,24 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (validateForm()) {
-      await onSubmit(formData);
+  e.preventDefault();
+  if (validateForm()) {
+    // If editing and status changed, update quote status via API
+    if (isEditing && quote && formData.status !== quote.status) {
+      try {
+        await post('/Admin/SaleEditor/SetQuoteDetail', {
+          id: quote.id,
+          status: formData.status
+        });
+      } catch (error) {
+        showToast.error('Failed to update quote status');
+        return;
+      }
     }
-  };
+    
+    await onSubmit(formData);
+  }
+};
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;

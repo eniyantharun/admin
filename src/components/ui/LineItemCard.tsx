@@ -211,8 +211,8 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
     }
   };
 
-  const customerTotal = formData.quantity * formData.customerPricePerQuantity + formData.customerSetupCharge;
-  const supplierTotal = formData.quantity * formData.supplierPricePerQuantity + formData.supplierSetupCharge;
+  const customerTotal = (formData.quantity || 0) * (Number(formData.customerPricePerQuantity) || 0) + (Number(formData.customerSetupCharge) || 0);
+  const supplierTotal = (formData.quantity || 0) * (Number(formData.supplierPricePerQuantity) || 0) + (Number(formData.supplierSetupCharge) || 0);
   const profit = customerTotal - supplierTotal;
 
   const productId = formData.selectedProduct?.id || formData.productItemNumber;
@@ -259,8 +259,8 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
                   )}
                 </div>
                 <div className="flex items-center gap-3 text-xs text-gray-600">
-                  <span>Qty: <span className="font-medium">{formData.quantity}</span></span>
-                  <span>@<span className="font-medium">${formData?.customerPricePerQuantity?.toFixed(2)}</span></span>
+                  <span>Qty: <span className="font-medium">{formData.quantity || 0}</span></span>
+                  <span>@<span className="font-medium">${(Number(formData?.customerPricePerQuantity) || 0).toFixed(2)}</span></span>
                   <span className="font-medium text-green-600">${customerTotal.toFixed(2)}</span>
                   {profit > 0 && (
                     <span className="text-orange-600">Profit: ${profit.toFixed(2)}</span>
@@ -392,7 +392,7 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
               label="Quantity"
               name="quantity"
               type="number"
-              value={formData.quantity.toString()}
+              value={(formData.quantity || 1).toString()}
               onChange={(e) => {
                 const newQuantity = parseInt(e.target.value) || 1;
                 handleInputChange('quantity', newQuantity);
@@ -411,7 +411,8 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
               label="Customer Unit Price"
               name="customerPricePerQuantity"
               type="number"
-              value={formData?.customerPricePerQuantity?.toString()}
+              value={(Number(formData?.customerPricePerQuantity) || 0).toString()}
+
               onChange={(e) => {
                 const newPrice = parseFloat(e.target.value) || 0;
                 handleInputChange('customerPricePerQuantity', newPrice);
@@ -426,7 +427,7 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
               label="Customer Setup"
               name="customerSetupCharge"
               type="number"
-              value={formData.customerSetupCharge.toString()}
+              value={(Number(formData.customerSetupCharge) || 0).toString()}
               onChange={(e) => {
                 const newSetup = parseFloat(e.target.value) || 0;
                 handleInputChange('customerSetupCharge', newSetup);
@@ -441,7 +442,7 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
               label="Supplier Unit Price"
               name="supplierPricePerQuantity"
               type="number"
-              value={formData.supplierPricePerQuantity.toString()}
+              value={(Number(formData.supplierPricePerQuantity) || 0).toString()}
               onChange={(e) => {
                 const newPrice = parseFloat(e.target.value) || 0;
                 handleInputChange('supplierPricePerQuantity', newPrice);
@@ -456,7 +457,7 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
               label="Supplier Setup"
               name="supplierSetupCharge"
               type="number"
-              value={formData.supplierSetupCharge.toString()}
+              value={(Number(formData.supplierSetupCharge) || 0).toString()}
               onChange={(e) => {
                 const newSetup = parseFloat(e.target.value) || 0;
                 handleInputChange('supplierSetupCharge', newSetup);

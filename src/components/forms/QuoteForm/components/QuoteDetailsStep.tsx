@@ -2,6 +2,7 @@ import React from 'react';
 import { FormInput } from '@/components/helpers/FormInput';
 import { Card } from '@/components/ui/Card';
 import { iQuoteFormData, SaleSummary } from '@/types/quotes';
+import { QuoteStatus } from '@/lib/enums';
 
 interface QuoteDetailsStepProps {
   formData: iQuoteFormData;
@@ -27,9 +28,13 @@ export const QuoteDetailsStep: React.FC<QuoteDetailsStepProps> = ({
             onChange={handleInputChange}
             className="form-input w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
           >
-            <option value="new-quote">New Quote</option>
-            <option value="quote-sent-to-customer">Quote Sent to Customer</option>
-            <option value="quote-converted-to-order">Quote Converted to Order</option>
+            <option value={QuoteStatus.NEW_QUOTE}>New Quote</option>
+            <option value={QuoteStatus.WAITING_FOR_SUPPLIER}>Waiting for Supplier</option>
+            <option value={QuoteStatus.QUOTE_SENT_TO_CUSTOMER}>Quote Sent to Customer</option>
+            <option value={QuoteStatus.ON_HOLD}>On Hold</option>
+            <option value={QuoteStatus.QUOTE_CONVERTED_TO_ORDER}>Quote Converted to Order</option>
+            <option value={QuoteStatus.CONVERTED_TO_ORDER_BY_CUSTOMER}>Converted to Order by Customer</option>
+            <option value={QuoteStatus.CANCELLED}>Cancelled</option>
           </select>
         </div>
 

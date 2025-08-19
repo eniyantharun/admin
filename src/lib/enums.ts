@@ -18,7 +18,6 @@ export enum OrderStatus {
 }
 
 export enum QuoteStatus {
-  IS_ORDER = 'IsOrder',
   NEW_QUOTE = 'NewQuote',
   WAITING_FOR_SUPPLIER = 'WaitingForSupplier',
   QUOTE_SENT_TO_CUSTOMER = 'QuoteSentToCustomer',
