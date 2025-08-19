@@ -196,7 +196,7 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
         }
       };
 
-      await post('https://api.promowe.com/Admin/SaleEditor/SetLineItemDetail', payload);
+      await post('/Admin/SaleEditor/SetLineItemDetail', payload);
       onUpdate(item.id, formData);
       setHasUnsavedChanges(false);
       
@@ -260,7 +260,7 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
                 </div>
                 <div className="flex items-center gap-3 text-xs text-gray-600">
                   <span>Qty: <span className="font-medium">{formData.quantity}</span></span>
-                  <span>@<span className="font-medium">${formData.customerPricePerQuantity.toFixed(2)}</span></span>
+                  <span>@<span className="font-medium">${formData?.customerPricePerQuantity?.toFixed(2)}</span></span>
                   <span className="font-medium text-green-600">${customerTotal.toFixed(2)}</span>
                   {profit > 0 && (
                     <span className="text-orange-600">Profit: ${profit.toFixed(2)}</span>
@@ -411,7 +411,7 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
               label="Customer Unit Price"
               name="customerPricePerQuantity"
               type="number"
-              value={formData.customerPricePerQuantity.toString()}
+              value={formData?.customerPricePerQuantity?.toString()}
               onChange={(e) => {
                 const newPrice = parseFloat(e.target.value) || 0;
                 handleInputChange('customerPricePerQuantity', newPrice);

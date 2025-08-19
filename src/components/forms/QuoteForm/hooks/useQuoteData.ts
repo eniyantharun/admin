@@ -60,7 +60,7 @@ export const useQuoteData = (
   const fetchQuoteDetails = async (quoteId: number) => {
     setIsLoadingLineItems(true);
     try {
-      const response = await get(`https://api.promowe.com/Admin/SaleEditor/GetQuoteDetail?id=${quoteId}`) as QuoteDetailsResponse;
+      const response = await get(`/Admin/SaleEditor/GetQuoteDetail?id=${quoteId}`) as QuoteDetailsResponse;
       
       if (response?.quote?.sale) {
         setQuoteDetails(response);
@@ -176,7 +176,7 @@ export const useQuoteData = (
     if (!currentSaleId) return;
     
     try {
-      const response = await post(`https://api.promowe.com/Admin/SaleEditor/GetSaleSummary?saleId=${currentSaleId}`);
+      const response = await post(`/Admin/SaleEditor/GetSaleSummary?saleId=${currentSaleId}`);
       if (response) {
         setSaleSummary(response);
         setFormData(prev => ({
@@ -197,7 +197,7 @@ export const useQuoteData = (
     }
 
     try {
-      const response = await post('https://api.promowe.com/Admin/SaleEditor/AddEmptyLineItem', {
+      const response = await post('/Admin/SaleEditor/AddEmptyLineItem', {
         saleId: currentSaleId
       });
       
@@ -225,7 +225,7 @@ export const useQuoteData = (
     }
 
     try {
-      const response = await post('https://api.promowe.com/Admin/SaleEditor/RemoveLineItems', {
+      const response = await post('/Admin/SaleEditor/RemoveLineItems', {
         saleId: currentSaleId,
         lineItemIds: [itemId]
       });
