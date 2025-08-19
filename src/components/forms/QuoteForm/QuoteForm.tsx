@@ -186,6 +186,8 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
             formData={formData}
             handleInputChange={handleInputChange}
             saleSummary={saleSummary}
+            quoteId={quote?.id}
+            isEditing={isEditing}
           />
         );
       case 'notes':

@@ -559,7 +559,7 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
                 loading={loading}
                 icon={Save}
                 size="sm"
-                className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+                className="hover:to-indigo-700"
               >
                 Save Changes
               </Button>
