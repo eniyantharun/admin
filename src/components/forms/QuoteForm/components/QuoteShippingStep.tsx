@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Truck, DollarSign, Calendar, Hash } from 'lucide-react';
+import React, { useState, useCallback } from 'react';
+import { Truck, DollarSign, Calendar, Hash, Search, X } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { FormInput } from '@/components/helpers/FormInput';
 import { useApi } from '@/hooks/useApi';
@@ -18,100 +18,178 @@ interface QuoteShippingStepProps {
   formData: iQuoteFormData;
   handleInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
   saleSummary: SaleSummary | null;
+  currentSaleId?: string; // Add saleId prop
+  onRefreshSummary?: () => void; // Add refresh summary callback
 }
 
 export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
   formData,
   handleInputChange,
-  saleSummary
+  saleSummary,
+  currentSaleId,
+  onRefreshSummary
 }) => {
   const [shippingCompanies, setShippingCompanies] = useState<ShippingCompany[]>([]);
   const [shippingTypes, setShippingTypes] = useState<ShippingType[]>([]);
   const [loadingCompanies, setLoadingCompanies] = useState(false);
   const [loadingTypes, setLoadingTypes] = useState(false);
+  const [companiesLoaded, setCompaniesLoaded] = useState(false);
+  const [typesLoaded, setTypesLoaded] = useState(false);
+  const [showTypeSearch, setShowTypeSearch] = useState(false);
+  const [typeSearchTerm, setTypeSearchTerm] = useState('');
 
-  const { get } = useApi({
+  const { get, post } = useApi({
     cancelOnUnmount: true,
-    dedupe: true,
-    cacheDuration: 300000, // 5 minutes cache
+    dedupe: false, // Don't dedupe to ensure fresh data
+    cacheDuration: 0, // No caching to ensure fresh API calls
   });
 
-  // Fetch shipping companies
-  useEffect(() => {
-    const fetchShippingCompanies = async () => {
-      setLoadingCompanies(true);
-      try {
-        const response = await get('https://api.promowe.com/Admin/SaleEditor/GetShippingCompanies');
-        if (response?.companies) {
-          const companies = response.companies.map((name: string) => ({ name }));
-          setShippingCompanies(companies);
-        }
-      } catch (error: any) {
-        if (error?.name !== 'CanceledError') {
-          showToast.error('Failed to load shipping companies');
-        }
-      } finally {
-        setLoadingCompanies(false);
+  // Fetch shipping companies when dropdown is clicked
+  const handleCompaniesDropdownClick = useCallback(async () => {
+    if (companiesLoaded || loadingCompanies) return; // Prevent multiple calls
+    
+    setLoadingCompanies(true);
+    try {
+      const response = await get('https://api.promowe.com/Admin/SaleEditor/GetShippingCompanies');
+      console.log('Shipping companies response:', response);
+      if (response?.companies) {
+        const companies = response.companies.map((name: string) => ({ name }));
+        setShippingCompanies(companies);
+        setCompaniesLoaded(true);
       }
-    };
+    } catch (error: any) {
+      console.error('Error fetching shipping companies:', error);
+      if (error?.name !== 'CanceledError') {
+        showToast.error('Failed to load shipping companies');
+      }
+    } finally {
+      setLoadingCompanies(false);
+    }
+  }, [get, companiesLoaded, loadingCompanies]);
 
-    fetchShippingCompanies();
+  // Fetch shipping types with optional prefix
+  const fetchShippingTypes = useCallback(async (prefix: string = '') => {
+    setLoadingTypes(true);
+    try {
+      const response = await get(`https://api.promowe.com/Admin/SaleEditor/GetShippingTypes?prefix=${encodeURIComponent(prefix)}&count=50`);
+      console.log('Shipping types response with prefix:', prefix, response);
+      if (response?.types) {
+        const types = response.types.map((name: string) => ({ name }));
+        setShippingTypes(types);
+        if (!prefix) {
+          setTypesLoaded(true); // Only mark as loaded for initial load
+        }
+      }
+    } catch (error: any) {
+      console.error('Error fetching shipping types:', error);
+      if (error?.name !== 'CanceledError') {
+        showToast.error('Failed to load shipping types');
+      }
+    } finally {
+      setLoadingTypes(false);
+    }
   }, [get]);
 
-  // Fetch shipping types when company changes
-  useEffect(() => {
-    const fetchShippingTypes = async () => {
-      if (!formData.shippingDetails?.company) {
-        setShippingTypes([]);
-        return;
+  // Fetch shipping types when dropdown is clicked (initial load)
+  const handleTypesDropdownClick = useCallback(async () => {
+    if (typesLoaded || loadingTypes) return;
+    await fetchShippingTypes(''); // Load all types initially
+  }, [fetchShippingTypes, typesLoaded, loadingTypes]);
+
+  // Handle search input changes with debouncing
+  const handleTypeSearch = useCallback((searchTerm: string) => {
+    setTypeSearchTerm(searchTerm);
+    // Debounce the API call
+    const timeoutId = setTimeout(() => {
+      fetchShippingTypes(searchTerm);
+    }, 300);
+    
+    return () => clearTimeout(timeoutId);
+  }, [fetchShippingTypes]);
+
+  // Update sale detail and refresh summary
+  const updateSaleDetail = useCallback(async (shippingDetails: any, checkoutDetails: any) => {
+    if (!currentSaleId) {
+      console.warn('No saleId available for updating sale details');
+      return;
+    }
+
+    try {
+      console.log('Updating sale detail with:', { saleId: currentSaleId, shippingDetails, checkoutDetails });
+      
+      // Prepare the payload for SetSaleDetail API
+      const payload = {
+        saleId: currentSaleId,
+        shippingDetails: {
+          shippingCompany: shippingDetails?.company || '',
+          shippingType: shippingDetails?.type || '',
+          shippingCost: parseFloat(shippingDetails?.cost?.toString() || '0'),
+          shippingDate: shippingDetails?.date || null,
+          shippingTrackingNumber: shippingDetails?.trackingNumber || null
+        },
+        checkoutDetails: {
+          dateOrderNeededBy: checkoutDetails?.inHandDate || '',
+          additionalInstructions: checkoutDetails?.additionalInstructions || null
+        }
+      };
+
+      // Call SetSaleDetail API
+      const setSaleResponse = await post('/Admin/SaleEditor/SetSaleDetail', payload);
+      console.log('SetSaleDetail response:', setSaleResponse);
+
+      // Call GetSaleSummary API to refresh the summary
+      const summaryResponse = await post(`/Admin/SaleEditor/GetSaleSummary?saleId=${currentSaleId}`);
+      console.log('GetSaleSummary response:', summaryResponse);
+
+      // Trigger the parent component's refresh callback if available
+      if (onRefreshSummary) {
+        onRefreshSummary();
       }
 
-      setLoadingTypes(true);
-      try {
-        const response = await get(`https://api.promowe.com/Admin/SaleEditor/GetShippingTypes?prefix=${formData.shippingDetails.company}&count=20`);
-        if (response?.types) {
-          const types = response.types.map((name: string) => ({ name }));
-          setShippingTypes(types);
-        }
-      } catch (error: any) {
-        if (error?.name !== 'CanceledError') {
-          showToast.error('Failed to load shipping types');
-        }
-      } finally {
-        setLoadingTypes(false);
+      showToast.success('Shipping details updated successfully');
+    } catch (error: any) {
+      console.error('Error updating sale details:', error);
+      if (error?.name !== 'CanceledError') {
+        showToast.error('Failed to update shipping details');
       }
-    };
-
-    fetchShippingTypes();
-  }, [formData.shippingDetails?.company, get]);
-
-  const handleShippingChange = (field: string, value: string) => {
+    }
+  }, [currentSaleId, post, onRefreshSummary]);
+  // Stable handlers to prevent infinite re-renders
+  const handleShippingChange = useCallback(async (field: string, value: string) => {
     const updatedShippingDetails = {
       ...formData.shippingDetails,
       [field]: value
     };
     
+    // Update local state first
     handleInputChange({
       target: { 
         name: 'shippingDetails', 
         value: updatedShippingDetails 
       }
     } as any);
-  };
 
-  const handleCheckoutChange = (field: string, value: string) => {
+    // Update sale detail in backend
+    await updateSaleDetail(updatedShippingDetails, formData.checkoutDetails);
+  }, [formData.shippingDetails, formData.checkoutDetails, handleInputChange, updateSaleDetail]);
+
+  const handleCheckoutChange = useCallback(async (field: string, value: string) => {
     const updatedCheckoutDetails = {
       ...formData.checkoutDetails,
       [field]: value
     };
     
+    // Update local state first
     handleInputChange({
       target: { 
         name: 'checkoutDetails', 
         value: updatedCheckoutDetails 
       }
     } as any);
-  };
+
+    // Update sale detail in backend
+    await updateSaleDetail(formData.shippingDetails, updatedCheckoutDetails);
+  }, [formData.checkoutDetails, formData.shippingDetails, handleInputChange, updateSaleDetail]);
 
   return (
     <div className="space-y-6">
@@ -131,23 +209,6 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
             onChange={(e) => handleCheckoutChange('inHandDate', e.target.value)}
             helpText="When does the customer need this order?"
           />
-          
-          <div className="form-input-group">
-            <label className="form-label block text-xs font-medium text-gray-700 mb-1">
-              Payment Method
-            </label>
-            <select
-              value={formData.checkoutDetails?.paymentMethod || 'Credit Card'}
-              onChange={(e) => handleCheckoutChange('paymentMethod', e.target.value)}
-              className="form-input w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-            >
-              <option value="Credit Card">Credit Card</option>
-              <option value="Cheque">Cheque</option>
-              <option value="Company Payment Order">Company Payment Order</option>
-              <option value="Wire Transfer">Wire Transfer</option>
-              <option value="Net Terms">Net Terms</option>
-            </select>
-          </div>
         </div>
 
         <div className="mt-4">
@@ -181,10 +242,14 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
             <select
               value={formData.shippingDetails?.company || ''}
               onChange={(e) => handleShippingChange('company', e.target.value)}
+              onFocus={handleCompaniesDropdownClick}
+              onClick={handleCompaniesDropdownClick}
               disabled={loadingCompanies}
               className="form-input w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 disabled:bg-gray-100"
             >
-              <option value="">Select shipping company</option>
+              <option value="">
+                {loadingCompanies ? 'Loading companies...' : 'Select shipping company'}
+              </option>
               {shippingCompanies.map((company) => (
                 <option key={company.name} value={company.name}>
                   {company.name}
@@ -200,25 +265,86 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
             <label className="form-label block text-xs font-medium text-gray-700 mb-1">
               Shipping Type
             </label>
-            <select
-              value={formData.shippingDetails?.type || ''}
-              onChange={(e) => handleShippingChange('type', e.target.value)}
-              disabled={loadingTypes || !formData.shippingDetails?.company}
-              className="form-input w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 disabled:bg-gray-100"
-            >
-              <option value="">Select shipping type</option>
-              {shippingTypes.map((type) => (
-                <option key={type.name} value={type.name}>
-                  {type.name}
-                </option>
-              ))}
-            </select>
+            
+            <div className="space-y-2">
+              {/* Search Input */}
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search shipping types (e.g., Ground, Air, Sea, Express)..."
+                  value={typeSearchTerm}
+                  onChange={(e) => handleTypeSearch(e.target.value)}
+                  onFocus={() => {
+                    setShowTypeSearch(true);
+                    handleTypesDropdownClick();
+                  }}
+                  className="form-input w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
+                />
+                <div className="absolute right-3 top-2.5 flex items-center gap-1">
+                  {typeSearchTerm && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTypeSearchTerm('');
+                        fetchShippingTypes('');
+                      }}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                  <Search className="w-4 h-4 text-gray-400" />
+                </div>
+              </div>
+
+              {/* Dropdown Results */}
+              {showTypeSearch && (
+                <div className="relative">
+                  <select
+                    value={formData.shippingDetails?.type || ''}
+                    onChange={(e) => {
+                      handleShippingChange('type', e.target.value);
+                      if (e.target.value) {
+                        setShowTypeSearch(false);
+                        setTypeSearchTerm(e.target.value);
+                      }
+                    }}
+                    disabled={loadingTypes}
+                    className="form-input w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 disabled:bg-gray-100"
+                    size={Math.min(shippingTypes.length + 1, 8)}
+                  >
+                    <option value="">
+                      {loadingTypes ? 'Searching...' : 'Select from results'}
+                    </option>
+                    {shippingTypes.map((type) => (
+                      <option key={type.name} value={type.name}>
+                        {type.name}
+                      </option>
+                    ))}
+                  </select>
+                  
+                  {/* Close search results */}
+                  <button
+                    type="button"
+                    onClick={() => setShowTypeSearch(false)}
+                    className="mt-1 text-xs text-gray-500 hover:text-gray-700"
+                  >
+                    Close results
+                  </button>
+                </div>
+              )}
+              
+            </div>
+
             {loadingTypes && (
-              <p className="text-xs text-gray-500 mt-1">Loading types...</p>
+              <p className="text-xs text-gray-500 mt-1">
+                {typeSearchTerm ? `Searching for "${typeSearchTerm}"...` : 'Loading types...'}
+              </p>
             )}
-            {!formData.shippingDetails?.company && (
-              <p className="text-xs text-gray-500 mt-1">Select a company first</p>
-            )}
+            
+            <p className="text-xs text-gray-500 mt-1">
+              Search for specific shipping methods or browse all available options
+            </p>
           </div>
         </div>
 
