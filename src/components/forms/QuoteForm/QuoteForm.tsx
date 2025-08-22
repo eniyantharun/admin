@@ -203,29 +203,29 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
         />
       );
       case 'notes':
-          const notesId = quoteDetails?.quote?.sale?.notesId;
-  console.log('Notes documentId:', notesId);
-  console.log('QuoteForm quoteDetails check:', {
-  hasQuoteDetails: !!quoteDetails,
-  quoteId: quoteDetails?.quote?.id,
-  saleId: quoteDetails?.quote?.sale?.saleId,
-  notesId: quoteDetails?.quote?.sale?.notesId,
-  fullPath: quoteDetails?.quote?.sale
-});
+  // Based on the API response, the correct path is:
+  const notesId = quoteDetails?.quote?.sale?.notesId;
+  
+  // Add debugging to confirm we're getting the right value
+  console.log('QuoteForm notes step debugging:', {
+    hasQuoteDetails: !!quoteDetails,
+    quoteId: quoteDetails?.quote?.id,
+    saleId: quoteDetails?.quote?.saleId,
+    notesId: notesId,
+    fullSaleObject: quoteDetails?.quote?.sale
+  });
 
-        return (
-          
-          
-          <QuoteNotesStep
-            formData={formData}
-            handleInputChange={handleInputChange}
-            saleSummary={saleSummary}
-            lineItems={lineItems}
-            isEditing={isEditing}
-            currentSaleId={currentSaleId}
-      documentId={notesId}
-          />
-        );
+  return (
+    <QuoteNotesStep
+      formData={formData}
+      handleInputChange={handleInputChange}
+      saleSummary={saleSummary}
+      lineItems={lineItems}
+      isEditing={isEditing}
+      currentSaleId={currentSaleId}
+      documentId={notesId} // This should now be "04fecc53-846c-470d-bd90-b84f1b820cc2"
+    />
+  );
       default:
         return null;
     }

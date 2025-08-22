@@ -55,13 +55,13 @@ export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
   const lastSaveAttemptRef = useRef<string>('');
 
   // Debug logging
-  console.log('QuoteNotesStep rendered with:', {
-    documentId,
-    hasFormDataNotes: !!formData.notes,
-    notesLength: formData.notes?.length || 0,
-    isEditing,
-    currentSaleId
-  });
+  console.log('QuoteNotesStep received documentId:', {
+  documentId,
+  documentIdType: typeof documentId,
+  isNull: documentId === null,
+  isUndefined: documentId === undefined,
+  hasValue: !!documentId
+});
 
   const { post } = useApi({
     cancelOnUnmount: false,
