@@ -209,6 +209,7 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
             saleSummary={saleSummary}
             lineItems={lineItems}
             isEditing={isEditing}
+            currentSaleId={currentSaleId}
           />
         );
       default:

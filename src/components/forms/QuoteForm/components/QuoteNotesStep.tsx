@@ -1,8 +1,9 @@
-import React from 'react';
-import { FileText, Send } from 'lucide-react';
+import React, { useState } from 'react';
+import { FileText, Send, Download, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { showToast } from '@/components/ui/toast';
+import { generateInvoicePDF, downloadPDF, openPDFInNewTab, InvoiceResponse } from '@/lib/pdfUtils';
 import { iQuoteFormData, SaleSummary, LineItemData } from '@/types/quotes';
 
 interface QuoteNotesStepProps {
@@ -11,6 +12,7 @@ interface QuoteNotesStepProps {
   saleSummary: SaleSummary | null;
   lineItems: LineItemData[];
   isEditing: boolean;
+  currentSaleId?: string; // Add this prop to the existing interface
 }
 
 export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
@@ -18,8 +20,55 @@ export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
   handleInputChange,
   saleSummary,
   lineItems,
-  isEditing
+  isEditing,
+  currentSaleId
 }) => {
+  const [generatingPDF, setGeneratingPDF] = useState(false);
+  const [lastGeneratedInvoice, setLastGeneratedInvoice] = useState<InvoiceResponse | null>(null);
+
+  const handleGeneratePDF = async () => {
+    if (!currentSaleId) {
+      showToast.error('No sale ID available. Please save the quote first.');
+      return;
+    }
+
+    if (!isEditing) {
+      showToast.error('Please save the quote before generating PDF');
+      return;
+    }
+
+    setGeneratingPDF(true);
+    
+    try {
+      const invoiceResponse = await generateInvoicePDF(currentSaleId);
+      
+      if (invoiceResponse) {
+        setLastGeneratedInvoice(invoiceResponse);
+        
+        // Optionally auto-download the PDF
+        if (invoiceResponse.asset.url) {
+          await downloadPDF(invoiceResponse.asset.url, invoiceResponse.asset.filename);
+        }
+      }
+    } catch (error) {
+      console.error('PDF generation failed:', error);
+    } finally {
+      setGeneratingPDF(false);
+    }
+  };
+
+  const handleDownloadLastPDF = async () => {
+    if (lastGeneratedInvoice?.asset.url) {
+      await downloadPDF(lastGeneratedInvoice.asset.url, lastGeneratedInvoice.asset.filename);
+    }
+  };
+
+  const handleViewPDF = () => {
+    if (lastGeneratedInvoice?.asset.url) {
+      openPDFInNewTab(lastGeneratedInvoice.asset.url);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="form-input-group">
@@ -91,17 +140,82 @@ export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
         </Card>
       )}
 
+      {/* PDF Generation Section */}
+      {isEditing && currentSaleId && (
+        <Card className="p-4 bg-gray-50 border-gray-200">
+          <h5 className="font-medium text-gray-800 mb-3 text-sm">Invoice Generation</h5>
+          
+          <div className="space-y-3">
+            {/* Generate PDF Button */}
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-700 font-medium">Generate PDF Invoice</p>
+                <p className="text-xs text-gray-500">Create a downloadable PDF invoice for this quote</p>
+              </div>
+              <Button
+                onClick={handleGeneratePDF}
+                loading={generatingPDF}
+                variant="secondary"
+                size="sm"
+                icon={FileText}
+                disabled={!currentSaleId || generatingPDF}
+                className="bg-white border-gray-300 hover:bg-gray-50"
+              >
+                {generatingPDF ? 'Generating...' : 'Generate PDF'}
+              </Button>
+            </div>
+
+            {/* Last Generated Invoice Actions */}
+            {lastGeneratedInvoice && (
+              <div className="border-t pt-3">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <p className="text-sm text-green-700 font-medium">
+                      Invoice #{lastGeneratedInvoice.invoice.number} Generated
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Generated: {new Date(lastGeneratedInvoice.invoice.generatedAt).toLocaleString()}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      File: {lastGeneratedInvoice.asset.filename} ({(lastGeneratedInvoice.asset.size / 1024).toFixed(1)} KB)
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleDownloadLastPDF}
+                    variant="secondary"
+                    size="sm"
+                    icon={Download}
+                    className="bg-white border-gray-300 hover:bg-gray-50"
+                  >
+                    Download
+                  </Button>
+                  <Button
+                    onClick={handleViewPDF}
+                    variant="secondary"
+                    size="sm"
+                    icon={ExternalLink}
+                    className="bg-white border-gray-300 hover:bg-gray-50"
+                  >
+                    View
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Sale ID Info */}
+            <div className="text-xs text-gray-500 pt-2 border-t">
+              <span>Sale ID: {currentSaleId}</span>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* Action Buttons */}
       {isEditing && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Button
-            onClick={() => showToast.success('PDF generated successfully')}
-            variant="secondary"
-            size="sm"
-            icon={FileText}
-            className="w-full"
-          >
-            Generate PDF
-          </Button>
           <Button
             onClick={() => showToast.success('Quote sent successfully to ' + formData.customerEmail)}
             variant="primary"
