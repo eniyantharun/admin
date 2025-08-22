@@ -15,6 +15,7 @@ import { QuoteNotesStep } from './components/QuoteNotesStep';
 import { QuoteInformation } from './components/QuoteInformation';
 import { QuoteShippingStep } from './components/QuoteShippingStep';
 
+
 type FormStep = 'customer-address' | 'items' | 'quote' | 'shipping' | 'notes';
 
 
@@ -202,7 +203,19 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
         />
       );
       case 'notes':
+          const notesId = quoteDetails?.quote?.sale?.notesId;
+  console.log('Notes documentId:', notesId);
+  console.log('QuoteForm quoteDetails check:', {
+  hasQuoteDetails: !!quoteDetails,
+  quoteId: quoteDetails?.quote?.id,
+  saleId: quoteDetails?.quote?.sale?.saleId,
+  notesId: quoteDetails?.quote?.sale?.notesId,
+  fullPath: quoteDetails?.quote?.sale
+});
+
         return (
+          
+          
           <QuoteNotesStep
             formData={formData}
             handleInputChange={handleInputChange}
@@ -210,6 +223,7 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
             lineItems={lineItems}
             isEditing={isEditing}
             currentSaleId={currentSaleId}
+      documentId={notesId}
           />
         );
       default:

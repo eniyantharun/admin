@@ -31,7 +31,7 @@ interface QuoteNotesStepProps {
   lineItems: LineItemData[];
   isEditing: boolean;
   currentSaleId?: string;
-  documentId?: string; // Document ID for the notes
+  documentId?: string | null; // Allow null to match API response types
 }
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error' | 'offline';
@@ -43,7 +43,7 @@ export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
   lineItems,
   isEditing,
   currentSaleId,
-  documentId = "04fecc53-846c-470d-bd90-b84f1b820cc2" // Default or passed document ID
+  documentId // Required document ID from parent component
 }) => {
   const [generatingPDF, setGeneratingPDF] = useState(false);
   const [lastGeneratedInvoice, setLastGeneratedInvoice] = useState<InvoiceResponse | null>(null);
@@ -53,6 +53,15 @@ export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
   const [lastSavedContent, setLastSavedContent] = useState<string>('');
   const saveTimeoutRef = useRef<NodeJS.Timeout>();
   const lastSaveAttemptRef = useRef<string>('');
+
+  // Debug logging
+  console.log('QuoteNotesStep rendered with:', {
+    documentId,
+    hasFormDataNotes: !!formData.notes,
+    notesLength: formData.notes?.length || 0,
+    isEditing,
+    currentSaleId
+  });
 
   const { post } = useApi({
     cancelOnUnmount: false,
@@ -82,6 +91,13 @@ export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
 
   // Save function
   const saveNotesToAPI = useCallback(async (content: string) => {
+    // Don't attempt to save if no documentId is provided or is null
+    if (!documentId) {
+      console.warn('No documentId provided (null/undefined) - notes will not be saved to API');
+      setSaveStatus('idle'); // Don't show error for missing documentId
+      return;
+    }
+
     if (!isOnline) {
       setSaveStatus('offline');
       return;
@@ -104,8 +120,14 @@ export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
         content: documentContent
       };
 
-      console.log('Saving notes to API:', requestPayload);
+      console.log('Saving notes to API:', {
+        url: '/Admin/Document/AddDocumentRevision',
+        documentId,
+        contentPreview: content.substring(0, 100) + '...',
+        payload: requestPayload
+      });
 
+      // Use the relative URL (let the API client handle base URL)
       const response = await post<AddDocumentRevisionResponse>(
         '/Admin/Document/AddDocumentRevision',
         requestPayload
@@ -123,11 +145,18 @@ export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
       }
     } catch (error: any) {
       console.error('Error saving notes:', error);
+      console.error('Error details:', {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data
+      });
+      
       setSaveStatus('error');
       
       // Show error toast only for non-network errors
       if (!error.message?.includes('NetworkError') && !error.message?.includes('fetch')) {
-        showToast.error('Failed to save notes. Changes will be retried.');
+        showToast.error(`Failed to save notes: ${error.response?.status || error.message}`);
       }
       
       // Reset to idle after showing error status
@@ -177,6 +206,14 @@ export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
   ];
 
   const handleQuillChange = useCallback((content: string) => {
+    console.log('Quill content changed:', {
+      contentLength: content.length,
+      contentPreview: content.substring(0, 100),
+      documentId,
+      lastSavedContent: lastSavedContent.substring(0, 50),
+      willTriggerSave: !!(documentId && content !== lastSavedContent && content.trim() !== '')
+    });
+
     // Update local state immediately
     const syntheticEvent = {
       target: {
@@ -187,18 +224,25 @@ export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
     
     handleInputChange(syntheticEvent);
 
-    // Only save if content has actually changed and we're online
-    if (content !== lastSavedContent && content.trim() !== '') {
+    // Only save to API if documentId is available and content has changed
+    if (documentId && content !== lastSavedContent && content.trim() !== '') {
+      console.log('Triggering debounced save...');
       debouncedSave(content);
+    } else {
+      console.log('Save not triggered:', {
+        hasDocumentId: !!documentId,
+        contentChanged: content !== lastSavedContent,
+        contentNotEmpty: content.trim() !== ''
+      });
     }
-  }, [handleInputChange, debouncedSave, lastSavedContent]);
+  }, [handleInputChange, debouncedSave, lastSavedContent, documentId]);
 
   // Force save function for manual saves
   const forceSave = useCallback(() => {
-    if (formData.notes && formData.notes !== lastSavedContent) {
+    if (documentId && formData.notes && formData.notes !== lastSavedContent) {
       saveNotesToAPI(formData.notes);
     }
-  }, [formData.notes, saveNotesToAPI, lastSavedContent]);
+  }, [formData.notes, saveNotesToAPI, lastSavedContent, documentId]);
 
   // Retry save when coming back online
   useEffect(() => {
@@ -309,6 +353,70 @@ export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
 
   return (
     <div className="space-y-4">
+      {/* Debug Info Panel - Remove in production */}
+      {process.env.NODE_ENV === 'development' && (
+        <Card className="p-3 mb-4 bg-yellow-50 border-yellow-200">
+          <h4 className="font-medium text-yellow-800 text-sm mb-2">Debug Info</h4>
+          <div className="space-y-1 text-xs text-yellow-700">
+            <div>Document ID: {documentId === null ? 'null' : documentId === undefined ? 'undefined' : documentId}</div>
+            <div>Save Status: {saveStatus}</div>
+            <div>Online: {isOnline ? 'Yes' : 'No'}</div>
+            <div>Content Length: {formData.notes?.length || 0}</div>
+            <div>Last Saved Length: {lastSavedContent.length}</div>
+            <div>API Saves: {documentId ? 'Enabled' : 'Disabled (no documentId)'}</div>
+            <Button
+              onClick={() => {
+                if (documentId && formData.notes) {
+                  console.log('Manual save triggered');
+                  saveNotesToAPI(formData.notes);
+                } else {
+                  console.log('Manual save failed:', { 
+                    documentId: documentId === null ? 'null' : documentId === undefined ? 'undefined' : documentId,
+                    hasNotes: !!formData.notes 
+                  });
+                  showToast.error('Cannot save: No document ID available');
+                }
+              }}
+              size="sm"
+              variant="secondary"
+              className="mt-2"
+              disabled={!documentId}
+            >
+              Test Manual Save
+            </Button>
+            
+            {/* Add button to create/get document ID */}
+            {!documentId && (
+              <Button
+                onClick={async () => {
+                  showToast.info('Creating document for notes...');
+                  // This would call an API to create a new document
+                  // For now, just show what would happen
+                  console.log('Would create new document for sale:', currentSaleId);
+                }}
+                size="sm"
+                variant="primary"
+                className="mt-2"
+              >
+                Create Notes Document
+              </Button>
+            )}
+          </div>
+        </Card>
+      )}
+
+      {/* API Status Warning */}
+      {!documentId && (
+        <Card className="p-3 mb-4 bg-orange-50 border-orange-200">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-orange-600" />
+            <p className="text-orange-700 text-sm">
+              No document ID available for this quote. Notes will be saved locally only.
+            </p>
+          </div>
+        </Card>
+      )}
+
       {/* Rich Text Editor for Notes */}
       <div className="form-input-group">
         <div className="flex items-center justify-between mb-2">
@@ -346,7 +454,10 @@ export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
         
         <div className="flex items-center justify-between mt-2">
           <p className="text-xs text-gray-500">
-            Changes are automatically saved • These notes will be visible to the customer
+            {documentId ? 
+              'Changes are automatically saved • These notes will be visible to the customer' : 
+              'Local changes only • Connect document ID to enable auto-save'
+            }
           </p>
           
           <Button
