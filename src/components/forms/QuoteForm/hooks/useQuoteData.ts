@@ -5,6 +5,35 @@ import { iCustomer, iCustomerAddress } from '@/types/customer';
 import { iQuote, iQuoteFormData, LineItemData, SaleSummary, QuoteDetailsResponse } from '@/types/quotes';
 import { documentFormatToHtml } from '@/lib/documentConverter';
 
+interface CreateQuoteResponse {
+  saleId: string;
+  id: number;
+}
+
+interface SetSaleDetailRequest {
+  saleId: string;
+  addresses: {
+    billing: {
+      addressLine: string;
+      city: string;
+      state: string;
+      addressLine2: string;
+      country: string;
+      name: string;
+      zipCode: string;
+    };
+    shipping?: {
+      addressLine: string;
+      city: string;
+      state: string;
+      addressLine2: string;
+      country: string;
+      name: string;
+      zipCode: string;
+    };
+  };
+}
+
 export const useQuoteData = (
   quote: iQuote | null | undefined,
   isEditing: boolean,
@@ -59,154 +88,148 @@ export const useQuoteData = (
   });
 
   const fetchQuoteDetails = async (quoteId: number) => {
-  setIsLoadingLineItems(true);
-  try {
-    const response = await get(`/Admin/SaleEditor/GetQuoteDetail?id=${quoteId}`) as QuoteDetailsResponse;
-    
-    if (response?.quote?.sale) {
-      // Set the quote details first
-      setQuoteDetails(response);
-      setCurrentSaleId(response.quote.saleId);
+    setIsLoadingLineItems(true);
+    try {
+      const response = await get(`/Admin/SaleEditor/GetQuoteDetail?id=${quoteId}`) as QuoteDetailsResponse;
       
-      // Log the notesId to confirm it's being received
-      console.log('Fetched quote details with notesId:', response.quote.sale.notesId);
-      
-      // Transform line items
-      if (response.quote.sale.lineItems && Array.isArray(response.quote.sale.lineItems)) {
-        const transformedItems = response.quote.sale.lineItems
-          .filter(item => item.form?.productName)
-          .map(transformApiLineItem);
+      if (response?.quote?.sale) {
+        setQuoteDetails(response);
+        setCurrentSaleId(response.quote.saleId);
         
-        setLineItems(transformedItems);
-      } else {
-        setLineItems([]);
+        console.log('Fetched quote details with notesId:', response.quote.sale.notesId);
+        
+        if (response.quote.sale.lineItems && Array.isArray(response.quote.sale.lineItems)) {
+          const transformedItems = response.quote.sale.lineItems
+            .filter(item => item.form?.productName)
+            .map(transformApiLineItem);
+          
+          setLineItems(transformedItems);
+        } else {
+          setLineItems([]);
+        }
+
+        const customerTotal = response.quote.sale.lineItems.reduce((sum, item) => sum + item.customerEstimates.total, 0);
+        const supplierTotal = response.quote.sale.lineItems.reduce((sum, item) => sum + item.supplierEstimates.total, 0);
+        const profit = customerTotal - supplierTotal;
+
+        setSaleSummary({
+          customerSummary: {
+            itemsTotal: customerTotal,
+            setupCharge: response.quote.sale.lineItems.reduce((sum, item) => sum + item.customerEstimates.setupCharge, 0),
+            subTotal: customerTotal,
+            total: customerTotal
+          },
+          totalSupplierSummary: {
+            itemsTotal: supplierTotal,
+            setupCharge: response.quote.sale.lineItems.reduce((sum, item) => sum + item.supplierEstimates.setupCharge, 0),
+            subTotal: supplierTotal,
+            total: supplierTotal
+          },
+          profit: profit
+        });
+
+        const latestComment = response.quote.sale.comments?.[0]?.comment || '';
+        
+        setFormData(prev => ({
+          ...prev,
+          customerTotal: customerTotal.toString(),
+          inHandDate: response.quote.sale.dates.inHandDate || '',
+          notes: latestComment,
+        }));
+
+        // Set customer data
+        const customer = response.quote.sale.customer;
+        const customerData: iCustomer = {
+          id: customer.id,
+          idNum: customer.idNum,
+          firstName: customer.form.firstName,
+          lastName: customer.form.lastName,
+          email: customer.form.email,
+          phone: customer.form.phoneNumber || '',
+          website: customer.website,
+          companyName: customer.form.companyName || '',
+          isBlocked: false,
+          isBusinessCustomer: !!customer.form.companyName,
+          createdAt: customer.createdAt,
+        };
+        setSelectedCustomer(customerData);
+
+        // Fetch customer addresses
+        if (customer.id) {
+          await fetchCustomerAddresses(customer.id);
+        }
+
+        // Set addresses
+        const billing = response.quote.sale.billingAddress;
+        const shipping = response.quote.sale.shippingAddress;
+
+        if (billing.addressLine) {
+          setFormData(prev => ({
+            ...prev,
+            billingAddress: {
+              type: 'billing' as const,
+              label: 'Billing Address',
+              name: billing.name,
+              street: billing.addressLine,
+              city: billing.city,
+              state: billing.state,
+              zipCode: billing.zipCode,
+              country: billing.country || 'US',
+              isPrimary: true,
+            }
+          }));
+        }
+
+        if (shipping.addressLine) {
+          setFormData(prev => ({
+            ...prev,
+            shippingAddress: {
+              type: 'shipping' as const,
+              label: 'Shipping Address',
+              name: shipping.name,
+              street: shipping.addressLine,
+              city: shipping.city,
+              state: shipping.state,
+              zipCode: shipping.zipCode,
+              country: shipping.country || 'US',
+              isPrimary: false,
+            }
+          }));
+        }
       }
 
-      // Calculate summary
-      const customerTotal = response.quote.sale.lineItems.reduce((sum, item) => sum + item.customerEstimates.total, 0);
-      const supplierTotal = response.quote.sale.lineItems.reduce((sum, item) => sum + item.supplierEstimates.total, 0);
-      const profit = customerTotal - supplierTotal;
-
-      setSaleSummary({
-        customerSummary: {
-          itemsTotal: customerTotal,
-          setupCharge: response.quote.sale.lineItems.reduce((sum, item) => sum + item.customerEstimates.setupCharge, 0),
-          subTotal: customerTotal,
-          total: customerTotal
-        },
-        totalSupplierSummary: {
-          itemsTotal: supplierTotal,
-          setupCharge: response.quote.sale.lineItems.reduce((sum, item) => sum + item.supplierEstimates.setupCharge, 0),
-          subTotal: supplierTotal,
-          total: supplierTotal
-        },
-        profit: profit
-      });
-
-      // Update form data including notes from comments if available
-      const latestComment = response.quote.sale.comments?.[0]?.comment || '';
+      if (response.quote.sale.notesId) {
+        const notesContent = await loadNotesContent(response.quote.sale.notesId);
+        setFormData(prev => ({
+          ...prev,
+          notes: notesContent
+        }));
+      }
       
-      setFormData(prev => ({
-        ...prev,
-        customerTotal: customerTotal.toString(),
-        inHandDate: response.quote.sale.dates.inHandDate || '',
-        notes: latestComment, // You might want to load actual notes content from the document
-      }));
-
-      // Set customer data
-      const customer = response.quote.sale.customer;
-      const customerData: iCustomer = {
-        id: customer.id,
-        idNum: customer.idNum,
-        firstName: customer.form.firstName,
-        lastName: customer.form.lastName,
-        email: customer.form.email,
-        phone: customer.form.phoneNumber || '',
-        website: customer.website,
-        companyName: customer.form.companyName || '',
-        isBlocked: false,
-        isBusinessCustomer: !!customer.form.companyName,
-        createdAt: customer.createdAt,
-      };
-      setSelectedCustomer(customerData);
-
-      // Fetch customer addresses
-      if (customer.id) {
-        await fetchCustomerAddresses(customer.id);
-      }
-
-      // Set addresses
-      const billing = response.quote.sale.billingAddress;
-      const shipping = response.quote.sale.shippingAddress;
-
-      if (billing.addressLine) {
-        setFormData(prev => ({
-          ...prev,
-          billingAddress: {
-            type: 'billing' as const,
-            label: 'Billing Address',
-            name: billing.name,
-            street: billing.addressLine,
-            city: billing.city,
-            state: billing.state,
-            zipCode: billing.zipCode,
-            country: billing.country || 'US',
-            isPrimary: true,
-          }
-        }));
-      }
-
-      if (shipping.addressLine) {
-        setFormData(prev => ({
-          ...prev,
-          shippingAddress: {
-            type: 'shipping' as const,
-            label: 'Shipping Address',
-            name: shipping.name,
-            street: shipping.addressLine,
-            city: shipping.city,
-            state: shipping.state,
-            zipCode: shipping.zipCode,
-            country: shipping.country || 'US',
-            isPrimary: false,
-          }
-        }));
-      }
+    } catch (error) {
+      console.error('Error fetching quote details:', error);
+      showToast.error('Failed to load quote details');
+      setLineItems([]);
+      setSaleSummary(null);
+    } finally {
+      setIsLoadingLineItems(false);
     }
-    if (response.quote.sale.notesId) {
-  const notesContent = await loadNotesContent(response.quote.sale.notesId);
-  setFormData(prev => ({
-    ...prev,
-    notes: notesContent
-  }));
-}
+  };
+
+  const loadNotesContent = useCallback(async (documentId: string) => {
+    if (!documentId) return '';
     
-  } catch (error) {
-    console.error('Error fetching quote details:', error);
-    showToast.error('Failed to load quote details');
-    setLineItems([]);
-    setSaleSummary(null);
-  } finally {
-    setIsLoadingLineItems(false);
-  }
-};
-
-const loadNotesContent = useCallback(async (documentId: string) => {
-  if (!documentId) return '';
-  
-  try {
-    const response = await get(`/Admin/Document/GetDocument?documentId=${documentId}`);
-    if (response?.content) {
-      // Convert document format back to HTML for the editor
-      return documentFormatToHtml(response.content);
+    try {
+      const response = await get(`/Admin/Document/GetDocumentDetail?documentId=${documentId}`);
+      if (response?.content) {
+        return documentFormatToHtml(response.content);
+      }
+      return '';
+    } catch (error) {
+      console.error('Failed to load notes content:', error);
+      return '';
     }
-    return '';
-  } catch (error) {
-    console.error('Failed to load notes content:', error);
-    return '';
-  }
-}, [get]);
-
+  }, [get]);
 
   const fetchSaleSummary = useCallback(async () => {
     if (!currentSaleId) return;
@@ -225,6 +248,67 @@ const loadNotesContent = useCallback(async (documentId: string) => {
       showToast.error('Failed to fetch sale summary');
     }
   }, [currentSaleId, post, setFormData]);
+
+  const createNewQuote = useCallback(async (customerId: string): Promise<string | null> => {
+    try {
+      const response = await post('/Admin/SaleEditor/AddEmptyQuote', {
+        customerId: customerId
+      }) as CreateQuoteResponse;
+      
+      if (response && response.saleId) {
+        setCurrentSaleId(response.saleId);
+        console.log('Created new quote:', response);
+        return response.saleId;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Failed to create new quote:', error);
+      showToast.error('Failed to create new quote');
+      return null;
+    }
+  }, [post]);
+
+  const setSaleDetail = useCallback(async (saleId: string, billingAddress?: any, shippingAddress?: any) => {
+    if (!billingAddress && !shippingAddress) {
+      return;
+    }
+
+    try {
+      const payload: SetSaleDetailRequest = {
+        saleId,
+        addresses: {
+          billing: {
+            addressLine: billingAddress?.street || '',
+            city: billingAddress?.city || '',
+            state: billingAddress?.state || '',
+            addressLine2: '',
+            country: billingAddress?.country || 'United States',
+            name: billingAddress?.name || '',
+            zipCode: billingAddress?.zipCode || '',
+          }
+        }
+      };
+
+      if (shippingAddress && shippingAddress !== billingAddress) {
+        payload.addresses.shipping = {
+          addressLine: shippingAddress.street || '',
+          city: shippingAddress.city || '',
+          state: shippingAddress.state || '',
+          addressLine2: '',
+          country: shippingAddress.country || 'United States',
+          name: shippingAddress.name || '',
+          zipCode: shippingAddress.zipCode || '',
+        };
+      }
+
+      await post('/Admin/SaleEditor/SetSaleDetail', payload);
+      console.log('Set sale detail successfully');
+    } catch (error) {
+      console.error('Failed to set sale detail:', error);
+      showToast.error('Failed to update quote addresses');
+    }
+  }, [post]);
 
   const handleAddEmptyLineItem = async () => {
     if (!currentSaleId) {
@@ -279,7 +363,6 @@ const loadNotesContent = useCallback(async (documentId: string) => {
 
   useEffect(() => {
     if (isEditing && quote) {
-      // Use the actual quote ID instead of a hardcoded value
       fetchQuoteDetails(quote.id);
       
       setFormData({
@@ -314,7 +397,6 @@ const loadNotesContent = useCallback(async (documentId: string) => {
         sameAsShipping: false,
       });
     } else {
-      // For new quotes, start with empty form
       setSelectedCustomer(null);
       setFormData(prev => ({
         ...prev,
@@ -342,6 +424,8 @@ const loadNotesContent = useCallback(async (documentId: string) => {
     handleUpdateLineItem,
     handleRemoveLineItem,
     fetchSaleSummary,
-    fetchCustomerAddresses
+    fetchCustomerAddresses,
+    createNewQuote,
+    setSaleDetail,
   };
 };
