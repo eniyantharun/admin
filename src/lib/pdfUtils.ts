@@ -32,7 +32,7 @@ export const generateInvoicePDF = async (saleId: string): Promise<InvoiceRespons
     showToast.loading('Generating PDF invoice...');
     
     const response = await api.get<InvoiceResponse>(
-      `https://api.promowe.com/Admin/Invoice/GenerateInvoice?saleId=${saleId}`
+      `/Admin/Invoice/GenerateInvoice?saleId=${saleId}`
     );
     
     showToast.dismiss();

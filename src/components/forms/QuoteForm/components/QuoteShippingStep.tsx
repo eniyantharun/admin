@@ -50,7 +50,7 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
     
     setLoadingCompanies(true);
     try {
-      const response = await get('/Admin/SaleEditor/GetShippingCompanies');
+      const response = await get('https://api.promowe.com/Admin/SaleEditor/GetShippingCompanies');
       console.log('Shipping companies response:', response);
       if (response?.companies) {
         const companies = response.companies.map((name: string) => ({ name }));
@@ -71,7 +71,7 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
   const fetchShippingTypes = useCallback(async (prefix: string = '') => {
     setLoadingTypes(true);
     try {
-      const response = await get(`/Admin/SaleEditor/GetShippingTypes?prefix=${encodeURIComponent(prefix)}&count=50`);
+      const response = await get(`https://api.promowe.com/Admin/SaleEditor/GetShippingTypes?prefix=${encodeURIComponent(prefix)}&count=50`);
       console.log('Shipping types response with prefix:', prefix, response);
       if (response?.types) {
         const types = response.types.map((name: string) => ({ name }));
@@ -138,7 +138,7 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
       console.log('SetSaleDetail response:', setSaleResponse);
 
       // Call GetSaleSummary API to refresh the summary
-      const summaryResponse = await post(`/Admin/SaleEditor/GetSaleSummary?saleId=${currentSaleId}`);
+      const summaryResponse = await get(`/Admin/SaleEditor/GetSaleSummary?saleId=${currentSaleId}`);
       console.log('GetSaleSummary response:', summaryResponse);
 
       // Trigger the parent component's refresh callback if available
