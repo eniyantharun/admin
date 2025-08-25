@@ -87,6 +87,35 @@ export const useQuoteData = (
     colorId: apiItem.form?.colorId
   });
 
+  const loadNotesContent = useCallback(async (documentId: string): Promise<string> => {
+    if (!documentId) {
+      console.log('No documentId provided to loadNotesContent');
+      return '';
+    }
+    
+    try {
+      console.log('Loading notes content for documentId:', documentId);
+      const response = await get(`/Admin/Document/GetDocumentDetail?documentId=${documentId}`);
+      
+      if (response?.content) {
+        console.log('Raw notes API response:', response.content);
+        
+        // Convert document format to HTML for display
+        const htmlContent = documentFormatToHtml(response.content);
+        console.log('Converted notes HTML:', htmlContent);
+        
+        return htmlContent;
+      }
+      
+      console.log('No content found in notes API response');
+      return '';
+    } catch (error) {
+      console.error('Failed to load notes content:', error);
+      showToast.error('Failed to load notes content');
+      return '';
+    }
+  }, [get]);
+
   const fetchQuoteDetails = async (quoteId: number) => {
     setIsLoadingLineItems(true);
     try {
@@ -128,13 +157,15 @@ export const useQuoteData = (
           profit: profit
         });
 
-        const latestComment = response.quote.sale.comments?.[0]?.comment || '';
+        // Don't load notes content here - let QuoteNotesStep handle it
+        // Just use existing comment as fallback for now
+        const fallbackNotes = response.quote.sale.comments?.[0]?.comment || '';
         
         setFormData(prev => ({
           ...prev,
           customerTotal: customerTotal.toString(),
           inHandDate: response.quote.sale.dates.inHandDate || '',
-          notes: latestComment,
+          notes: fallbackNotes, // Use comment as fallback, QuoteNotesStep will load proper content
         }));
 
         // Set customer data
@@ -197,14 +228,6 @@ export const useQuoteData = (
           }));
         }
       }
-
-      if (response.quote.sale.notesId) {
-        const notesContent = await loadNotesContent(response.quote.sale.notesId);
-        setFormData(prev => ({
-          ...prev,
-          notes: notesContent
-        }));
-      }
       
     } catch (error) {
       console.error('Error fetching quote details:', error);
@@ -215,21 +238,6 @@ export const useQuoteData = (
       setIsLoadingLineItems(false);
     }
   };
-
-  const loadNotesContent = useCallback(async (documentId: string) => {
-    if (!documentId) return '';
-    
-    try {
-      const response = await get(`/Admin/Document/GetDocumentDetail?documentId=${documentId}`);
-      if (response?.content) {
-        return documentFormatToHtml(response.content);
-      }
-      return '';
-    } catch (error) {
-      console.error('Failed to load notes content:', error);
-      return '';
-    }
-  }, [get]);
 
   const fetchSaleSummary = useCallback(async () => {
     if (!currentSaleId) return;
@@ -247,7 +255,7 @@ export const useQuoteData = (
       console.error('Failed to fetch sale summary:', error);
       showToast.error('Failed to fetch sale summary');
     }
-  }, [currentSaleId, post, setFormData]);
+  }, [currentSaleId, get, setFormData]);
 
   const createNewQuote = useCallback(async (customerId: string): Promise<string | null> => {
     try {
@@ -363,52 +371,61 @@ export const useQuoteData = (
 
   useEffect(() => {
     if (isEditing && quote) {
-      fetchQuoteDetails(quote.id);
+      // Only fetch if we haven't already or if the quote ID changed
+      if (!quoteDetails || quoteDetails.quote.id !== quote.id) {
+        fetchQuoteDetails(quote.id);
+      }
       
-      setFormData({
-        customer: quote.customer,
-        customerEmail: quote.customerEmail,
-        status: quote.status,
-        customerTotal: quote.customerTotal.toString(),
-        inHandDate: quote.inHandDate || '',
-        notes: quote.notes || '',
-        billingAddress: {
-          type: 'billing' as const,
-          label: '',
-          name: '',
-          street: '',
-          city: '',
-          state: '',
-          zipCode: '',
-          country: 'US',
-          isPrimary: false,
-        },
-        shippingAddress: {
-          type: 'shipping' as const,
-          label: '',
-          name: '',
-          street: '',
-          city: '',
-          state: '',
-          zipCode: '',
-          country: 'US',
-          isPrimary: false,
-        },
-        sameAsShipping: false,
-      });
-    } else {
+      // Initialize form data with quote data - only if not already initialized
+      if (!selectedCustomer || selectedCustomer.firstName !== quote.customer.split(' ')[0]) {
+        setFormData(prev => ({
+          ...prev,
+          customer: quote.customer,
+          customerEmail: quote.customerEmail,
+          status: quote.status,
+          customerTotal: quote.customerTotal.toString(),
+          inHandDate: quote.inHandDate || '',
+          // Don't set notes here - let QuoteNotesStep handle it
+          billingAddress: prev.billingAddress.street ? prev.billingAddress : {
+            type: 'billing' as const,
+            label: '',
+            name: '',
+            street: '',
+            city: '',
+            state: '',
+            zipCode: '',
+            country: 'US',
+            isPrimary: false,
+          },
+          shippingAddress: prev.shippingAddress.street ? prev.shippingAddress : {
+            type: 'shipping' as const,
+            label: '',
+            name: '',
+            street: '',
+            city: '',
+            state: '',
+            zipCode: '',
+            country: 'US',
+            isPrimary: false,
+          },
+          sameAsShipping: false,
+        }));
+      }
+    } else if (!isEditing) {
+      // Reset all state for new quotes
       setSelectedCustomer(null);
       setFormData(prev => ({
         ...prev,
         customer: '',
         customerEmail: '',
+        notes: '', // Clear notes for new quotes
       }));
       setLineItems([]);
       setSaleSummary(null);
       setQuoteDetails(null);
       setCurrentSaleId('');
     }
-  }, [quote, isEditing]);
+  }, [quote?.id, isEditing]); // Only depend on quote ID and isEditing
 
   return {
     selectedCustomer,
@@ -427,5 +444,6 @@ export const useQuoteData = (
     fetchCustomerAddresses,
     createNewQuote,
     setSaleDetail,
+    loadNotesContent, // Export this function for use in components
   };
 };

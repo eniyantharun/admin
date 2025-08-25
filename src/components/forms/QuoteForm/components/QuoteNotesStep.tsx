@@ -31,7 +31,8 @@ interface QuoteNotesStepProps {
   lineItems: LineItemData[];
   isEditing: boolean;
   currentSaleId?: string;
-  documentId?: string | null; // Allow null to match API response types
+  documentId?: string | null;
+  onDocumentIdCreated?: (documentId: string) => void;
 }
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error' | 'offline';
@@ -43,7 +44,8 @@ export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
   lineItems,
   isEditing,
   currentSaleId,
-  documentId // Required document ID from parent component
+  documentId,
+  onDocumentIdCreated
 }) => {
   const [generatingPDF, setGeneratingPDF] = useState(false);
   const [lastGeneratedInvoice, setLastGeneratedInvoice] = useState<InvoiceResponse | null>(null);
@@ -51,22 +53,75 @@ export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
   const [lastSavedContent, setLastSavedContent] = useState<string>('');
+  const [isLoadingNotes, setIsLoadingNotes] = useState(false);
+  const [hasLoadedInitialContent, setHasLoadedInitialContent] = useState(false);
+  const [localDocumentId, setLocalDocumentId] = useState<string | null>(documentId || null);
+  const [isCreatingDocument, setIsCreatingDocument] = useState(false);
+
+  
   const saveTimeoutRef = useRef<NodeJS.Timeout>();
   const lastSaveAttemptRef = useRef<string>('');
+  const isInitialLoadRef = useRef(true);
 
-  // Debug logging
-  console.log('QuoteNotesStep received documentId:', {
-  documentId,
-  documentIdType: typeof documentId,
-  isNull: documentId === null,
-  isUndefined: documentId === undefined,
-  hasValue: !!documentId
-});
-
-  const { post } = useApi({
+  const { get, post } = useApi({
     cancelOnUnmount: false,
     dedupe: false,
   });
+
+  // Load notes content only once when component mounts or documentId changes
+  useEffect(() => {
+    const loadNotesContent = async () => {
+      if (!documentId || hasLoadedInitialContent) {
+        if (!documentId && !hasLoadedInitialContent) {
+          setHasLoadedInitialContent(true);
+          setLastSavedContent(formData.notes || '');
+        }
+        return;
+      }
+
+      setIsLoadingNotes(true);
+      try {
+        console.log('Loading notes content for documentId:', documentId);
+        const response = await get(`/Admin/Document/GetDocumentDetail?documentId=${documentId}`);
+        
+        if (response?.content) {
+          const htmlContent = documentFormatToHtml(response.content);
+          console.log('Loaded and converted notes content');
+          
+          setLastSavedContent(htmlContent);
+          
+          // Only update form data if it's different
+          if (htmlContent !== formData.notes) {
+            const syntheticEvent = {
+              target: {
+                name: 'notes',
+                value: htmlContent
+              }
+            } as React.ChangeEvent<HTMLTextAreaElement>;
+            handleInputChange(syntheticEvent);
+          }
+        } else {
+          setLastSavedContent(formData.notes || '');
+        }
+      } catch (error) {
+        console.error('Error loading notes content:', error);
+        setLastSavedContent(formData.notes || '');
+      } finally {
+        setIsLoadingNotes(false);
+        setHasLoadedInitialContent(true);
+      }
+    };
+
+    loadNotesContent();
+  }, [documentId]); // Only depend on documentId, not formData
+
+  // Initialize lastSavedContent if no documentId
+  useEffect(() => {
+    if (!hasLoadedInitialContent && !documentId) {
+      setLastSavedContent(formData.notes || '');
+      setHasLoadedInitialContent(true);
+    }
+  }, [hasLoadedInitialContent, documentId, formData.notes]);
 
   // Monitor online status
   useEffect(() => {
@@ -82,95 +137,85 @@ export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
     };
   }, []);
 
-  // Initialize last saved content
-  useEffect(() => {
-    if (formData.notes && !lastSavedContent) {
-      setLastSavedContent(formData.notes);
-    }
-  }, [formData.notes, lastSavedContent]);
-
-  // Save function
+  // Save function - stable reference
   const saveNotesToAPI = useCallback(async (content: string) => {
-    // Don't attempt to save if no documentId is provided or is null
-    if (!documentId) {
-      console.warn('No documentId provided (null/undefined) - notes will not be saved to API');
-      setSaveStatus('idle'); // Don't show error for missing documentId
-      return;
-    }
+  if (!localDocumentId || !isOnline) {
+    if (!isOnline) setSaveStatus('offline');
+    return;
+  }
 
-    if (!isOnline) {
-      setSaveStatus('offline');
-      return;
-    }
+  // Don't save if content hasn't changed
+  if (content === lastSaveAttemptRef.current) {
+    return;
+  }
 
-    // Don't save if content hasn't changed
-    if (content === lastSaveAttemptRef.current) {
-      return;
-    }
+  lastSaveAttemptRef.current = content;
+  setSaveStatus('saving');
 
-    lastSaveAttemptRef.current = content;
-    setSaveStatus('saving');
+  try {
+    const documentContent = htmlToDocumentFormat(content);
+    
+    const requestPayload: AddDocumentRevisionRequest = {
+      documentId: localDocumentId, // Use localDocumentId instead of documentId
+      content: documentContent
+    };
 
-    try {
-      // Convert HTML to document format
-      const documentContent = htmlToDocumentFormat(content);
+    const response = await post<AddDocumentRevisionResponse>(
+      '/Admin/Document/AddDocumentRevision',
+      requestPayload
+    );
+
+    if (response) {
+      setSaveStatus('saved');
+      setLastSavedContent(content);
       
-      const requestPayload: AddDocumentRevisionRequest = {
-        documentId,
-        content: documentContent
-      };
-
-      console.log('Saving notes to API:', {
-        url: '/Admin/Document/AddDocumentRevision',
-        documentId,
-        contentPreview: content.substring(0, 100) + '...',
-        payload: requestPayload
-      });
-
-      // Use the relative URL (let the API client handle base URL)
-      const response = await post<AddDocumentRevisionResponse>(
-        '/Admin/Document/AddDocumentRevision',
-        requestPayload
-      );
-
-      if (response) {
-        setSaveStatus('saved');
-        setLastSavedContent(content);
-        console.log('Notes saved successfully:', response);
-        
-        // Reset to idle after showing saved status
-        setTimeout(() => {
-          setSaveStatus('idle');
-        }, 2000);
-      }
-    } catch (error: any) {
-      console.error('Error saving notes:', error);
-      console.error('Error details:', {
-        message: error.message,
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data
-      });
-      
-      setSaveStatus('error');
-      
-      // Show error toast only for non-network errors
-      if (!error.message?.includes('NetworkError') && !error.message?.includes('fetch')) {
-        showToast.error(`Failed to save notes: ${error.response?.status || error.message}`);
-      }
-      
-      // Reset to idle after showing error status
-      setTimeout(() => {
-        setSaveStatus('idle');
-      }, 3000);
+      setTimeout(() => setSaveStatus('idle'), 2000);
     }
-  }, [documentId, post, isOnline, lastSavedContent]);
+  } catch (error: any) {
+    console.error('Error saving notes:', error);
+    setSaveStatus('error');
+    
+    if (!error.message?.includes('NetworkError') && !error.message?.includes('fetch')) {
+      showToast.error('Failed to save notes');
+    }
+    
+    setTimeout(() => setSaveStatus('idle'), 3000);
+  }
+}, [localDocumentId, post, isOnline]); // Update dependencies
 
-  // Debounced save function
-  const debouncedSave = useCallback(
-    debounce((content: string) => {
+  const createDocument = useCallback(async (): Promise<string | null> => {
+  // Prevent multiple simultaneous calls
+  if (isCreatingDocument) {
+    console.log('Document creation already in progress, skipping...');
+    return null;
+  }
+
+  setIsCreatingDocument(true);
+  try {
+    console.log('Creating new document...');
+    const response = await post('/Admin/Document/AddDocument', { isPublic: false, saleId: currentSaleId });
+    
+    if (response?.id) {
+      console.log('Created new document with ID:', response.id);
+      return response.id;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error creating document:', error);
+    showToast.error('Failed to create document');
+    return null;
+  } finally {
+    setIsCreatingDocument(false);
+  }
+}, [post, isCreatingDocument]);
+
+
+  // Debounced save function - stable reference
+  const debouncedSave = useMemo(
+    () => debounce((content: string) => {
       saveNotesToAPI(content);
-    }, 1000), // Save after 1 second of inactivity
+    }, 3000),
     [saveNotesToAPI]
   );
 
@@ -186,7 +231,7 @@ export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
         ['link'],
         [{ 'align': [] }],
         ['clean'],
-        ['image-upload'] // Custom button for image upload
+        ['image-upload']
       ],
       handlers: {
         'image-upload': () => setShowImageUpload(true)
@@ -205,39 +250,48 @@ export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
     'link', 'align'
   ];
 
-  const handleQuillChange = useCallback((content: string) => {
-    console.log('Quill content changed:', {
-      contentLength: content.length,
-      contentPreview: content.substring(0, 100),
-      documentId,
-      lastSavedContent: lastSavedContent.substring(0, 50),
-      willTriggerSave: !!(documentId && content !== lastSavedContent && content.trim() !== '')
-    });
+  // Handle Quill changes - prevent infinite loops
+  const handleQuillChange = useCallback(async (content: string) => {
+  // Prevent triggering during initial load
+  if (isLoadingNotes || !hasLoadedInitialContent) {
+    return;
+  }
 
-    // Update local state immediately
-    const syntheticEvent = {
-      target: {
-        name: 'notes',
-        value: content
-      }
-    } as React.ChangeEvent<HTMLTextAreaElement>;
-    
-    handleInputChange(syntheticEvent);
-
-    // Only save to API if documentId is available and content has changed
-    if (documentId && content !== lastSavedContent && content.trim() !== '') {
-      console.log('Triggering debounced save...');
-      debouncedSave(content);
-    } else {
-      console.log('Save not triggered:', {
-        hasDocumentId: !!documentId,
-        contentChanged: content !== lastSavedContent,
-        contentNotEmpty: content.trim() !== ''
-      });
+  // Update parent form data
+  const syntheticEvent = {
+    target: {
+      name: 'notes',
+      value: content
     }
-  }, [handleInputChange, debouncedSave, lastSavedContent, documentId]);
+  } as React.ChangeEvent<HTMLTextAreaElement>;
+  
+  handleInputChange(syntheticEvent);
 
-  // Force save function for manual saves
+  // Create document if we don't have one and content is not empty
+  // But only if we're not already creating one
+  if (!localDocumentId && !isCreatingDocument && content.trim() !== '' && content !== '<p><br></p>') {
+    const newDocumentId = await createDocument();
+    if (newDocumentId) {
+      setLocalDocumentId(newDocumentId);
+      onDocumentIdCreated?.(newDocumentId);
+      
+      // Save the content to the new document
+      debouncedSave(content);
+    }
+    return;
+  }
+
+  // Only save to API if we have a documentId and content has changed significantly
+  const contentChanged = content !== lastSavedContent;
+  const significantChange = Math.abs(content.length - lastSavedContent.length) > 5;
+  const hasRealContent = content.replace(/<[^>]*>/g, '').trim().length > 0;
+  
+  if (localDocumentId && contentChanged && (significantChange || hasRealContent)) {
+    debouncedSave(content);
+  }
+}, [handleInputChange, debouncedSave, lastSavedContent, localDocumentId, isLoadingNotes, hasLoadedInitialContent, createDocument, onDocumentIdCreated, isCreatingDocument]);
+
+// Force save function for manual saves
   const forceSave = useCallback(() => {
     if (documentId && formData.notes && formData.notes !== lastSavedContent) {
       saveNotesToAPI(formData.notes);
@@ -303,7 +357,6 @@ export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
     );
   };
 
-  // Rest of the component methods remain the same...
   const handleGeneratePDF = async () => {
     if (!currentSaleId) {
       showToast.error('No sale ID available. Please save the quote first.');
@@ -363,44 +416,33 @@ export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
             <div>Online: {isOnline ? 'Yes' : 'No'}</div>
             <div>Content Length: {formData.notes?.length || 0}</div>
             <div>Last Saved Length: {lastSavedContent.length}</div>
+            <div>Has Loaded Initial: {hasLoadedInitialContent ? 'Yes' : 'No'}</div>
+            <div>Is Loading Notes: {isLoadingNotes ? 'Yes' : 'No'}</div>
+            <div>Is Creating Document: {isCreatingDocument ? 'Yes' : 'No'}</div>
             <div>API Saves: {documentId ? 'Enabled' : 'Disabled (no documentId)'}</div>
-            <Button
-              onClick={() => {
-                if (documentId && formData.notes) {
-                  console.log('Manual save triggered');
-                  saveNotesToAPI(formData.notes);
-                } else {
-                  console.log('Manual save failed:', { 
-                    documentId: documentId === null ? 'null' : documentId === undefined ? 'undefined' : documentId,
-                    hasNotes: !!formData.notes 
-                  });
-                  showToast.error('Cannot save: No document ID available');
-                }
-              }}
-              size="sm"
-              variant="secondary"
-              className="mt-2"
-              disabled={!documentId}
-            >
-              Test Manual Save
-            </Button>
-            
-            {/* Add button to create/get document ID */}
-            {!documentId && (
-              <Button
-                onClick={async () => {
-                  showToast.info('Creating document for notes...');
-                  // This would call an API to create a new document
-                  // For now, just show what would happen
-                  console.log('Would create new document for sale:', currentSaleId);
-                }}
-                size="sm"
-                variant="primary"
-                className="mt-2"
-              >
-                Create Notes Document
-              </Button>
-            )}
+            {!localDocumentId && (
+  <Button
+    onClick={async () => {
+      if (isCreatingDocument) {
+        showToast.info('Document creation already in progress...');
+        return;
+      }
+      
+      const newDocumentId = await createDocument();
+      if (newDocumentId) {
+        setLocalDocumentId(newDocumentId);
+        onDocumentIdCreated?.(newDocumentId);
+        showToast.success('Document created successfully');
+      }
+    }}
+    size="sm"
+    variant="primary"
+    className="mt-2"
+    disabled={isCreatingDocument}
+  >
+    {isCreatingDocument ? 'Creating...' : 'Create Notes Document'}
+  </Button>
+)}
           </div>
         </Card>
       )}
@@ -439,17 +481,26 @@ export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
         </div>
         
         <div className="border border-gray-300 rounded-lg overflow-hidden bg-white">
-          <ReactQuill
-            theme="snow"
-            value={formData.notes || ''}
-            onChange={handleQuillChange}
-            modules={quillModules}
-            formats={quillFormats}
-            placeholder="Add any special instructions, requirements, or notes for this quote..."
-            style={{
-              minHeight: '150px'
-            }}
-          />
+          {isLoadingNotes ? (
+            <div className="h-32 bg-gray-50 flex items-center justify-center">
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-gray-400 animate-spin" />
+                <span className="text-gray-500 text-sm">Loading notes...</span>
+              </div>
+            </div>
+          ) : (
+            <ReactQuill
+              theme="snow"
+              value={formData.notes || ''}
+              onChange={handleQuillChange}
+              modules={quillModules}
+              formats={quillFormats}
+              placeholder="Add any special instructions, requirements, or notes for this quote..."
+              style={{
+                minHeight: '150px'
+              }}
+            />
+          )}
         </div>
         
         <div className="flex items-center justify-between mt-2">
@@ -717,7 +768,6 @@ export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
           font-size: 14px !important;
         }
         
-        /* List styling */
         .ql-editor ol {
           padding-left: 1.5em !important;
         }
@@ -730,7 +780,6 @@ export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
           margin-bottom: 4px !important;
         }
         
-        /* Link styling */
         .ql-editor a {
           color: #3b82f6 !important;
           text-decoration: underline !important;
@@ -740,7 +789,6 @@ export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
           color: #1d4ed8 !important;
         }
         
-        /* Header styling */
         .ql-editor h1 {
           font-size: 1.5em !important;
           font-weight: bold !important;
@@ -759,7 +807,6 @@ export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
           margin-bottom: 0.5em !important;
         }
         
-        /* Auto-save indicator animation */
         .saving-indicator {
           animation: pulse 1.5s ease-in-out infinite;
         }
