@@ -507,20 +507,6 @@ export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* API Status Warning */}
-      {!documentId && (
-        <Card className="p-3 mb-4 bg-orange-50 border-orange-200">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-orange-600" />
-            <p className="text-orange-700 text-sm">
-              No document ID available for this quote. Notes will be saved
-              locally only.
-            </p>
-          </div>
-        </Card>
-      )}
-
-      {/* Rich Text Editor for Notes */}
       <div className="form-input-group">
         <div className="flex items-center justify-between mb-2">
           <label className="form-label block text-sm font-medium text-gray-700">

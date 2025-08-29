@@ -34,119 +34,113 @@ export const QuoteDetailsStep: React.FC<QuoteDetailsStepProps> = ({
     dedupe: false,
   });
 
-  // Update checkout details via API
   const updateCheckoutDetails = useCallback(async (field: string, value: string) => {
-  if (!currentSaleId) {
-    console.warn('No saleId available for updating checkout details');
-    return;
-  }
-
-  setSaveStatus('saving');
-  
-  try {
-    // Build checkout details object, only including non-empty fields
-    const checkoutDetails: { [key: string]: string } = {};
-    
-    // Add current field being updated
-    if (value.trim()) {
-      checkoutDetails[field] = value;
-    }
-    
-    // Add other existing fields that have values
-    const currentCheckoutDetails = formData.checkoutDetails || {};
-    
-    if (field !== 'dateOrderNeededBy' && currentCheckoutDetails.dateOrderNeededBy?.trim()) {
-      checkoutDetails.dateOrderNeededBy = currentCheckoutDetails.dateOrderNeededBy;
-    }
-    
-    if (field !== 'additionalInstructions' && currentCheckoutDetails.additionalInstructions?.trim()) {
-      checkoutDetails.additionalInstructions = currentCheckoutDetails.additionalInstructions;
+    if (!currentSaleId) {
+      console.warn('No saleId available for updating checkout details');
+      return;
     }
 
-    const payload = {
-      saleId: currentSaleId,
-      checkoutDetails: checkoutDetails
-    };
-
-    console.log('Sending checkout details payload:', payload);
-
-    await post('/Admin/SaleEditor/SetSaleDetail', payload);
+    setSaveStatus('saving');
     
-    // Update local form data
-    handleInputChange({
-      target: { 
-        name: 'checkoutDetails', 
-        value: { ...formData.checkoutDetails, [field]: value }
+    try {
+      const checkoutDetails: { [key: string]: string } = {};
+      
+      if (value && value.trim()) {
+        checkoutDetails[field] = value.trim();
       }
-    } as any);
+      
+      const currentCheckoutDetails = formData.checkoutDetails || {};
+      
+      if (field !== 'dateOrderNeededBy' && currentCheckoutDetails.dateOrderNeededBy?.trim()) {
+        checkoutDetails.dateOrderNeededBy = currentCheckoutDetails.dateOrderNeededBy.trim();
+      }
+      
+      if (field !== 'dateOrderNeededBy' && !checkoutDetails.dateOrderNeededBy && formData.inHandDate?.trim()) {
+        checkoutDetails.dateOrderNeededBy = formData.inHandDate.trim();
+      }
+      
+      if (field !== 'additionalInstructions' && currentCheckoutDetails.additionalInstructions?.trim()) {
+        checkoutDetails.additionalInstructions = currentCheckoutDetails.additionalInstructions.trim();
+      }
 
-    setSaveStatus('saved');
-    
-    // Auto-hide saved status after 2 seconds
-    setTimeout(() => setSaveStatus('idle'), 2000);
-    
-    // Refresh summary if available
-    if (onRefreshSummary) {
-      onRefreshSummary();
+      if (Object.keys(checkoutDetails).length > 0) {
+        const payload = {
+          saleId: currentSaleId,
+          checkoutDetails: checkoutDetails
+        };
+
+        console.log('Sending checkout details payload:', payload);
+
+        await post('/Admin/SaleEditor/SetSaleDetail', payload);
+        
+        setSaveStatus('saved');
+        
+        setTimeout(() => setSaveStatus('idle'), 2000);
+        
+        if (onRefreshSummary) {
+          onRefreshSummary();
+        }
+      } else {
+        setSaveStatus('idle');
+      }
+    } catch (error: any) {
+      console.error('Error updating checkout details:', error);
+      setSaveStatus('error');
+      
+      if (error?.name !== 'CanceledError') {
+        showToast.error('Failed to save checkout details');
+      }
+      
+      setTimeout(() => setSaveStatus('idle'), 3000);
     }
-  } catch (error: any) {
-    console.error('Error updating checkout details:', error);
-    setSaveStatus('error');
-    
-    if (error?.name !== 'CanceledError') {
-      showToast.error('Failed to save checkout details');
-    }
-    
-    // Auto-hide error status after 3 seconds
-    setTimeout(() => setSaveStatus('idle'), 3000);
-  }
-}, [currentSaleId, formData.checkoutDetails, handleInputChange, post, onRefreshSummary]);
+  }, [currentSaleId, formData.checkoutDetails, formData.inHandDate, post, onRefreshSummary]);
 
-const instructionsTimeoutRef = useRef<NodeJS.Timeout>();
-
+  const instructionsTimeoutRef = useRef<NodeJS.Timeout>();
 
   const handleInHandDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    // Update local state immediately for responsiveness
+    
     handleInputChange({
       target: { name: 'inHandDate', value }
     } as React.ChangeEvent<HTMLInputElement>);
     
-    // Save to API
+    handleInputChange({
+      target: { 
+        name: 'checkoutDetails', 
+        value: { ...formData.checkoutDetails, dateOrderNeededBy: value }
+      }
+    } as any);
+    
     updateCheckoutDetails('dateOrderNeededBy', value);
   };
 
   const handleInstructionsChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-  const value = e.target.value;
-  
-  // Update local state immediately
-  handleInputChange({
-    target: { 
-      name: 'checkoutDetails', 
-      value: { ...formData.checkoutDetails, additionalInstructions: value }
-    }
-  } as any);
-  
-  // Clear existing timeout
-  if (instructionsTimeoutRef.current) {
-    clearTimeout(instructionsTimeoutRef.current);
-  }
-  
-  // Set new timeout for API call
-  instructionsTimeoutRef.current = setTimeout(() => {
-    updateCheckoutDetails('additionalInstructions', value);
-  }, 3000);
-};
-
-useEffect(() => {
-  return () => {
+    const value = e.target.value;
+    
+    handleInputChange({
+      target: { 
+        name: 'checkoutDetails', 
+        value: { ...formData.checkoutDetails, additionalInstructions: value }
+      }
+    } as any);
+    
     if (instructionsTimeoutRef.current) {
       clearTimeout(instructionsTimeoutRef.current);
     }
+    
+    instructionsTimeoutRef.current = setTimeout(() => {
+      updateCheckoutDetails('additionalInstructions', value);
+    }, 300); 
   };
-}, []);
 
-  // Save status indicator component
+  useEffect(() => {
+    return () => {
+      if (instructionsTimeoutRef.current) {
+        clearTimeout(instructionsTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const SaveStatusIndicator = () => {
     const getStatusConfig = () => {
       switch (saveStatus) {
@@ -188,7 +182,6 @@ useEffect(() => {
 
   return (
     <div className="space-y-4">
-      {/* Checkout Details Section */}
       <Card className="p-4">
         <div className="flex items-center justify-between mb-4">
           <h4 className="font-medium text-gray-900 text-sm flex items-center gap-2">
@@ -235,7 +228,6 @@ useEffect(() => {
         </div>
       </Card>
 
-      {/* Financial Summary */}
       {saleSummary && (
         <Card className="p-4 bg-gray-50">
           <h5 className="font-medium text-gray-800 mb-3 text-sm flex items-center gap-2">
@@ -266,7 +258,6 @@ useEffect(() => {
               <span className="font-bold text-orange-600">${saleSummary.profit.toFixed(2)}</span>
             </div>
             
-            {/* Show checkout details in summary */}
             {(formData.checkoutDetails?.dateOrderNeededBy || formData.inHandDate) && (
               <div className="flex justify-between border-t pt-2">
                 <span className="text-gray-600">Needed By:</span>
