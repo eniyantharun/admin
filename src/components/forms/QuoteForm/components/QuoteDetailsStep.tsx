@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useRef, useEffect  } from 'react';
 import { FormInput } from '@/components/helpers/FormInput';
 import { Card } from '@/components/ui/Card';
-import { Calendar, FileText, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
+import { Calendar, FileText, Clock, CheckCircle, AlertCircle, Save } from 'lucide-react';
 import { useApi } from '@/hooks/useApi';
 import { showToast } from '@/components/ui/toast';
 import { iQuoteFormData, SaleSummary } from '@/types/quotes';
@@ -34,9 +35,10 @@ export const QuoteDetailsStep: React.FC<QuoteDetailsStepProps> = ({
     dedupe: false,
   });
 
-  const updateCheckoutDetails = useCallback(async (field: string, value: string) => {
+  const saveCheckoutDetails = useCallback(async () => {
     if (!currentSaleId) {
       console.warn('No saleId available for updating checkout details');
+      showToast.error('No sale ID available for saving');
       return;
     }
 
@@ -45,43 +47,36 @@ export const QuoteDetailsStep: React.FC<QuoteDetailsStepProps> = ({
     try {
       const checkoutDetails: { [key: string]: string } = {};
       
-      if (value && value.trim()) {
-        checkoutDetails[field] = value.trim();
+      // Get current values from form data
+      const dateValue = formData.checkoutDetails?.dateOrderNeededBy || formData.inHandDate || '';
+      const instructionsValue = formData.checkoutDetails?.additionalInstructions || '';
+      
+      // Add non-empty values to checkout details
+      if (dateValue.trim()) {
+        checkoutDetails.dateOrderNeededBy = dateValue.trim();
       }
       
-      const currentCheckoutDetails = formData.checkoutDetails || {};
-      
-      if (field !== 'dateOrderNeededBy' && currentCheckoutDetails.dateOrderNeededBy?.trim()) {
-        checkoutDetails.dateOrderNeededBy = currentCheckoutDetails.dateOrderNeededBy.trim();
-      }
-      
-      if (field !== 'dateOrderNeededBy' && !checkoutDetails.dateOrderNeededBy && formData.inHandDate?.trim()) {
-        checkoutDetails.dateOrderNeededBy = formData.inHandDate.trim();
-      }
-      
-      if (field !== 'additionalInstructions' && currentCheckoutDetails.additionalInstructions?.trim()) {
-        checkoutDetails.additionalInstructions = currentCheckoutDetails.additionalInstructions.trim();
+      if (instructionsValue.trim()) {
+        checkoutDetails.additionalInstructions = instructionsValue.trim();
       }
 
-      if (Object.keys(checkoutDetails).length > 0) {
-        const payload = {
-          saleId: currentSaleId,
-          checkoutDetails: checkoutDetails
-        };
+      // Always make the API call, even if empty (to clear values)
+      const payload = {
+        saleId: currentSaleId,
+        checkoutDetails: checkoutDetails
+      };
 
-        console.log('Sending checkout details payload:', payload);
+      console.log('Sending checkout details payload:', payload);
 
-        await post('/Admin/SaleEditor/SetSaleDetail', payload);
-        
-        setSaveStatus('saved');
-        
-        setTimeout(() => setSaveStatus('idle'), 2000);
-        
-        if (onRefreshSummary) {
-          onRefreshSummary();
-        }
-      } else {
-        setSaveStatus('idle');
+      await post('/Admin/SaleEditor/SetSaleDetail', payload);
+      
+      setSaveStatus('saved');
+      showToast.success('Checkout details saved successfully');
+      
+      setTimeout(() => setSaveStatus('idle'), 2000);
+      
+      if (onRefreshSummary) {
+        onRefreshSummary();
       }
     } catch (error: any) {
       console.error('Error updating checkout details:', error);
@@ -96,47 +91,57 @@ export const QuoteDetailsStep: React.FC<QuoteDetailsStepProps> = ({
   }, [currentSaleId, formData.checkoutDetails, formData.inHandDate, post, onRefreshSummary]);
 
   const instructionsTimeoutRef = useRef<NodeJS.Timeout>();
+  const dateTimeoutRef = useRef<NodeJS.Timeout>();
 
+  // Handle in-hand date changes (local state only)
   const handleInHandDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     
+    // Update both inHandDate and checkoutDetails.dateOrderNeededBy in form state
     handleInputChange({
       target: { name: 'inHandDate', value }
     } as React.ChangeEvent<HTMLInputElement>);
     
+    // Update checkoutDetails specifically
+    const updatedCheckoutDetails = {
+      ...formData.checkoutDetails,
+      dateOrderNeededBy: value
+    };
+    
     handleInputChange({
       target: { 
         name: 'checkoutDetails', 
-        value: { ...formData.checkoutDetails, dateOrderNeededBy: value }
+        value: updatedCheckoutDetails
       }
     } as any);
-    
-    updateCheckoutDetails('dateOrderNeededBy', value);
   };
 
+  // Handle instructions changes (local state only)
   const handleInstructionsChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
     
+    // Update checkoutDetails in form state
+    const updatedCheckoutDetails = {
+      ...formData.checkoutDetails,
+      additionalInstructions: value
+    };
+    
     handleInputChange({
       target: { 
         name: 'checkoutDetails', 
-        value: { ...formData.checkoutDetails, additionalInstructions: value }
+        value: updatedCheckoutDetails
       }
     } as any);
-    
-    if (instructionsTimeoutRef.current) {
-      clearTimeout(instructionsTimeoutRef.current);
-    }
-    
-    instructionsTimeoutRef.current = setTimeout(() => {
-      updateCheckoutDetails('additionalInstructions', value);
-    }, 300); 
   };
 
+  // Cleanup on unmount (no longer needed for timeouts, but keep for safety)
   useEffect(() => {
     return () => {
       if (instructionsTimeoutRef.current) {
         clearTimeout(instructionsTimeoutRef.current);
+      }
+      if (dateTimeoutRef.current) {
+        clearTimeout(dateTimeoutRef.current);
       }
     };
   }, []);
@@ -180,6 +185,9 @@ export const QuoteDetailsStep: React.FC<QuoteDetailsStepProps> = ({
     );
   };
 
+  // Get the current date value - prioritize checkoutDetails
+  const currentDateValue = formData.checkoutDetails?.dateOrderNeededBy || formData.inHandDate || '';
+
   return (
     <div className="space-y-4">
       <Card className="p-4">
@@ -201,7 +209,7 @@ export const QuoteDetailsStep: React.FC<QuoteDetailsStepProps> = ({
               <input
                 type="date"
                 name="inHandDate"
-                value={formData.checkoutDetails?.dateOrderNeededBy || formData.inHandDate || ''}
+                value={currentDateValue}
                 onChange={handleInHandDateChange}
                 className="form-input w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
               />
@@ -224,6 +232,20 @@ export const QuoteDetailsStep: React.FC<QuoteDetailsStepProps> = ({
             <p className="text-xs text-gray-500 mt-1">
               These instructions will be visible to your team when processing the order
             </p>
+          </div>
+
+          {/* Save Button */}
+          <div className="flex justify-end pt-2 border-t border-gray-200">
+            <Button
+              onClick={saveCheckoutDetails}
+              loading={saveStatus === 'saving'}
+              disabled={saveStatus === 'saving'}
+              icon={Save}
+              size="sm"
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+            >
+              Save Checkout Details
+            </Button>
           </div>
         </div>
       </Card>
@@ -258,11 +280,11 @@ export const QuoteDetailsStep: React.FC<QuoteDetailsStepProps> = ({
               <span className="font-bold text-orange-600">${saleSummary.profit.toFixed(2)}</span>
             </div>
             
-            {(formData.checkoutDetails?.dateOrderNeededBy || formData.inHandDate) && (
+            {currentDateValue && (
               <div className="flex justify-between border-t pt-2">
                 <span className="text-gray-600">Needed By:</span>
                 <span className="font-medium text-blue-600">
-                  {new Date(formData.checkoutDetails?.dateOrderNeededBy || formData.inHandDate || '').toLocaleDateString()}
+                  {new Date(currentDateValue).toLocaleDateString()}
                 </span>
               </div>
             )}

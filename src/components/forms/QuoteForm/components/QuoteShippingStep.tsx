@@ -18,8 +18,8 @@ interface QuoteShippingStepProps {
   formData: iQuoteFormData;
   handleInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
   saleSummary: SaleSummary | null;
-  currentSaleId?: string; // Add saleId prop
-  onRefreshSummary?: () => void; // Add refresh summary callback
+  currentSaleId?: string; 
+  onRefreshSummary?: () => void; 
 }
 
 export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
@@ -40,13 +40,12 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
 
   const { get, post } = useApi({
     cancelOnUnmount: true,
-    dedupe: false, // Don't dedupe to ensure fresh data
-    cacheDuration: 0, // No caching to ensure fresh API calls
+    dedupe: false, 
+    cacheDuration: 0, 
   });
 
-  // Fetch shipping companies when dropdown is clicked
   const handleCompaniesDropdownClick = useCallback(async () => {
-    if (companiesLoaded || loadingCompanies) return; // Prevent multiple calls
+    if (companiesLoaded || loadingCompanies) return; 
     
     setLoadingCompanies(true);
     try {
@@ -67,7 +66,6 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
     }
   }, [get, companiesLoaded, loadingCompanies]);
 
-  // Fetch shipping types with optional prefix
   const fetchShippingTypes = useCallback(async (prefix: string = '') => {
     setLoadingTypes(true);
     try {
@@ -77,7 +75,7 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
         const types = response.types.map((name: string) => ({ name }));
         setShippingTypes(types);
         if (!prefix) {
-          setTypesLoaded(true); // Only mark as loaded for initial load
+          setTypesLoaded(true); 
         }
       }
     } catch (error: any) {
@@ -90,16 +88,13 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
     }
   }, [get]);
 
-  // Fetch shipping types when dropdown is clicked (initial load)
   const handleTypesDropdownClick = useCallback(async () => {
     if (typesLoaded || loadingTypes) return;
-    await fetchShippingTypes(''); // Load all types initially
+    await fetchShippingTypes(''); 
   }, [fetchShippingTypes, typesLoaded, loadingTypes]);
 
-  // Handle search input changes with debouncing
   const handleTypeSearch = useCallback((searchTerm: string) => {
     setTypeSearchTerm(searchTerm);
-    // Debounce the API call
     const timeoutId = setTimeout(() => {
       fetchShippingTypes(searchTerm);
     }, 300);
@@ -107,7 +102,6 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
     return () => clearTimeout(timeoutId);
   }, [fetchShippingTypes]);
 
-  // Update sale detail and refresh summary
   const updateSaleDetail = useCallback(async (shippingDetails: any, checkoutDetails: any) => {
     if (!currentSaleId) {
       console.warn('No saleId available for updating sale details');
@@ -117,7 +111,6 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
     try {
       console.log('Updating sale detail with:', { saleId: currentSaleId, shippingDetails, checkoutDetails });
       
-      // Prepare the payload for SetSaleDetail API
       const payload = {
         saleId: currentSaleId,
         shippingDetails: {
@@ -133,15 +126,12 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
         }
       };
 
-      // Call SetSaleDetail API
       const setSaleResponse = await post('/Admin/SaleEditor/SetSaleDetail', payload);
       console.log('SetSaleDetail response:', setSaleResponse);
 
-      // Call GetSaleSummary API to refresh the summary
       const summaryResponse = await get(`/Admin/SaleEditor/GetSaleSummary?saleId=${currentSaleId}`);
       console.log('GetSaleSummary response:', summaryResponse);
 
-      // Trigger the parent component's refresh callback if available
       if (onRefreshSummary) {
         onRefreshSummary();
       }
@@ -154,14 +144,12 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
       }
     }
   }, [currentSaleId, post, onRefreshSummary]);
-  // Stable handlers to prevent infinite re-renders
   const handleShippingChange = useCallback(async (field: string, value: string) => {
     const updatedShippingDetails = {
       ...formData.shippingDetails,
       [field]: value
     };
     
-    // Update local state first
     handleInputChange({
       target: { 
         name: 'shippingDetails', 
@@ -169,7 +157,6 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
       }
     } as any);
 
-    // Update sale detail in backend
     await updateSaleDetail(updatedShippingDetails, formData.checkoutDetails);
   }, [formData.shippingDetails, formData.checkoutDetails, handleInputChange, updateSaleDetail]);
 
@@ -179,7 +166,6 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
       [field]: value
     };
     
-    // Update local state first
     handleInputChange({
       target: { 
         name: 'checkoutDetails', 
@@ -187,47 +173,11 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
       }
     } as any);
 
-    // Update sale detail in backend
     await updateSaleDetail(formData.shippingDetails, updatedCheckoutDetails);
   }, [formData.checkoutDetails, formData.shippingDetails, handleInputChange, updateSaleDetail]);
 
   return (
     <div className="space-y-6">
-      {/* Checkout Details */}
-      <Card className="p-4">
-        <h4 className="font-medium text-gray-900 text-sm mb-4 flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-blue-500" />
-          Checkout Details
-        </h4>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormInput
-            label="Date Order Needed By"
-            name="dateOrderNeededBy"
-            type="date"
-            value={formData.checkoutDetails?.dateOrderNeededBy || formData.inHandDate || ''}
-            onChange={(e) => handleCheckoutChange('inHandDate', e.target.value)}
-            helpText="When does the customer need this order?"
-          />
-        </div>
-
-        <div className="mt-4">
-          <div className="form-input-group">
-            <label className="form-label block text-xs font-medium text-gray-700 mb-1">
-              Additional Instructions
-            </label>
-            <textarea
-              value={formData.checkoutDetails?.additionalInstructions || ''}
-              onChange={(e) => handleCheckoutChange('additionalInstructions', e.target.value)}
-              className="form-input w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 resize-none"
-              placeholder="Any special instructions for processing this order..."
-              rows={3}
-            />
-          </div>
-        </div>
-      </Card>
-
-      {/* Shipping Details */}
       <Card className="p-4">
         <h4 className="font-medium text-gray-900 text-sm mb-4 flex items-center gap-2">
           <Truck className="w-4 h-4 text-purple-500" />
@@ -267,7 +217,6 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
             </label>
             
             <div className="space-y-2">
-              {/* Search Input */}
               <div className="relative">
                 <input
                   type="text"
@@ -297,7 +246,6 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
                 </div>
               </div>
 
-              {/* Dropdown Results */}
               {showTypeSearch && (
                 <div className="relative">
                   <select
@@ -323,7 +271,6 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
                     ))}
                   </select>
                   
-                  {/* Close search results */}
                   <button
                     type="button"
                     onClick={() => setShowTypeSearch(false)}
@@ -371,7 +318,6 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
         </div>
       </Card>
 
-      {/* Quote Summary */}
       {saleSummary && (
         <Card className="p-4 bg-blue-50 border-blue-200">
           <h5 className="font-medium text-blue-800 mb-3 text-sm">Final Quote Summary</h5>
