@@ -50,11 +50,7 @@ export const QuoteInformation: React.FC<QuoteInformationProps> = ({
             {lineItems.reduce((sum, item) => sum + (item.images?.length || 0), 0)} total
           </span>
         </div>
-        <div className="flex items-center gap-2">
-          <Package className="w-4 h-4 text-gray-400" />
-          <span className="text-xs text-gray-500">Sale ID:</span>
-          <span className="text-xs ">{currentSaleId}</span>
-        </div>
+        
       </div>
 
       {quoteDetails.quote.sale.comments.length > 0 && (

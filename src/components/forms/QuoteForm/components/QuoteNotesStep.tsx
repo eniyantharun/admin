@@ -1,32 +1,59 @@
-import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { FileText, Send, Download, ExternalLink, ImageIcon, Upload, CheckCircle, Clock, AlertCircle, Wifi, WifiOff } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
-import { showToast } from '@/components/ui/toast';
-import { generateInvoicePDF, downloadPDF, openPDFInNewTab, InvoiceResponse } from '@/lib/pdfUtils';
-import { iQuoteFormData, SaleSummary, LineItemData } from '@/types/quotes';
-import { useApi } from '@/hooks/useApi';
-import { 
-  htmlToDocumentFormat, 
-  documentFormatToHtml, 
+import React, {
+  useState,
+  useMemo,
+  useCallback,
+  useEffect,
+  useRef,
+} from "react";
+import {
+  FileText,
+  Send,
+  Download,
+  ExternalLink,
+  ImageIcon,
+  Upload,
+  CheckCircle,
+  Clock,
+  AlertCircle,
+  Wifi,
+  WifiOff,
+} from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { showToast } from "@/components/ui/toast";
+import {
+  generateInvoicePDF,
+  downloadPDF,
+  openPDFInNewTab,
+  InvoiceResponse,
+} from "@/lib/pdfUtils";
+import { iQuoteFormData, SaleSummary, LineItemData } from "@/types/quotes";
+import { useApi } from "@/hooks/useApi";
+import {
+  htmlToDocumentFormat,
+  documentFormatToHtml,
   debounce,
   AddDocumentRevisionRequest,
-  AddDocumentRevisionResponse 
-} from '@/lib/documentConverter';
-import dynamic from 'next/dynamic';
+  AddDocumentRevisionResponse,
+} from "@/lib/documentConverter";
+import dynamic from "next/dynamic";
 
 // Dynamically import ReactQuill to avoid SSR issues
-const ReactQuill = dynamic(() => import('react-quill'), { 
+const ReactQuill = dynamic(() => import("react-quill"), {
   ssr: false,
-  loading: () => <div className="h-32 bg-gray-50 rounded-lg animate-pulse" />
+  loading: () => <div className="h-32 bg-gray-50 rounded-lg animate-pulse" />,
 });
 
 // Import styles
-import 'react-quill/dist/quill.snow.css';
+import "react-quill/dist/quill.snow.css";
 
 interface QuoteNotesStepProps {
   formData: iQuoteFormData;
-  handleInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
+  handleInputChange: (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >
+  ) => void;
   saleSummary: SaleSummary | null;
   lineItems: LineItemData[];
   isEditing: boolean;
@@ -35,7 +62,7 @@ interface QuoteNotesStepProps {
   onDocumentIdCreated?: (documentId: string) => void;
 }
 
-type SaveStatus = 'idle' | 'saving' | 'saved' | 'error' | 'offline';
+type SaveStatus = "idle" | "saving" | "saved" | "error" | "offline";
 
 export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
   formData,
@@ -45,22 +72,26 @@ export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
   isEditing,
   currentSaleId,
   documentId,
-  onDocumentIdCreated
+  onDocumentIdCreated,
 }) => {
   const [generatingPDF, setGeneratingPDF] = useState(false);
-  const [lastGeneratedInvoice, setLastGeneratedInvoice] = useState<InvoiceResponse | null>(null);
+  const [lastGeneratedInvoice, setLastGeneratedInvoice] =
+    useState<InvoiceResponse | null>(null);
   const [showImageUpload, setShowImageUpload] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
-  const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
-  const [lastSavedContent, setLastSavedContent] = useState<string>('');
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const [isOnline, setIsOnline] = useState(
+    typeof navigator !== "undefined" ? navigator.onLine : true
+  );
+  const [lastSavedContent, setLastSavedContent] = useState<string>("");
   const [isLoadingNotes, setIsLoadingNotes] = useState(false);
   const [hasLoadedInitialContent, setHasLoadedInitialContent] = useState(false);
-  const [localDocumentId, setLocalDocumentId] = useState<string | null>(documentId || null);
+  const [localDocumentId, setLocalDocumentId] = useState<string | null>(
+    documentId || null
+  );
   const [isCreatingDocument, setIsCreatingDocument] = useState(false);
 
-  
   const saveTimeoutRef = useRef<NodeJS.Timeout>();
-  const lastSaveAttemptRef = useRef<string>('');
+  const lastSaveAttemptRef = useRef<string>("");
   const isInitialLoadRef = useRef(true);
 
   const { get, post } = useApi({
@@ -74,38 +105,40 @@ export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
       if (!documentId || hasLoadedInitialContent) {
         if (!documentId && !hasLoadedInitialContent) {
           setHasLoadedInitialContent(true);
-          setLastSavedContent(formData.notes || '');
+          setLastSavedContent(formData.notes || "");
         }
         return;
       }
 
       setIsLoadingNotes(true);
       try {
-        console.log('Loading notes content for documentId:', documentId);
-        const response = await get(`/Admin/Document/GetDocumentDetail?documentId=${documentId}`);
-        
+        console.log("Loading notes content for documentId:", documentId);
+        const response = await get(
+          `/Admin/Document/GetDocumentDetail?documentId=${documentId}`
+        );
+
         if (response?.content) {
           const htmlContent = documentFormatToHtml(response.content);
-          console.log('Loaded and converted notes content');
-          
+          console.log("Loaded and converted notes content");
+
           setLastSavedContent(htmlContent);
-          
+
           // Only update form data if it's different
           if (htmlContent !== formData.notes) {
             const syntheticEvent = {
               target: {
-                name: 'notes',
-                value: htmlContent
-              }
+                name: "notes",
+                value: htmlContent,
+              },
             } as React.ChangeEvent<HTMLTextAreaElement>;
             handleInputChange(syntheticEvent);
           }
         } else {
-          setLastSavedContent(formData.notes || '');
+          setLastSavedContent(formData.notes || "");
         }
       } catch (error) {
-        console.error('Error loading notes content:', error);
-        setLastSavedContent(formData.notes || '');
+        console.error("Error loading notes content:", error);
+        setLastSavedContent(formData.notes || "");
       } finally {
         setIsLoadingNotes(false);
         setHasLoadedInitialContent(true);
@@ -118,7 +151,7 @@ export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
   // Initialize lastSavedContent if no documentId
   useEffect(() => {
     if (!hasLoadedInitialContent && !documentId) {
-      setLastSavedContent(formData.notes || '');
+      setLastSavedContent(formData.notes || "");
       setHasLoadedInitialContent(true);
     }
   }, [hasLoadedInitialContent, documentId, formData.notes]);
@@ -128,184 +161,224 @@ export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
 
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
 
     return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
     };
   }, []);
 
   // Save function - stable reference
-  const saveNotesToAPI = useCallback(async (content: string) => {
-  if (!localDocumentId || !isOnline) {
-    if (!isOnline) setSaveStatus('offline');
-    return;
-  }
-
-  // Don't save if content hasn't changed
-  if (content === lastSaveAttemptRef.current) {
-    return;
-  }
-
-  lastSaveAttemptRef.current = content;
-  setSaveStatus('saving');
-
-  try {
-    const documentContent = htmlToDocumentFormat(content);
-    
-    const requestPayload: AddDocumentRevisionRequest = {
-      documentId: localDocumentId, // Use localDocumentId instead of documentId
-      content: documentContent
-    };
-
-    const response = await post<AddDocumentRevisionResponse>(
-      '/Admin/Document/AddDocumentRevision',
-      requestPayload
-    );
-
-    if (response) {
-      setSaveStatus('saved');
-      setLastSavedContent(content);
-      
-      setTimeout(() => setSaveStatus('idle'), 2000);
-    }
-  } catch (error: any) {
-    console.error('Error saving notes:', error);
-    setSaveStatus('error');
-    
-    if (!error.message?.includes('NetworkError') && !error.message?.includes('fetch')) {
-      showToast.error('Failed to save notes');
-    }
-    
-    setTimeout(() => setSaveStatus('idle'), 3000);
-  }
-}, [localDocumentId, post, isOnline]); 
-
-const createDocument = useCallback(async (): Promise<string | null> => {
-  if (isCreatingDocument) {
-    console.log('Document creation already in progress, skipping...');
-    return null;
-  }
-
-  setIsCreatingDocument(true);
-  try {
-    console.log('Creating new document...');
-    const response = await post('/Admin/Document/AddDocument', { 
-      isPublic: false, 
-      saleId: currentSaleId 
-    });
-    
-    if (response?.id) {
-      console.log('Created new document with ID:', response.id);
-      
-      if (currentSaleId) {
-        try {
-          await post('/Admin/SaleEditor/SetQuoteDetail', {
-            id: currentSaleId, 
-            notesId: response.id
-          });
-          console.log('Successfully linked document to quote');
-        } catch (linkError) {
-          console.error('Failed to link document to quote:', linkError);
-        }
+  const saveNotesToAPI = useCallback(
+    async (content: string) => {
+      if (!localDocumentId || !isOnline) {
+        if (!isOnline) setSaveStatus("offline");
+        return;
       }
-      
-      return response.id;
+
+      // Don't save if content hasn't changed
+      if (content === lastSaveAttemptRef.current) {
+        return;
+      }
+
+      lastSaveAttemptRef.current = content;
+      setSaveStatus("saving");
+
+      try {
+        const documentContent = htmlToDocumentFormat(content);
+
+        const requestPayload: AddDocumentRevisionRequest = {
+          documentId: localDocumentId, // Use localDocumentId instead of documentId
+          content: documentContent,
+        };
+
+        const response = await post<AddDocumentRevisionResponse>(
+          "/Admin/Document/AddDocumentRevision",
+          requestPayload
+        );
+
+        if (response) {
+          setSaveStatus("saved");
+          setLastSavedContent(content);
+
+          setTimeout(() => setSaveStatus("idle"), 2000);
+        }
+      } catch (error: any) {
+        console.error("Error saving notes:", error);
+        setSaveStatus("error");
+
+        if (
+          !error.message?.includes("NetworkError") &&
+          !error.message?.includes("fetch")
+        ) {
+          showToast.error("Failed to save notes");
+        }
+
+        setTimeout(() => setSaveStatus("idle"), 3000);
+      }
+    },
+    [localDocumentId, post, isOnline]
+  );
+
+  const createDocument = useCallback(async (): Promise<string | null> => {
+    if (isCreatingDocument) {
+      console.log("Document creation already in progress, skipping...");
+      return null;
     }
-    
-    return null;
-  } catch (error) {
-    console.error('Error creating document:', error);
-    showToast.error('Failed to create document');
-    return null;
-  } finally {
-    setIsCreatingDocument(false);
-  }
-}, [post, currentSaleId, isCreatingDocument]); 
+
+    setIsCreatingDocument(true);
+    try {
+      console.log("Creating new document...");
+      const response = await post("/Admin/Document/AddDocument", {
+        isPublic: false,
+        saleId: currentSaleId,
+      });
+
+      if (response?.id) {
+        console.log("Created new document with ID:", response.id);
+
+        if (currentSaleId) {
+          try {
+            await post("/Admin/SaleEditor/SetQuoteDetail", {
+              id: currentSaleId,
+              notesId: response.id,
+            });
+            console.log("Successfully linked document to quote");
+          } catch (linkError) {
+            console.error("Failed to link document to quote:", linkError);
+          }
+        }
+
+        return response.id;
+      }
+
+      return null;
+    } catch (error) {
+      console.error("Error creating document:", error);
+      showToast.error("Failed to create document");
+      return null;
+    } finally {
+      setIsCreatingDocument(false);
+    }
+  }, [post, currentSaleId, isCreatingDocument]);
 
   // Debounced save function - stable reference
   const debouncedSave = useMemo(
-    () => debounce((content: string) => {
-      saveNotesToAPI(content);
-    }, 3000),
+    () =>
+      debounce((content: string) => {
+        saveNotesToAPI(content);
+      }, 3000),
     [saveNotesToAPI]
   );
 
   // Configure Quill modules and formats
-  const quillModules = useMemo(() => ({
-    toolbar: {
-      container: [
-        [{ 'header': [1, 2, 3, false] }],
-        ['bold', 'italic', 'underline', 'strike'],
-        [{ 'color': [] }, { 'background': [] }],
-        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-        [{ 'indent': '-1'}, { 'indent': '+1' }],
-        ['link'],
-        [{ 'align': [] }],
-        ['clean'],
-        ['image-upload']
-      ],
-      handlers: {
-        'image-upload': () => setShowImageUpload(true)
-      }
-    },
-    clipboard: {
-      matchVisual: false
-    }
-  }), []);
+  const quillModules = useMemo(
+    () => ({
+      toolbar: {
+        container: [
+          [{ header: [1, 2, 3, false] }],
+          ["bold", "italic", "underline", "strike"],
+          [{ color: [] }, { background: [] }],
+          [{ list: "ordered" }, { list: "bullet" }],
+          [{ indent: "-1" }, { indent: "+1" }],
+          ["link"],
+          [{ align: [] }],
+          ["clean"],
+          ["image-upload"],
+        ],
+        handlers: {
+          "image-upload": () => setShowImageUpload(true),
+        },
+      },
+      clipboard: {
+        matchVisual: false,
+      },
+    }),
+    []
+  );
 
   const quillFormats = [
-    'header',
-    'bold', 'italic', 'underline', 'strike',
-    'color', 'background',
-    'list', 'bullet', 'indent',
-    'link', 'align'
+    "header",
+    "bold",
+    "italic",
+    "underline",
+    "strike",
+    "color",
+    "background",
+    "list",
+    "bullet",
+    "indent",
+    "link",
+    "align",
   ];
 
   // Handle Quill changes - prevent infinite loops
-  const handleQuillChange = useCallback(async (content: string) => {
-  // Prevent triggering during initial load
-  if (isLoadingNotes || !hasLoadedInitialContent) {
-    return;
-  }
+  const handleQuillChange = useCallback(
+    async (content: string) => {
+      // Prevent triggering during initial load
+      if (isLoadingNotes || !hasLoadedInitialContent) {
+        return;
+      }
 
-  // Update parent form data
-  const syntheticEvent = {
-    target: {
-      name: 'notes',
-      value: content
-    }
-  } as React.ChangeEvent<HTMLTextAreaElement>;
-  
-  handleInputChange(syntheticEvent);
+      // Update parent form data
+      const syntheticEvent = {
+        target: {
+          name: "notes",
+          value: content,
+        },
+      } as React.ChangeEvent<HTMLTextAreaElement>;
 
-  // Create document if we don't have one and content is not empty
-  // But only if we're not already creating one
-  if (!localDocumentId && !isCreatingDocument && content.trim() !== '' && content !== '<p><br></p>') {
-    const newDocumentId = await createDocument();
-    if (newDocumentId) {
-      setLocalDocumentId(newDocumentId);
-      onDocumentIdCreated?.(newDocumentId);
-      
-      // Save the content to the new document
-      debouncedSave(content);
-    }
-    return;
-  }
+      handleInputChange(syntheticEvent);
 
-  // Only save to API if we have a documentId and content has changed significantly
-  const contentChanged = content !== lastSavedContent;
-  const significantChange = Math.abs(content.length - lastSavedContent.length) > 5;
-  const hasRealContent = content.replace(/<[^>]*>/g, '').trim().length > 0;
-  
-  if (localDocumentId && contentChanged && (significantChange || hasRealContent)) {
-    debouncedSave(content);
-  }
-}, [handleInputChange, debouncedSave, lastSavedContent, localDocumentId, isLoadingNotes, hasLoadedInitialContent, createDocument, onDocumentIdCreated, isCreatingDocument]);
+      // Create document if we don't have one and content is not empty
+      // But only if we're not already creating one
+      if (
+        !localDocumentId &&
+        !isCreatingDocument &&
+        content.trim() !== "" &&
+        content !== "<p><br></p>"
+      ) {
+        const newDocumentId = await createDocument();
+        if (newDocumentId) {
+          setLocalDocumentId(newDocumentId);
+          onDocumentIdCreated?.(newDocumentId);
 
-// Force save function for manual saves
+          // Save the content to the new document
+          debouncedSave(content);
+        }
+        return;
+      }
+
+      // Only save to API if we have a documentId and content has changed significantly
+      const contentChanged = content !== lastSavedContent;
+      const significantChange =
+        Math.abs(content.length - lastSavedContent.length) > 5;
+      const hasRealContent = content.replace(/<[^>]*>/g, "").trim().length > 0;
+
+      if (
+        localDocumentId &&
+        contentChanged &&
+        (significantChange || hasRealContent)
+      ) {
+        debouncedSave(content);
+      }
+    },
+    [
+      handleInputChange,
+      debouncedSave,
+      lastSavedContent,
+      localDocumentId,
+      isLoadingNotes,
+      hasLoadedInitialContent,
+      createDocument,
+      onDocumentIdCreated,
+      isCreatingDocument,
+    ]
+  );
+
+  // Force save function for manual saves
   const forceSave = useCallback(() => {
     if (documentId && formData.notes && formData.notes !== lastSavedContent) {
       saveNotesToAPI(formData.notes);
@@ -314,7 +387,11 @@ const createDocument = useCallback(async (): Promise<string | null> => {
 
   // Retry save when coming back online
   useEffect(() => {
-    if (isOnline && saveStatus === 'offline' && formData.notes !== lastSavedContent) {
+    if (
+      isOnline &&
+      saveStatus === "offline" &&
+      formData.notes !== lastSavedContent
+    ) {
       forceSave();
     }
   }, [isOnline, saveStatus, forceSave, formData.notes, lastSavedContent]);
@@ -323,40 +400,42 @@ const createDocument = useCallback(async (): Promise<string | null> => {
   const SaveStatusIndicator = () => {
     const getStatusConfig = () => {
       switch (saveStatus) {
-        case 'saving':
+        case "saving":
           return {
             icon: Clock,
-            text: 'Saving...',
-            className: 'text-blue-600 bg-blue-50 border-blue-200'
+            text: "Saving...",
+            className: "text-blue-600 bg-blue-50 border-blue-200",
           };
-        case 'saved':
+        case "saved":
           return {
             icon: CheckCircle,
-            text: 'Saved',
-            className: 'text-green-600 bg-green-50 border-green-200'
+            text: "Saved",
+            className: "text-green-600 bg-green-50 border-green-200",
           };
-        case 'error':
+        case "error":
           return {
             icon: AlertCircle,
-            text: 'Save failed',
-            className: 'text-red-600 bg-red-50 border-red-200'
+            text: "Save failed",
+            className: "text-red-600 bg-red-50 border-red-200",
           };
-        case 'offline':
+        case "offline":
           return {
             icon: WifiOff,
-            text: 'Offline',
-            className: 'text-orange-600 bg-orange-50 border-orange-200'
+            text: "Offline",
+            className: "text-orange-600 bg-orange-50 border-orange-200",
           };
         default:
-          return isOnline ? {
-            icon: Wifi,
-            text: 'Online',
-            className: 'text-gray-500 bg-gray-50 border-gray-200'
-          } : {
-            icon: WifiOff,
-            text: 'Offline',
-            className: 'text-orange-600 bg-orange-50 border-orange-200'
-          };
+          return isOnline
+            ? {
+                icon: Wifi,
+                text: "Online",
+                className: "text-gray-500 bg-gray-50 border-gray-200",
+              }
+            : {
+                icon: WifiOff,
+                text: "Offline",
+                className: "text-orange-600 bg-orange-50 border-orange-200",
+              };
       }
     };
 
@@ -364,7 +443,9 @@ const createDocument = useCallback(async (): Promise<string | null> => {
     const Icon = config.icon;
 
     return (
-      <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs border ${config.className}`}>
+      <div
+        className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs border ${config.className}`}
+      >
         <Icon className="w-3 h-3" />
         <span>{config.text}</span>
       </div>
@@ -373,29 +454,32 @@ const createDocument = useCallback(async (): Promise<string | null> => {
 
   const handleGeneratePDF = async () => {
     if (!currentSaleId) {
-      showToast.error('No sale ID available. Please save the quote first.');
+      showToast.error("No sale ID available. Please save the quote first.");
       return;
     }
 
     if (!isEditing) {
-      showToast.error('Please save the quote before generating PDF');
+      showToast.error("Please save the quote before generating PDF");
       return;
     }
 
     setGeneratingPDF(true);
-    
+
     try {
       const invoiceResponse = await generateInvoicePDF(currentSaleId);
-      
+
       if (invoiceResponse) {
         setLastGeneratedInvoice(invoiceResponse);
-        
+
         if (invoiceResponse.asset.url) {
-          await downloadPDF(invoiceResponse.asset.url, invoiceResponse.asset.filename);
+          await downloadPDF(
+            invoiceResponse.asset.url,
+            invoiceResponse.asset.filename
+          );
         }
       }
     } catch (error) {
-      console.error('PDF generation failed:', error);
+      console.error("PDF generation failed:", error);
     } finally {
       setGeneratingPDF(false);
     }
@@ -403,7 +487,10 @@ const createDocument = useCallback(async (): Promise<string | null> => {
 
   const handleDownloadLastPDF = async () => {
     if (lastGeneratedInvoice?.asset.url) {
-      await downloadPDF(lastGeneratedInvoice.asset.url, lastGeneratedInvoice.asset.filename);
+      await downloadPDF(
+        lastGeneratedInvoice.asset.url,
+        lastGeneratedInvoice.asset.filename
+      );
     }
   };
 
@@ -414,60 +501,20 @@ const createDocument = useCallback(async (): Promise<string | null> => {
   };
 
   const handleImageUpload = () => {
-    showToast.info('Image upload feature will be available soon');
+    showToast.info("Image upload feature will be available soon");
     setShowImageUpload(false);
   };
 
   return (
     <div className="space-y-4">
-      {/* Debug Info Panel - Remove in production */}
-      {process.env.NODE_ENV === 'development' && (
-        <Card className="p-3 mb-4 bg-yellow-50 border-yellow-200">
-          <h4 className="font-medium text-yellow-800 text-sm mb-2">Debug Info</h4>
-          <div className="space-y-1 text-xs text-yellow-700">
-            <div>Document ID: {documentId === null ? 'null' : documentId === undefined ? 'undefined' : documentId}</div>
-            <div>Save Status: {saveStatus}</div>
-            <div>Online: {isOnline ? 'Yes' : 'No'}</div>
-            <div>Content Length: {formData.notes?.length || 0}</div>
-            <div>Last Saved Length: {lastSavedContent.length}</div>
-            <div>Has Loaded Initial: {hasLoadedInitialContent ? 'Yes' : 'No'}</div>
-            <div>Is Loading Notes: {isLoadingNotes ? 'Yes' : 'No'}</div>
-            <div>Is Creating Document: {isCreatingDocument ? 'Yes' : 'No'}</div>
-            <div>API Saves: {documentId ? 'Enabled' : 'Disabled (no documentId)'}</div>
-            {!localDocumentId && (
-  <Button
-    onClick={async () => {
-      if (isCreatingDocument) {
-        showToast.info('Document creation already in progress...');
-        return;
-      }
-      
-      const newDocumentId = await createDocument();
-      if (newDocumentId) {
-        setLocalDocumentId(newDocumentId);
-        onDocumentIdCreated?.(newDocumentId);
-        showToast.success('Document created successfully');
-      }
-    }}
-    size="sm"
-    variant="primary"
-    className="mt-2"
-    disabled={isCreatingDocument}
-  >
-    {isCreatingDocument ? 'Creating...' : 'Create Notes Document'}
-  </Button>
-)}
-          </div>
-        </Card>
-      )}
-
       {/* API Status Warning */}
       {!documentId && (
         <Card className="p-3 mb-4 bg-orange-50 border-orange-200">
           <div className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-orange-600" />
             <p className="text-orange-700 text-sm">
-              No document ID available for this quote. Notes will be saved locally only.
+              No document ID available for this quote. Notes will be saved
+              locally only.
             </p>
           </div>
         </Card>
@@ -481,7 +528,7 @@ const createDocument = useCallback(async (): Promise<string | null> => {
           </label>
           <div className="flex items-center gap-2">
             <SaveStatusIndicator />
-            {saveStatus === 'error' && (
+            {saveStatus === "error" && (
               <Button
                 onClick={forceSave}
                 variant="secondary"
@@ -493,7 +540,7 @@ const createDocument = useCallback(async (): Promise<string | null> => {
             )}
           </div>
         </div>
-        
+
         <div className="border border-gray-300 rounded-lg overflow-hidden bg-white">
           {isLoadingNotes ? (
             <div className="h-32 bg-gray-50 flex items-center justify-center">
@@ -505,26 +552,25 @@ const createDocument = useCallback(async (): Promise<string | null> => {
           ) : (
             <ReactQuill
               theme="snow"
-              value={formData.notes || ''}
+              value={formData.notes || ""}
               onChange={handleQuillChange}
               modules={quillModules}
               formats={quillFormats}
               placeholder="Add any special instructions, requirements, or notes for this quote..."
               style={{
-                minHeight: '150px'
+                minHeight: "150px",
               }}
             />
           )}
         </div>
-        
+
         <div className="flex items-center justify-between mt-2">
           <p className="text-xs text-gray-500">
-            {documentId ? 
-              'Changes are automatically saved • These notes will be visible to the customer' : 
-              'Local changes only • Connect document ID to enable auto-save'
-            }
+            {documentId
+              ? "Changes are automatically saved • These notes will be visible to the customer"
+              : "Local changes only • Connect document ID to enable auto-save"}
           </p>
-          
+
           <Button
             onClick={() => setShowImageUpload(true)}
             variant="secondary"
@@ -542,7 +588,9 @@ const createDocument = useCallback(async (): Promise<string | null> => {
         <Card className="p-4 bg-blue-50 border-blue-200">
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h5 className="font-medium text-blue-800 text-sm">Add Image to Notes</h5>
+              <h5 className="font-medium text-blue-800 text-sm">
+                Add Image to Notes
+              </h5>
               <Button
                 onClick={() => setShowImageUpload(false)}
                 variant="secondary"
@@ -552,10 +600,12 @@ const createDocument = useCallback(async (): Promise<string | null> => {
                 ×
               </Button>
             </div>
-            
+
             <div className="border-2 border-dashed border-blue-300 rounded-lg p-6 text-center">
               <ImageIcon className="w-8 h-8 mx-auto text-blue-400 mb-2" />
-              <p className="text-sm text-blue-700 mb-2">Upload an image to include in your notes</p>
+              <p className="text-sm text-blue-700 mb-2">
+                Upload an image to include in your notes
+              </p>
               <div className="flex gap-2 justify-center">
                 <Button
                   onClick={handleImageUpload}
@@ -588,7 +638,8 @@ const createDocument = useCallback(async (): Promise<string | null> => {
           <div className="flex items-center gap-2">
             <WifiOff className="w-4 h-4 text-orange-600" />
             <p className="text-orange-700 text-sm">
-              You're currently offline. Changes will be saved when connection is restored.
+              You're currently offline. Changes will be saved when connection is
+              restored.
             </p>
           </div>
         </Card>
@@ -597,52 +648,78 @@ const createDocument = useCallback(async (): Promise<string | null> => {
       {/* Quote Summary */}
       {saleSummary && (
         <Card className="p-4 bg-blue-50 border-blue-200">
-          <h5 className="font-medium text-blue-800 mb-3 text-sm">Quote Summary</h5>
+          <h5 className="font-medium text-blue-800 mb-3 text-sm">
+            Quote Summary
+          </h5>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-blue-700">Customer:</span>
-              <span className="font-medium text-blue-800">{formData.customer}</span>
+              <span className="font-medium text-blue-800">
+                {formData.customer}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-blue-700">Email:</span>
-              <span className="font-medium text-blue-800">{formData.customerEmail}</span>
+              <span className="font-medium text-blue-800">
+                {formData.customerEmail}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-blue-700">Items:</span>
-              <span className="font-medium text-blue-800">{lineItems.length} item{lineItems.length !== 1 ? 's' : ''}</span>
+              <span className="font-medium text-blue-800">
+                {lineItems.length} item{lineItems.length !== 1 ? "s" : ""}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-blue-700">Images:</span>
-              <span className="font-medium text-blue-800">{lineItems.reduce((sum, item) => sum + (item.images?.length || 0), 0)} total</span>
+              <span className="font-medium text-blue-800">
+                {lineItems.reduce(
+                  (sum, item) => sum + (item.images?.length || 0),
+                  0
+                )}{" "}
+                total
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-blue-700">Items Total:</span>
-              <span className="font-medium text-blue-800">${saleSummary.customerSummary.itemsTotal.toFixed(2)}</span>
+              <span className="font-medium text-blue-800">
+                ${saleSummary.customerSummary.itemsTotal.toFixed(2)}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-blue-700">Setup Charges:</span>
-              <span className="font-medium text-blue-800">${saleSummary.customerSummary.setupCharge.toFixed(2)}</span>
+              <span className="font-medium text-blue-800">
+                ${saleSummary.customerSummary.setupCharge.toFixed(2)}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-blue-700">Total Amount:</span>
-              <span className="font-bold text-green-600 text-lg">${saleSummary.customerSummary.total.toFixed(2)}</span>
+              <span className="font-bold text-green-600 text-lg">
+                ${saleSummary.customerSummary.total.toFixed(2)}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-blue-700">Profit:</span>
-              <span className="font-bold text-orange-600">${saleSummary.profit.toFixed(2)}</span>
+              <span className="font-bold text-orange-600">
+                ${saleSummary.profit.toFixed(2)}
+              </span>
             </div>
             {formData.inHandDate && (
               <div className="flex justify-between">
                 <span className="text-blue-700">In-Hand Date:</span>
-                <span className="font-medium text-blue-800">{formData.inHandDate}</span>
+                <span className="font-medium text-blue-800">
+                  {formData.inHandDate}
+                </span>
               </div>
             )}
             <div className="flex justify-between">
               <span className="text-blue-700">Status:</span>
               <span className="font-medium text-blue-800">
-                {formData.status === 'new-quote' ? 'New Quote' : 
-                 formData.status === 'quote-sent-to-customer' ? 'Quote Sent' : 
-                 'Converted to Order'}
+                {formData.status === "new-quote"
+                  ? "New Quote"
+                  : formData.status === "quote-sent-to-customer"
+                  ? "Quote Sent"
+                  : "Converted to Order"}
               </span>
             </div>
           </div>
@@ -652,13 +729,19 @@ const createDocument = useCallback(async (): Promise<string | null> => {
       {/* PDF Generation Section */}
       {isEditing && currentSaleId && (
         <Card className="p-4 bg-gray-50 border-gray-200">
-          <h5 className="font-medium text-gray-800 mb-3 text-sm">Invoice Generation</h5>
-          
+          <h5 className="font-medium text-gray-800 mb-3 text-sm">
+            Invoice Generation
+          </h5>
+
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-700 font-medium">Generate PDF Invoice</p>
-                <p className="text-xs text-gray-500">Create a downloadable PDF invoice for this quote</p>
+                <p className="text-sm text-gray-700 font-medium">
+                  Generate PDF Invoice
+                </p>
+                <p className="text-xs text-gray-500">
+                  Create a downloadable PDF invoice for this quote
+                </p>
               </div>
               <Button
                 onClick={handleGeneratePDF}
@@ -669,7 +752,7 @@ const createDocument = useCallback(async (): Promise<string | null> => {
                 disabled={!currentSaleId || generatingPDF}
                 className="bg-white border-gray-300 hover:bg-gray-50"
               >
-                {generatingPDF ? 'Generating...' : 'Generate PDF'}
+                {generatingPDF ? "Generating..." : "Generate PDF"}
               </Button>
             </div>
 
@@ -681,11 +764,14 @@ const createDocument = useCallback(async (): Promise<string | null> => {
                       Invoice #{lastGeneratedInvoice.invoice.number} Generated
                     </p>
                     <p className="text-xs text-gray-500">
-                      Generated: {new Date(lastGeneratedInvoice.invoice.generatedAt).toLocaleString()}
+                      Generated:{" "}
+                      {new Date(
+                        lastGeneratedInvoice.invoice.generatedAt
+                      ).toLocaleString()}
                     </p>
                   </div>
                 </div>
-                
+
                 <div className="flex gap-2">
                   <Button
                     onClick={handleDownloadLastPDF}
@@ -716,7 +802,11 @@ const createDocument = useCallback(async (): Promise<string | null> => {
       {isEditing && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Button
-            onClick={() => showToast.success('Quote sent successfully to ' + formData.customerEmail)}
+            onClick={() =>
+              showToast.success(
+                "Quote sent successfully to " + formData.customerEmail
+              )
+            }
             variant="primary"
             size="sm"
             icon={Send}
@@ -738,95 +828,96 @@ const createDocument = useCallback(async (): Promise<string | null> => {
           padding: 8px 12px !important;
           background: #f9fafb !important;
         }
-        
+
         .ql-container {
           border: none !important;
           border-radius: 0 !important;
           font-family: inherit !important;
           font-size: 14px !important;
         }
-        
+
         .ql-editor {
           min-height: 120px !important;
           padding: 12px !important;
           line-height: 1.5 !important;
         }
-        
+
         .ql-editor.ql-blank::before {
           color: #9ca3af !important;
           font-style: normal !important;
           font-size: 14px !important;
         }
-        
+
         .ql-toolbar .ql-formats {
           margin-right: 12px !important;
         }
-        
+
         .ql-toolbar button {
           padding: 4px !important;
           margin: 0 1px !important;
           border-radius: 4px !important;
         }
-        
+
         .ql-toolbar button:hover {
           background-color: #e5e7eb !important;
         }
-        
+
         .ql-toolbar button.ql-active {
           background-color: #3b82f6 !important;
           color: white !important;
         }
-        
+
         .ql-toolbar button.ql-image-upload:before {
           content: "🖼️" !important;
           font-size: 14px !important;
         }
-        
+
         .ql-editor ol {
           padding-left: 1.5em !important;
         }
-        
+
         .ql-editor ul {
           padding-left: 1.5em !important;
         }
-        
+
         .ql-editor li {
           margin-bottom: 4px !important;
         }
-        
+
         .ql-editor a {
           color: #3b82f6 !important;
           text-decoration: underline !important;
         }
-        
+
         .ql-editor a:hover {
           color: #1d4ed8 !important;
         }
-        
+
         .ql-editor h1 {
           font-size: 1.5em !important;
           font-weight: bold !important;
           margin-bottom: 0.5em !important;
         }
-        
+
         .ql-editor h2 {
           font-size: 1.25em !important;
           font-weight: bold !important;
           margin-bottom: 0.5em !important;
         }
-        
+
         .ql-editor h3 {
           font-size: 1.125em !important;
           font-weight: bold !important;
           margin-bottom: 0.5em !important;
         }
-        
+
         .saving-indicator {
           animation: pulse 1.5s ease-in-out infinite;
         }
-        
+
         @keyframes pulse {
-          0%, 100% {
+          0%,
+          100% {
             opacity: 1;
           }
           50% {

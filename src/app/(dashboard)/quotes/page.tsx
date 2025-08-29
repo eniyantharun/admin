@@ -111,7 +111,7 @@ export default function QuotesPage() {
 
     return {
       id: sale.quote.id,
-      quoteNumber: `QUO-${sale.quote.id}`,
+      quoteNumber: `${sale.quote.id}`,
       customer: sale.customer.name,
       customerEmail: `${sale.customer.name.toLowerCase().replace(/\s+/g, '.')}@example.com`,
       status: mapApiStatusToQuoteStatus(sale.quote.status),

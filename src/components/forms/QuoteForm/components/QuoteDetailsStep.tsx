@@ -41,35 +41,36 @@ export const QuoteDetailsStep: React.FC<QuoteDetailsStepProps> = ({
   };
 
   const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newStatus = e.target.value;
-    
-    // If editing and we have a quote ID, immediately update the status via API
-    if (isEditing && quoteId) {
-      try {
-        showToast.loading('Updating quote status...');
-        
-        await post('/Admin/SaleEditor/SetQuoteDetail', {
-          id: quoteId,
-          status: mapStatusToApi(newStatus) // Map to API format
-        });
-        
-        // Update local state only after successful API call
-        handleInputChange(e);
-        
-        showToast.dismiss();
-        showToast.success('Quote status updated successfully');
-      } catch (error) {
-        showToast.dismiss();
-        showToast.error('Failed to update quote status');
-        console.error('Error updating quote status:', error);
-        // Don't update local state if API call fails
-        return;
-      }
-    } else {
-      // For new quotes (not editing), just update local state
-      handleInputChange(e);
+  const newStatus = e.target.value;
+  
+  handleInputChange(e);
+  
+  if (isEditing && quoteId) {
+    try {
+      showToast.loading('Updating quote status...');
+      
+      await post('/Admin/SaleEditor/SetQuoteDetail', {
+        id: quoteId,
+        status: mapStatusToApi(newStatus) 
+      });
+      
+      showToast.dismiss();
+      showToast.success('Quote status updated successfully');
+    } catch (error) {
+      showToast.dismiss();
+      showToast.error('Failed to update quote status');
+      console.error('Error updating quote status:', error);
+      
+      const revertEvent = {
+        target: {
+          name: 'status',
+          value: formData.status 
+        }
+      } as React.ChangeEvent<HTMLSelectElement>;
+      handleInputChange(revertEvent);
     }
-  };
+  }
+};
 
   return (
     <div className="space-y-4">
@@ -94,14 +95,7 @@ export const QuoteDetailsStep: React.FC<QuoteDetailsStepProps> = ({
           </select>
         </div>
 
-        <FormInput
-          label="In-Hand Date"
-          name="inHandDate"
-          type="date"
-          value={formData.inHandDate}
-          onChange={handleInputChange}
-          helpText="Expected delivery date (optional)"
-        />
+        
       </div>
 
       {saleSummary && (

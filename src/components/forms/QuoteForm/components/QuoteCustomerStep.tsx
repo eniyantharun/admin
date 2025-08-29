@@ -15,6 +15,7 @@ interface QuoteCustomerStepProps {
   setFormData: React.Dispatch<React.SetStateAction<iQuoteFormData>>;
   customerAddresses: iCustomerAddress[];
   onFetchCustomerAddresses: (customerId: string) => Promise<void>;
+  isEditing?: boolean;
 }
 
 export const QuoteCustomerStep: React.FC<QuoteCustomerStepProps> = ({
@@ -23,7 +24,8 @@ export const QuoteCustomerStep: React.FC<QuoteCustomerStepProps> = ({
   formData,
   setFormData,
   customerAddresses,
-  onFetchCustomerAddresses
+  onFetchCustomerAddresses,
+  isEditing = false 
 }) => {
   const [showBillingAddressForm, setShowBillingAddressForm] = useState(false);
   const [showShippingAddressForm, setShowShippingAddressForm] = useState(false);
@@ -208,15 +210,57 @@ export const QuoteCustomerStep: React.FC<QuoteCustomerStepProps> = ({
             
             {/* Customer Change Button */}
             <div className="mt-3 pt-3 border-t border-blue-200">
-              <Button
-                onClick={() => onCustomerSelect(null as any)}
-                variant="secondary"
-                size="sm"
-                className="bg-white border-blue-300 text-blue-700 hover:bg-blue-50"
-              >
-                Change Customer
-              </Button>
-            </div>
+  <div className="flex items-center gap-2">
+    <Button
+      onClick={() => onCustomerSelect(null as any)}
+      variant="secondary"
+      size="sm"
+      className="bg-white border-blue-300 text-blue-700 hover:bg-blue-50"
+    >
+      Change Customer
+    </Button>
+    {!isEditing && (
+      <Button
+        onClick={() => {
+          // Reset to initial state
+          onCustomerSelect(null as any);
+          setFormData(prev => ({
+            ...prev,
+            customer: '',
+            customerEmail: '',
+            billingAddress: {
+              type: 'billing' as const,
+              label: '',
+              name: '',
+              street: '',
+              city: '',
+              state: '',
+              zipCode: '',
+              country: 'US',
+              isPrimary: false,
+            },
+            shippingAddress: {
+              type: 'shipping' as const,
+              label: '',
+              name: '',
+              street: '',
+              city: '',
+              state: '',
+              zipCode: '',
+              country: 'US',
+              isPrimary: false,
+            }
+          }));
+        }}
+        variant="secondary"
+        size="sm"
+        className="bg-gray-100 border-gray-300 text-gray-700 hover:bg-gray-50"
+      >
+        Back to Selection
+      </Button>
+    )}
+  </div>
+</div>
           </Card>
         ) : (
           <CustomerSearch 

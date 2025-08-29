@@ -280,6 +280,7 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
             setFormData={setFormData}
             customerAddresses={customerAddresses}
             onFetchCustomerAddresses={fetchCustomerAddresses}
+            isEditing={isEditing}
           />
         );
       case "items":
