@@ -116,6 +116,19 @@ export const useQuoteData = (
     }
   }, [get]);
 
+  const updateQuoteNotesId = useCallback(async (quoteId: number, notesId: string) => {
+  try {
+    await post('/Admin/SaleEditor/SetQuoteDetail', {
+      id: quoteId,
+      notesId: notesId
+    });
+    console.log('Successfully updated quote notesId:', notesId);
+  } catch (error) {
+    console.error('Failed to update quote notesId:', error);
+    throw error;
+  }
+}, [post]);
+
   const fetchQuoteDetails = async (quoteId: number) => {
     setIsLoadingLineItems(true);
     try {
@@ -425,8 +438,7 @@ export const useQuoteData = (
       setQuoteDetails(null);
       setCurrentSaleId('');
     }
-  }, [quote?.id, isEditing]); // Only depend on quote ID and isEditing
-
+  }, [quote?.id, isEditing]); 
   return {
     selectedCustomer,
     setSelectedCustomer,
@@ -444,6 +456,7 @@ export const useQuoteData = (
     fetchCustomerAddresses,
     createNewQuote,
     setSaleDetail,
-    loadNotesContent, // Export this function for use in components
+    loadNotesContent,
+    updateQuoteNotesId,
   };
 };

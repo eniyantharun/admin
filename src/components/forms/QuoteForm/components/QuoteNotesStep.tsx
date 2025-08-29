@@ -181,10 +181,9 @@ export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
     
     setTimeout(() => setSaveStatus('idle'), 3000);
   }
-}, [localDocumentId, post, isOnline]); // Update dependencies
+}, [localDocumentId, post, isOnline]); 
 
-  const createDocument = useCallback(async (): Promise<string | null> => {
-  // Prevent multiple simultaneous calls
+const createDocument = useCallback(async (): Promise<string | null> => {
   if (isCreatingDocument) {
     console.log('Document creation already in progress, skipping...');
     return null;
@@ -193,10 +192,26 @@ export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
   setIsCreatingDocument(true);
   try {
     console.log('Creating new document...');
-    const response = await post('/Admin/Document/AddDocument', { isPublic: false, saleId: currentSaleId });
+    const response = await post('/Admin/Document/AddDocument', { 
+      isPublic: false, 
+      saleId: currentSaleId 
+    });
     
     if (response?.id) {
       console.log('Created new document with ID:', response.id);
+      
+      if (currentSaleId) {
+        try {
+          await post('/Admin/SaleEditor/SetQuoteDetail', {
+            id: currentSaleId, 
+            notesId: response.id
+          });
+          console.log('Successfully linked document to quote');
+        } catch (linkError) {
+          console.error('Failed to link document to quote:', linkError);
+        }
+      }
+      
       return response.id;
     }
     
@@ -208,8 +223,7 @@ export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
   } finally {
     setIsCreatingDocument(false);
   }
-}, [post, isCreatingDocument]);
-
+}, [post, currentSaleId, isCreatingDocument]); 
 
   // Debounced save function - stable reference
   const debouncedSave = useMemo(

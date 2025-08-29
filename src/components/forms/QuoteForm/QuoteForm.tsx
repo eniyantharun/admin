@@ -69,29 +69,30 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
   const [isCreatingQuote, setIsCreatingQuote] = useState(false);
 
   const {
-    selectedCustomer,
-    setSelectedCustomer,
-    lineItems,
-    setLineItems,
-    saleSummary,
-    setSaleSummary,
-    isLoadingLineItems,
-    quoteDetails,
-    currentSaleId,
-    handleAddEmptyLineItem,
-    handleUpdateLineItem,
-    handleRemoveLineItem,
-    fetchSaleSummary,
-    fetchCustomerAddresses,
-    createNewQuote,
-    setSaleDetail,
-  } = useQuoteData(
-    quote,
-    isEditing,
-    formData,
-    setFormData,
-    setCustomerAddresses
-  );
+  selectedCustomer,
+  setSelectedCustomer,
+  lineItems,
+  setLineItems,
+  saleSummary,
+  setSaleSummary,
+  isLoadingLineItems,
+  quoteDetails,
+  currentSaleId,
+  handleAddEmptyLineItem,
+  handleUpdateLineItem,
+  handleRemoveLineItem,
+  fetchSaleSummary,
+  fetchCustomerAddresses,
+  createNewQuote,
+  setSaleDetail,
+  updateQuoteNotesId, // Add this
+} = useQuoteData(
+  quote,
+  isEditing,
+  formData,
+  setFormData,
+  setCustomerAddresses
+);
 
   const steps: FormStep[] = [
     "customer-address",
@@ -326,23 +327,29 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
           />
         );
       case "notes":
-        // Based on the API response, the correct path is:
-        const notesId = quoteDetails?.quote?.sale?.notesId;
+  const notesId = quoteDetails?.quote?.sale?.notesId;
 
-        return (
-          <QuoteNotesStep
-            formData={formData}
-            handleInputChange={handleInputChange}
-            saleSummary={saleSummary}
-            lineItems={lineItems}
-            isEditing={isEditing}
-            currentSaleId={currentSaleId}
-            documentId={notesId}
-            onDocumentIdCreated={(newDocumentId) => {
-              console.log("New document created:", newDocumentId);
-            }}
-          />
-        );
+  return (
+    <QuoteNotesStep
+      formData={formData}
+      handleInputChange={handleInputChange}
+      saleSummary={saleSummary}
+      lineItems={lineItems}
+      isEditing={isEditing}
+      currentSaleId={currentSaleId}
+      documentId={notesId}
+      onDocumentIdCreated={async (newDocumentId) => {
+        console.log("New document created:", newDocumentId);
+        if (isEditing && quote?.id) {
+          try {
+            await updateQuoteNotesId(quote.id, newDocumentId);
+          } catch (error) {
+            console.error('Failed to link document to quote:', error);
+          }
+        }
+      }}
+    />
+  );
       default:
         return null;
     }
