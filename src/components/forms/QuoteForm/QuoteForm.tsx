@@ -32,36 +32,40 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
 }) => {
   const [currentStep, setCurrentStep] = useState<FormStep>("customer-address");
   const [formData, setFormData] = useState<iQuoteFormData>({
-    customer: "",
-    customerEmail: "",
-    status: "new-quote",
-    customerTotal: "0",
-    inHandDate: "",
-    notes: "",
-    billingAddress: {
-      type: "billing" as const,
-      label: "",
-      name: "",
-      street: "",
-      city: "",
-      state: "",
-      zipCode: "",
-      country: "US",
-      isPrimary: false,
-    },
-    shippingAddress: {
-      type: "shipping" as const,
-      label: "",
-      name: "",
-      street: "",
-      city: "",
-      state: "",
-      zipCode: "",
-      country: "US",
-      isPrimary: false,
-    },
-    sameAsShipping: false,
-  });
+  customer: "",
+  customerEmail: "",
+  status: "new-quote",
+  customerTotal: "0",
+  inHandDate: "",
+  notes: "",
+  billingAddress: {
+    type: "billing" as const,
+    label: "",
+    name: "",
+    street: "",
+    city: "",
+    state: "",
+    zipCode: "",
+    country: "US",
+    isPrimary: false,
+  },
+  shippingAddress: {
+    type: "shipping" as const,
+    label: "",
+    name: "",
+    street: "",
+    city: "",
+    state: "",
+    zipCode: "",
+    country: "US",
+    isPrimary: false,
+  },
+  sameAsShipping: false,
+  checkoutDetails: {
+    dateOrderNeededBy: "",
+    additionalInstructions: ""
+  },
+});
   const [formErrors, setFormErrors] = useState<Partial<iQuoteFormData>>({});
   const [customerAddresses, setCustomerAddresses] = useState<
     iCustomerAddress[]
@@ -310,15 +314,17 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
           />
         );
       case "quote":
-        return (
-          <QuoteDetailsStep
-            formData={formData}
-            handleInputChange={handleInputChange}
-            saleSummary={saleSummary}
-            quoteId={quote?.id}
-            isEditing={isEditing}
-          />
-        );
+  return (
+    <QuoteDetailsStep
+      formData={formData}
+      handleInputChange={handleInputChange}
+      saleSummary={saleSummary}
+      quoteId={quote?.id}
+      isEditing={isEditing}
+      currentSaleId={currentSaleId}
+      onRefreshSummary={fetchSaleSummary}
+    />
+  );
       case "shipping":
         return (
           <QuoteShippingStep
@@ -382,12 +388,7 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
         </div>
       )}
 
-      {/* Show current sale ID for debugging */}
-      {currentSaleId && process.env.NODE_ENV === "development" && (
-        <div className="p-2 bg-gray-50 border border-gray-200 rounded text-xs text-gray-600">
-          Sale ID: {currentSaleId}
-        </div>
-      )}
+      
 
       {isEditing && quote && quoteDetails && (
         <QuoteInformation
@@ -395,6 +396,8 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
           quoteDetails={quoteDetails}
           lineItems={lineItems}
           currentSaleId={currentSaleId}
+          formData={formData}
+          handleInputChange={handleInputChange}
         />
       )}
 

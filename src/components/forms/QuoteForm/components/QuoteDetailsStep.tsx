@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { useState, useCallback, useRef, useEffect  } from 'react';
 import { FormInput } from '@/components/helpers/FormInput';
 import { Card } from '@/components/ui/Card';
+import { Calendar, FileText, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 import { useApi } from '@/hooks/useApi';
 import { showToast } from '@/components/ui/toast';
 import { iQuoteFormData, SaleSummary } from '@/types/quotes';
-import { QuoteStatus } from '@/lib/enums';
 
 interface QuoteDetailsStepProps {
   formData: iQuoteFormData;
@@ -12,95 +12,236 @@ interface QuoteDetailsStepProps {
   saleSummary: SaleSummary | null;
   quoteId?: number;
   isEditing?: boolean;
+  currentSaleId?: string;
+  onRefreshSummary?: () => void;
 }
+
+type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
 export const QuoteDetailsStep: React.FC<QuoteDetailsStepProps> = ({
   formData,
   handleInputChange,
   saleSummary,
   quoteId,
-  isEditing = false
+  isEditing = false,
+  currentSaleId,
+  onRefreshSummary
 }) => {
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
+
   const { post } = useApi({
     cancelOnUnmount: false,
     dedupe: false,
   });
 
-  // Map frontend status values to API status values
-  const mapStatusToApi = (status: string): string => {
-    const statusMap: { [key: string]: string } = {
-      [QuoteStatus.NEW_QUOTE]: 'new_quote',
-      [QuoteStatus.WAITING_FOR_SUPPLIER]: 'waiting_for_supplier', 
-      [QuoteStatus.QUOTE_SENT_TO_CUSTOMER]: 'quote_sent_to_customer',
-      [QuoteStatus.ON_HOLD]: 'on_hold',
-      [QuoteStatus.QUOTE_CONVERTED_TO_ORDER]: 'quote_converted_to_order',
-      [QuoteStatus.CONVERTED_TO_ORDER_BY_CUSTOMER]: 'converted_to_order_by_customer',
-      [QuoteStatus.CANCELLED]: 'cancelled'
+  // Update checkout details via API
+  const updateCheckoutDetails = useCallback(async (field: string, value: string) => {
+  if (!currentSaleId) {
+    console.warn('No saleId available for updating checkout details');
+    return;
+  }
+
+  setSaveStatus('saving');
+  
+  try {
+    // Build checkout details object, only including non-empty fields
+    const checkoutDetails: { [key: string]: string } = {};
+    
+    // Add current field being updated
+    if (value.trim()) {
+      checkoutDetails[field] = value;
+    }
+    
+    // Add other existing fields that have values
+    const currentCheckoutDetails = formData.checkoutDetails || {};
+    
+    if (field !== 'dateOrderNeededBy' && currentCheckoutDetails.dateOrderNeededBy?.trim()) {
+      checkoutDetails.dateOrderNeededBy = currentCheckoutDetails.dateOrderNeededBy;
+    }
+    
+    if (field !== 'additionalInstructions' && currentCheckoutDetails.additionalInstructions?.trim()) {
+      checkoutDetails.additionalInstructions = currentCheckoutDetails.additionalInstructions;
+    }
+
+    const payload = {
+      saleId: currentSaleId,
+      checkoutDetails: checkoutDetails
     };
-    return statusMap[status] || status;
+
+    console.log('Sending checkout details payload:', payload);
+
+    await post('/Admin/SaleEditor/SetSaleDetail', payload);
+    
+    // Update local form data
+    handleInputChange({
+      target: { 
+        name: 'checkoutDetails', 
+        value: { ...formData.checkoutDetails, [field]: value }
+      }
+    } as any);
+
+    setSaveStatus('saved');
+    
+    // Auto-hide saved status after 2 seconds
+    setTimeout(() => setSaveStatus('idle'), 2000);
+    
+    // Refresh summary if available
+    if (onRefreshSummary) {
+      onRefreshSummary();
+    }
+  } catch (error: any) {
+    console.error('Error updating checkout details:', error);
+    setSaveStatus('error');
+    
+    if (error?.name !== 'CanceledError') {
+      showToast.error('Failed to save checkout details');
+    }
+    
+    // Auto-hide error status after 3 seconds
+    setTimeout(() => setSaveStatus('idle'), 3000);
+  }
+}, [currentSaleId, formData.checkoutDetails, handleInputChange, post, onRefreshSummary]);
+
+const instructionsTimeoutRef = useRef<NodeJS.Timeout>();
+
+
+  const handleInHandDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Update local state immediately for responsiveness
+    handleInputChange({
+      target: { name: 'inHandDate', value }
+    } as React.ChangeEvent<HTMLInputElement>);
+    
+    // Save to API
+    updateCheckoutDetails('dateOrderNeededBy', value);
   };
 
-  const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-  const newStatus = e.target.value;
+  const handleInstructionsChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const value = e.target.value;
   
-  handleInputChange(e);
-  
-  if (isEditing && quoteId) {
-    try {
-      showToast.loading('Updating quote status...');
-      
-      await post('/Admin/SaleEditor/SetQuoteDetail', {
-        id: quoteId,
-        status: mapStatusToApi(newStatus) 
-      });
-      
-      showToast.dismiss();
-      showToast.success('Quote status updated successfully');
-    } catch (error) {
-      showToast.dismiss();
-      showToast.error('Failed to update quote status');
-      console.error('Error updating quote status:', error);
-      
-      const revertEvent = {
-        target: {
-          name: 'status',
-          value: formData.status 
-        }
-      } as React.ChangeEvent<HTMLSelectElement>;
-      handleInputChange(revertEvent);
+  // Update local state immediately
+  handleInputChange({
+    target: { 
+      name: 'checkoutDetails', 
+      value: { ...formData.checkoutDetails, additionalInstructions: value }
     }
+  } as any);
+  
+  // Clear existing timeout
+  if (instructionsTimeoutRef.current) {
+    clearTimeout(instructionsTimeoutRef.current);
   }
+  
+  // Set new timeout for API call
+  instructionsTimeoutRef.current = setTimeout(() => {
+    updateCheckoutDetails('additionalInstructions', value);
+  }, 3000);
 };
+
+useEffect(() => {
+  return () => {
+    if (instructionsTimeoutRef.current) {
+      clearTimeout(instructionsTimeoutRef.current);
+    }
+  };
+}, []);
+
+  // Save status indicator component
+  const SaveStatusIndicator = () => {
+    const getStatusConfig = () => {
+      switch (saveStatus) {
+        case 'saving':
+          return {
+            icon: Clock,
+            text: 'Saving...',
+            className: 'text-blue-600 bg-blue-50 border-blue-200',
+          };
+        case 'saved':
+          return {
+            icon: CheckCircle,
+            text: 'Saved',
+            className: 'text-green-600 bg-green-50 border-green-200',
+          };
+        case 'error':
+          return {
+            icon: AlertCircle,
+            text: 'Save failed',
+            className: 'text-red-600 bg-red-50 border-red-200',
+          };
+        default:
+          return null;
+      }
+    };
+
+    const config = getStatusConfig();
+    if (!config) return null;
+    
+    const Icon = config.icon;
+
+    return (
+      <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs border ${config.className}`}>
+        <Icon className="w-3 h-3" />
+        <span>{config.text}</span>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="form-input-group">
-          <label className="form-label block text-sm font-medium text-gray-700 mb-1">
-            Status <span className="text-red-500">*</span>
-          </label>
-          <select
-            name="status"
-            value={formData.status}
-            onChange={handleStatusChange}
-            className="form-input w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
-          >
-            <option value={QuoteStatus.NEW_QUOTE}>New Quote</option>
-            <option value={QuoteStatus.WAITING_FOR_SUPPLIER}>Waiting for Supplier</option>
-            <option value={QuoteStatus.QUOTE_SENT_TO_CUSTOMER}>Quote Sent to Customer</option>
-            <option value={QuoteStatus.ON_HOLD}>On Hold</option>
-            <option value={QuoteStatus.QUOTE_CONVERTED_TO_ORDER}>Quote Converted to Order</option>
-            <option value={QuoteStatus.CONVERTED_TO_ORDER_BY_CUSTOMER}>Converted to Order by Customer</option>
-            <option value={QuoteStatus.CANCELLED}>Cancelled</option>
-          </select>
+      {/* Checkout Details Section */}
+      <Card className="p-4">
+        <div className="flex items-center justify-between mb-4">
+          <h4 className="font-medium text-gray-900 text-sm flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-blue-500" />
+            Checkout Details
+          </h4>
+          <SaveStatusIndicator />
         </div>
-
         
-      </div>
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="form-input-group">
+              <label className="form-label block text-xs font-medium text-gray-700 mb-1">
+                In-Hand Date
+                <span className="text-xs text-gray-500 font-normal ml-1">(When customer needs order)</span>
+              </label>
+              <input
+                type="date"
+                name="inHandDate"
+                value={formData.checkoutDetails?.dateOrderNeededBy || formData.inHandDate || ''}
+                onChange={handleInHandDateChange}
+                className="form-input w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+              />
+            </div>
+          </div>
 
+          <div className="form-input-group">
+            <label className="form-label block text-xs font-medium text-gray-700 mb-1">
+              Additional Instructions
+              <span className="text-xs text-gray-500 font-normal ml-1">(Optional)</span>
+            </label>
+            <textarea
+              name="additionalInstructions"
+              value={formData.checkoutDetails?.additionalInstructions || ''}
+              onChange={handleInstructionsChange}
+              className="form-input w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 resize-none"
+              placeholder="Any special instructions for processing this order..."
+              rows={3}
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              These instructions will be visible to your team when processing the order
+            </p>
+          </div>
+        </div>
+      </Card>
+
+      {/* Financial Summary */}
       {saleSummary && (
         <Card className="p-4 bg-gray-50">
-          <h5 className="font-medium text-gray-800 mb-3 text-sm">Financial Summary</h5>
+          <h5 className="font-medium text-gray-800 mb-3 text-sm flex items-center gap-2">
+            <FileText className="w-4 h-4 text-gray-600" />
+            Financial Summary
+          </h5>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-gray-600">Items Total:</span>
@@ -124,6 +265,16 @@ export const QuoteDetailsStep: React.FC<QuoteDetailsStepProps> = ({
               <span className="text-gray-600">Profit:</span>
               <span className="font-bold text-orange-600">${saleSummary.profit.toFixed(2)}</span>
             </div>
+            
+            {/* Show checkout details in summary */}
+            {(formData.checkoutDetails?.dateOrderNeededBy || formData.inHandDate) && (
+              <div className="flex justify-between border-t pt-2">
+                <span className="text-gray-600">Needed By:</span>
+                <span className="font-medium text-blue-600">
+                  {new Date(formData.checkoutDetails?.dateOrderNeededBy || formData.inHandDate || '').toLocaleDateString()}
+                </span>
+              </div>
+            )}
           </div>
         </Card>
       )}

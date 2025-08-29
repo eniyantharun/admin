@@ -55,7 +55,10 @@ export interface iQuoteFormData {
   billingAddress: iQuoteAddress;
   shippingAddress: iQuoteAddress;
   sameAsShipping: boolean;
-  checkoutDetails?: iQuoteCheckoutDetails;
+  checkoutDetails?: {
+    dateOrderNeededBy?: string;
+    additionalInstructions?: string;
+  };
   shippingDetails?: iQuoteShippingDetails;
 }
 

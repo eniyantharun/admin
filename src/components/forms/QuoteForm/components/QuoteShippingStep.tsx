@@ -205,7 +205,7 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
             label="Date Order Needed By"
             name="dateOrderNeededBy"
             type="date"
-            value={formData.checkoutDetails?.inHandDate || formData.inHandDate || ''}
+            value={formData.checkoutDetails?.dateOrderNeededBy || formData.inHandDate || ''}
             onChange={(e) => handleCheckoutChange('inHandDate', e.target.value)}
             helpText="When does the customer need this order?"
           />
@@ -368,14 +368,6 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
             helpText="Expected ship date"
           />
 
-          <FormInput
-            label="Tracking Number"
-            name="trackingNumber"
-            value={formData.shippingDetails?.trackingNumber || ''}
-            onChange={(e) => handleShippingChange('trackingNumber', e.target.value)}
-            placeholder="1Z999AA1234567890"
-            helpText="Leave blank if not shipped yet"
-          />
         </div>
       </Card>
 
