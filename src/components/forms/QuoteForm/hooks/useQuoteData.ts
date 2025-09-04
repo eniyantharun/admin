@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useApi } from '@/hooks/useApi';
 import { showToast } from '@/components/ui/toast';
 import { iCustomer, iCustomerAddress } from '@/types/customer';
-import { iQuote, iQuoteFormData, LineItemData, SaleSummary, QuoteDetailsResponse } from '@/types/quotes';
+import { iQuote, iQuoteFormData, LineItemData, SaleSummary, QuoteDetailsResponse, ProductPicture } from '@/types/quotes';
 import { documentFormatToHtml } from '@/lib/documentConverter';
 
 interface CreateQuoteResponse {
@@ -84,7 +84,10 @@ export const useQuoteData = (
     selectedProduct: apiItem.product || null,
     variantId: apiItem.form?.variantId,
     methodId: apiItem.form?.methodId,
-    colorId: apiItem.form?.colorId
+    colorId: apiItem.form?.colorId,
+    // Handle image data from API response
+    sourceUri: apiItem.sourceUri || null,
+    customPicture: apiItem.customPicture || null
   });
 
   const loadNotesContent = useCallback(async (documentId: string): Promise<string> => {
@@ -100,7 +103,6 @@ export const useQuoteData = (
       if (response?.content) {
         console.log('Raw notes API response:', response.content);
         
-        // Convert document format to HTML for display
         const htmlContent = documentFormatToHtml(response.content);
         console.log('Converted notes HTML:', htmlContent);
         
@@ -117,17 +119,17 @@ export const useQuoteData = (
   }, [get]);
 
   const updateQuoteNotesId = useCallback(async (quoteId: number, notesId: string) => {
-  try {
-    await post('/Admin/SaleEditor/SetQuoteDetail', {
-      id: quoteId,
-      notesId: notesId
-    });
-    console.log('Successfully updated quote notesId:', notesId);
-  } catch (error) {
-    console.error('Failed to update quote notesId:', error);
-    throw error;
-  }
-}, [post]);
+    try {
+      await post('/Admin/SaleEditor/SetQuoteDetail', {
+        id: quoteId,
+        notesId: notesId
+      });
+      console.log('Successfully updated quote notesId:', notesId);
+    } catch (error) {
+      console.error('Failed to update quote notesId:', error);
+      throw error;
+    }
+  }, [post]);
 
   const fetchQuoteDetails = async (quoteId: number) => {
     setIsLoadingLineItems(true);
@@ -170,18 +172,15 @@ export const useQuoteData = (
           profit: profit
         });
 
-        // Don't load notes content here - let QuoteNotesStep handle it
-        // Just use existing comment as fallback for now
         const fallbackNotes = response.quote.sale.comments?.[0]?.comment || '';
         
         setFormData(prev => ({
           ...prev,
           customerTotal: customerTotal.toString(),
           inHandDate: response.quote.sale.dates.inHandDate || '',
-          notes: fallbackNotes, // Use comment as fallback, QuoteNotesStep will load proper content
+          notes: fallbackNotes,
         }));
 
-        // Set customer data
         const customer = response.quote.sale.customer;
         const customerData: iCustomer = {
           id: customer.id,
@@ -198,12 +197,10 @@ export const useQuoteData = (
         };
         setSelectedCustomer(customerData);
 
-        // Fetch customer addresses
         if (customer.id) {
           await fetchCustomerAddresses(customer.id);
         }
 
-        // Set addresses
         const billing = response.quote.sale.billingAddress;
         const shipping = response.quote.sale.shippingAddress;
 
@@ -439,6 +436,7 @@ export const useQuoteData = (
       setCurrentSaleId('');
     }
   }, [quote?.id, isEditing]); 
+
   return {
     selectedCustomer,
     setSelectedCustomer,

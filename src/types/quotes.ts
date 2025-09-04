@@ -45,6 +45,54 @@ export interface iQuoteShippingDetails {
   trackingNumber?: string;
 }
 
+export interface ProductPicture {
+  productId: number;
+  pictureId: number;
+  slug: string;
+  index: number;
+  defaultKey: string;
+  sourceKey: string;
+  sourceUri: string;
+  fullKey: string;
+  thumbnail226X240: string;
+  sourceKey800X800: string;
+  slugKey800X800: string;
+  urlSlugKey800X800: string;
+  slugKey400X400: string;
+  key100X100: string;
+  slugKey100X100: string;
+  isDev: boolean;
+  path: string;
+  url: string;
+  itemNumber: number;
+}
+
+export interface LineItemData {
+  id: string;
+  productName: string;
+  variantName?: string;
+  methodName?: string;
+  color?: string;
+  quantity: number;
+  productItemNumber?: string;
+  supplierItemNumber?: string;
+  customerPricePerQuantity: number;
+  customerSetupCharge: number;
+  supplierPricePerQuantity: number;
+  supplierSetupCharge: number;
+  artworkText?: string;
+  artworkSpecialInstructions?: string;
+  customization?: string;
+  description?: string;
+  images?: string[];
+  selectedProduct?: any;
+  variantId?: number;
+  methodId?: number;
+  colorId?: string;
+  sourceUri?: string;
+  customPicture?: ProductPicture;
+}
+
 export interface iQuoteFormData {
   customer: string;
   customerEmail: string;
@@ -77,112 +125,6 @@ export interface iQuoteItem {
   unitPrice: number;
   totalPrice: number;
   customization?: string;
-}
-
-export interface iQuoteListResponse {
-  quotes: iQuote[];
-  count: number;
-  pagination: {
-    currentPage: number;
-    totalPages: number;
-    totalItems: number;
-    itemsPerPage: number;
-  };
-}
-
-export interface iCreateQuoteRequest {
-  customerId: string;
-  status: string;
-  customerTotal: number;
-  inHandDate?: string;
-  notes?: string;
-  billingAddress: iQuoteAddress;
-  shippingAddress: iQuoteAddress;
-  items: iQuoteItem[];
-  checkoutDetails?: iQuoteCheckoutDetails;
-  shippingDetails?: iQuoteShippingDetails;
-}
-
-export interface iUpdateQuoteRequest extends Partial<iCreateQuoteRequest> {
-  id: number;
-}
-
-export interface iQuoteStatusUpdate {
-  id: number;
-  status: iQuote['status'];
-  updatedBy: string;
-  updatedAt: string;
-}
-
-export interface iApiSale {
-  id: string;
-  customer: {
-    name: string;
-    website: string;
-  };
-  createdAt: string;
-  inHandDate: string | null;
-  customerEstimates: {
-    items: any[];
-    itemsSubTotal: number | string;
-    itemsTotal: number | string;
-    setupCharge: number | string;
-    shipping: number | string;
-    discount: number | string;
-    subTotal: number | string;
-    total: number | string;
-  };
-  supplierEstimates: {
-    items: any[];
-    itemsSubTotal: number | string;
-    itemsTotal: number | string;
-    setupCharge: number | string;
-    shipping: number | string;
-    subTotal: number | string;
-    total: number | string;
-  };
-  profit: number | string;
-  order: {
-    id: number;
-    status: string;
-    paymentMethod: string;
-  } | null;
-  quote: {
-    id: number;
-    status: string;
-  } | null;
-  isAdConversion: boolean;
-}
-
-export interface iApiQuote extends iApiSale {
-  quote: {
-    id: number;
-    status: string;
-  };
-}
-
-export interface LineItemData {
-  id: string;
-  productName: string;
-  variantName?: string;
-  methodName?: string;
-  color?: string;
-  quantity: number;
-  productItemNumber?: string;
-  supplierItemNumber?: string;
-  customerPricePerQuantity: number;
-  customerSetupCharge: number;
-  supplierPricePerQuantity: number;
-  supplierSetupCharge: number;
-  artworkText?: string;
-  artworkSpecialInstructions?: string;
-  customization?: string;
-  description?: string;
-  images?: string[];
-  selectedProduct?: any;
-  variantId?: number;
-  methodId?: number;
-  colorId?: string;
 }
 
 export interface SaleSummary {
@@ -282,9 +224,13 @@ export interface QuoteDetailsResponse {
           supplierSetupCharge: number;
           artworkText: string | null;
           artworkSpecialInstructions: string | null;
+          variantId?: number;
+          methodId?: number;
+          colorId?: string;
         };
         customThumbnail: string | null;
-        customPicture: string | null;
+        customPicture: ProductPicture | null;
+        sourceUri?: string;
         product: any;
         supplier: any;
         customerEstimates: {
@@ -315,4 +261,101 @@ export interface QuoteDetailsResponse {
       }>;
     };
   };
+}
+
+export interface iQuoteListResponse {
+  quotes: iQuote[];
+  count: number;
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    itemsPerPage: number;
+  };
+}
+
+export interface iCreateQuoteRequest {
+  customerId: string;
+  status: string;
+  customerTotal: number;
+  inHandDate?: string;
+  notes?: string;
+  billingAddress: iQuoteAddress;
+  shippingAddress: iQuoteAddress;
+  items: iQuoteItem[];
+  checkoutDetails?: iQuoteCheckoutDetails;
+  shippingDetails?: iQuoteShippingDetails;
+}
+
+export interface iUpdateQuoteRequest extends Partial<iCreateQuoteRequest> {
+  id: number;
+}
+
+export interface iQuoteStatusUpdate {
+  id: number;
+  status: iQuote['status'];
+  updatedBy: string;
+  updatedAt: string;
+}
+
+export interface iApiSale {
+  id: string;
+  customer: {
+    name: string;
+    website: string;
+  };
+  createdAt: string;
+  inHandDate: string | null;
+  customerEstimates: {
+    items: any[];
+    itemsSubTotal: number | string;
+    itemsTotal: number | string;
+    setupCharge: number | string;
+    shipping: number | string;
+    discount: number | string;
+    subTotal: number | string;
+    total: number | string;
+  };
+  supplierEstimates: {
+    items: any[];
+    itemsSubTotal: number | string;
+    itemsTotal: number | string;
+    setupCharge: number | string;
+    shipping: number | string;
+    subTotal: number | string;
+    total: number | string;
+  };
+  profit: number | string;
+  order: {
+    id: number;
+    status: string;
+    paymentMethod: string;
+  } | null;
+  quote: {
+    id: number;
+    status: string;
+  } | null;
+  isAdConversion: boolean;
+}
+
+export interface iApiQuote extends iApiSale {
+  quote: {
+    id: number;
+    status: string;
+  };
+}
+
+export interface iApiSalesResponse {
+  count: number;
+  sales: iApiSale[];
+}
+
+export interface iApiSalesRequest {
+  isQuote: boolean;
+  search: string;
+  pageSize: number;
+  pageIndex: number;
+  website: string;
+  orderStatus?: string[];
+  quoteStatus?: string[];
 }
