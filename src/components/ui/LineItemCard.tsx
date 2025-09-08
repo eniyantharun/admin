@@ -34,6 +34,7 @@ interface LineItemData {
   colorId?: string;
   sourceUri?: string;
   customPicture?: ProductPicture;
+  customThumbnail?: string;
 }
 
 interface LineItemCardProps {
@@ -92,19 +93,52 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
     setShowImageSelector(true);
   };
 
+  // Fixed getCurrentImageUrl function with proper priority and fallback
   const getCurrentImageUrl = () => {
-    // Priority: customPicture > sourceUri > selectedProduct pictures > fallback
-    if (formData.customPicture?.sourceUri) {
-      return formData.customPicture.sourceUri;
-    }
-    if (formData.sourceUri) {
-      return formData.sourceUri;
-    }
-    if (formData.selectedProduct?.pictures?.[0]) {
-      return `https://static2.promotionalproductinc.com/p2/src/${formData.selectedProduct.id}/${formData.selectedProduct.pictures[0]}.webp`;
-    }
-    return null;
-  };
+    // Priority: 
+    // 1. customThumbnail (direct URL from API)
+    // 2. customPicture.sourceUri (selected product image)
+    // 3. sourceUri (from API response)
+    // 4. selectedProduct first picture (constructed URL)
+    
+     console.log('Getting image URL for line item:', {
+    id: formData.id,
+    productName: formData.productName,
+    customThumbnail: formData.customThumbnail,
+    customPictureSourceUri: formData.customPicture?.sourceUri,
+    sourceUri: formData.sourceUri,
+    selectedProductId: formData.selectedProduct?.id,
+    selectedProductPictures: formData.selectedProduct?.pictures
+  });
+  
+  // 1. First priority: customThumbnail from API
+  if (formData.customThumbnail) {
+    console.log('Using customThumbnail:', formData.customThumbnail);
+    return formData.customThumbnail;
+  }
+  
+  // 2. Second priority: customPicture.sourceUri (user selected image)
+  if (formData.customPicture?.sourceUri) {
+    console.log('Using customPicture.sourceUri:', formData.customPicture.sourceUri);
+    return formData.customPicture.sourceUri;
+  }
+  
+  // 3. Third priority: sourceUri (from API response - THIS IS KEY FOR EXISTING ITEMS)
+  if (formData.sourceUri) {
+    console.log('Using sourceUri:', formData.sourceUri);
+    return formData.sourceUri;
+  }
+  
+  // 4. Last fallback: construct URL from selected product
+  if (formData.selectedProduct?.pictures?.[0] && formData.selectedProduct?.id) {
+    const constructedUrl = `https://static2.promotionalproductinc.com/p2/src/${formData.selectedProduct.id}/${formData.selectedProduct.pictures[0]}.webp`;
+    console.log('Using constructed URL:', constructedUrl);
+    return constructedUrl;
+  }
+  
+  console.log('No image URL available');
+  return null;
+};
 
   const handleInputChange = (field: keyof LineItemData, value: any) => {
     setFormData(prev => {
@@ -129,9 +163,10 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
         variantId: undefined,
         methodId: undefined,
         colorId: undefined,
-        // Reset image data when product changes
-        sourceUri: undefined,
-        customPicture: undefined
+        // Keep existing image data if available, but clear custom selections
+        customPicture: undefined,
+        customThumbnail: undefined
+        // sourceUri stays if it exists from API
       }));
     } else {
       setFormData(prev => ({
@@ -144,7 +179,8 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
         methodId: undefined,
         colorId: undefined,
         sourceUri: undefined,
-        customPicture: undefined
+        customPicture: undefined,
+        customThumbnail: undefined
       }));
     }
   };
@@ -248,10 +284,20 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
         };
 
         console.log('Sending thumbnail update:', thumbnailPayload);
-        await post('/Admin/SaleEditor/SetLineItemDetail', thumbnailPayload);
+        const thumbnailResponse = await post('/Admin/SaleEditor/SetLineItemDetail', thumbnailPayload);
+        
+        // Update customThumbnail from thumbnail response if available
+        if (thumbnailResponse?.customThumbnail) {
+          const updatedFormData = { 
+            ...formData, 
+            customThumbnail: thumbnailResponse.customThumbnail 
+          };
+          setFormData(updatedFormData);
+          onUpdate(item.id, updatedFormData);
+        }
       }
 
-      // Update sourceUri from response if available
+      // Update sourceUri from general response if available
       if (response?.sourceUri) {
         const updatedFormData = { ...formData, sourceUri: response.sourceUri };
         setFormData(updatedFormData);
@@ -273,7 +319,6 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
     }
   };
 
-
   const customerTotal = (formData.quantity || 0) * (Number(formData.customerPricePerQuantity) || 0) + (Number(formData.customerSetupCharge) || 0);
   const supplierTotal = (formData.quantity || 0) * (Number(formData.supplierPricePerQuantity) || 0) + (Number(formData.supplierSetupCharge) || 0);
   const profit = customerTotal - supplierTotal;
@@ -293,17 +338,21 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
                 <>
                   <img 
                     src={currentImageUrl}
-                    alt={formData.productName}
+                    alt={formData.productName || 'Product image'}
                     className="w-full h-full object-cover"
                     onError={(e) => { 
+                      console.error('Image failed to load:', currentImageUrl);
                       e.currentTarget.style.display = 'none';
                       const fallback = e.currentTarget.nextElementSibling as HTMLElement | null;
                       if (fallback) {
                         fallback.style.display = 'flex';
                       }
-                    }}                                                  
+                    }}
+                    onLoad={() => {
+                      console.log('Image loaded successfully:', currentImageUrl);
+                    }}
                   />
-                  <div className="w-full h-full flex items-center justify-center text-gray-400 invisible">
+                  <div className="w-full h-full flex items-center justify-center text-gray-400 ">
                     <ImageIcon className="w-4 h-4" />
                   </div>
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100">
@@ -586,10 +635,14 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
                 <div className="w-24 h-24 bg-gray-100 rounded border overflow-hidden">
                   <img 
                     src={currentImageUrl}
-                    alt={formData.productName}
+                    alt={formData.productName || 'Product image'}
                     className="w-full h-full object-cover"
                     onError={(e) => { 
+                      console.error('Product image failed to load:', currentImageUrl);
                       e.currentTarget.style.display = 'none';
+                    }}
+                    onLoad={() => {
+                      console.log('Product image loaded successfully:', currentImageUrl);
                     }}
                   />
                 </div>
@@ -685,6 +738,7 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
         productId={productId || ''}
         currentPicture={formData.customPicture}
         productName={formData.productName}
-      />    </>
+      />
+    </>
   );
 };

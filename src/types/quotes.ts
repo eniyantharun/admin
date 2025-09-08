@@ -91,6 +91,7 @@ export interface LineItemData {
   colorId?: string;
   sourceUri?: string;
   customPicture?: ProductPicture;
+  customThumbnail?: string; 
 }
 
 export interface iQuoteFormData {
