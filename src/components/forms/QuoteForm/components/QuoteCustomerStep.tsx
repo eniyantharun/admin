@@ -325,7 +325,7 @@ export const QuoteCustomerStep: React.FC<QuoteCustomerStepProps> = ({
                   ) : (
                     <div className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg border-dashed border-2">
                       <p>No billing address added</p>
-                      <p className="text-xs mt-1">You can add this later if needed</p>
+                      
                     </div>
                   )}
                   
@@ -409,7 +409,7 @@ export const QuoteCustomerStep: React.FC<QuoteCustomerStepProps> = ({
                   ) : (
                     <div className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg border-dashed border-2">
                       <p>No shipping address added</p>
-                      <p className="text-xs mt-1">You can add this later if needed</p>
+                      
                     </div>
                   )}
                   

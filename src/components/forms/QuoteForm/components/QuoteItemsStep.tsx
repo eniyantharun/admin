@@ -38,7 +38,7 @@ export const QuoteItemsStep: React.FC<QuoteItemsStepProps> = ({
           variant="secondary"
           size="sm"
           icon={Plus}
-          className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white border-none"
+          className="bg-gradient-to-r hover:to-indigo-700"
           disabled={isLoadingLineItems}
         >
           Add Item

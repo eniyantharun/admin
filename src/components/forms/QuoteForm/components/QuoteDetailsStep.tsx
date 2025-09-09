@@ -208,7 +208,6 @@ export const QuoteDetailsStep: React.FC<QuoteDetailsStepProps> = ({
         <div className="form-input-group">
           <label className="form-label block text-sm font-medium text-gray-700 mb-2">
             Additional Instructions
-            <span className="text-xs text-gray-500 font-normal ml-1">(Optional)</span>
           </label>
           <textarea
             name="additionalInstructions"
