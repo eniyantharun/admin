@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trash2, Package, DollarSign, Hash, FileText, Building, Palette, AlertCircle, ChevronDown, ChevronUp, Save, Edit3, ImageIcon, Eye, Grid } from 'lucide-react';
+import { Trash2, Package, DollarSign, Hash, FileText, Building, Palette, AlertCircle, ChevronDown, ChevronUp, Save, Edit3, ImageIcon, Eye, Grid, Download } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { FormInput } from '@/components/helpers/FormInput';
@@ -47,6 +47,68 @@ interface LineItemCardProps {
   isNew?: boolean;
 }
 
+const downloadImage = async (url: string, filename: string) => {
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
+    showToast.success('Image downloaded successfully');
+  } catch (error) {
+    showToast.error('Failed to download image');
+  }
+};
+
+const downloadImageAsPNG = async (url: string, filename: string) => {
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    
+    return new Promise<void>((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Canvas context not available'));
+          return;
+        }
+        
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+        
+        canvas.toBlob((pngBlob) => {
+          if (!pngBlob) {
+            reject(new Error('Failed to convert image'));
+            return;
+          }
+          
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(pngBlob);
+          link.download = filename.replace(/\.[^/.]+$/, '') + '.png';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(link.href);
+          showToast.success('PNG image downloaded successfully');
+          resolve();
+        }, 'image/png');
+      };
+      
+      img.onerror = () => reject(new Error('Failed to load image'));
+      img.src = URL.createObjectURL(blob);
+    });
+  } catch (error) {
+    showToast.error('Failed to download PNG image');
+  }
+};
+
 export const LineItemCard: React.FC<LineItemCardProps> = ({
   item,
   index,
@@ -93,52 +155,41 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
     setShowImageSelector(true);
   };
 
-  // Fixed getCurrentImageUrl function with proper priority and fallback
   const getCurrentImageUrl = () => {
-    // Priority: 
-    // 1. customThumbnail (direct URL from API)
-    // 2. customPicture.sourceUri (selected product image)
-    // 3. sourceUri (from API response)
-    // 4. selectedProduct first picture (constructed URL)
+    console.log('Getting image URL for line item:', {
+      id: formData.id,
+      productName: formData.productName,
+      customThumbnail: formData.customThumbnail,
+      customPictureSourceUri: formData.customPicture?.sourceUri,
+      sourceUri: formData.sourceUri,
+      selectedProductId: formData.selectedProduct?.id,
+      selectedProductPictures: formData.selectedProduct?.pictures
+    });
     
-     console.log('Getting image URL for line item:', {
-    id: formData.id,
-    productName: formData.productName,
-    customThumbnail: formData.customThumbnail,
-    customPictureSourceUri: formData.customPicture?.sourceUri,
-    sourceUri: formData.sourceUri,
-    selectedProductId: formData.selectedProduct?.id,
-    selectedProductPictures: formData.selectedProduct?.pictures
-  });
-  
-  // 1. First priority: customThumbnail from API
-  if (formData.customThumbnail) {
-    console.log('Using customThumbnail:', formData.customThumbnail);
-    return formData.customThumbnail;
-  }
-  
-  // 2. Second priority: customPicture.sourceUri (user selected image)
-  if (formData.customPicture?.sourceUri) {
-    console.log('Using customPicture.sourceUri:', formData.customPicture.sourceUri);
-    return formData.customPicture.sourceUri;
-  }
-  
-  // 3. Third priority: sourceUri (from API response - THIS IS KEY FOR EXISTING ITEMS)
-  if (formData.sourceUri) {
-    console.log('Using sourceUri:', formData.sourceUri);
-    return formData.sourceUri;
-  }
-  
-  // 4. Last fallback: construct URL from selected product
-  if (formData.selectedProduct?.pictures?.[0] && formData.selectedProduct?.id) {
-    const constructedUrl = `https://static2.promotionalproductinc.com/p2/src/${formData.selectedProduct.id}/${formData.selectedProduct.pictures[0]}.webp`;
-    console.log('Using constructed URL:', constructedUrl);
-    return constructedUrl;
-  }
-  
-  console.log('No image URL available');
-  return null;
-};
+    if (formData.customThumbnail) {
+      console.log('Using customThumbnail:', formData.customThumbnail);
+      return formData.customThumbnail;
+    }
+    
+    if (formData.customPicture?.sourceUri) {
+      console.log('Using customPicture.sourceUri:', formData.customPicture.sourceUri);
+      return formData.customPicture.sourceUri;
+    }
+    
+    if (formData.sourceUri) {
+      console.log('Using sourceUri:', formData.sourceUri);
+      return formData.sourceUri;
+    }
+    
+    if (formData.selectedProduct?.pictures?.[0] && formData.selectedProduct?.id) {
+      const constructedUrl = `https://static2.promotionalproductinc.com/p2/src/${formData.selectedProduct.id}/${formData.selectedProduct.pictures[0]}.webp`;
+      console.log('Using constructed URL:', constructedUrl);
+      return constructedUrl;
+    }
+    
+    console.log('No image URL available');
+    return null;
+  };
 
   const handleInputChange = (field: keyof LineItemData, value: any) => {
     setFormData(prev => {
@@ -156,17 +207,14 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
         customerPricePerQuantity: product.minPrice || prev.customerPricePerQuantity,
         customerSetupCharge: product.setupCharge || prev.customerSetupCharge,
         productItemNumber: product.id?.toString() || prev.productItemNumber,
-        // Reset variant, method, and color when product changes
         variantName: '',
         methodName: '',
         color: '',
         variantId: undefined,
         methodId: undefined,
         colorId: undefined,
-        // Keep existing image data if available, but clear custom selections
         customPicture: undefined,
         customThumbnail: undefined
-        // sourceUri stays if it exists from API
       }));
     } else {
       setFormData(prev => ({
@@ -248,7 +296,6 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
 
   const handleSave = async () => {
     try {
-      // First, save the general line item details
       const generalPayload = {
         lineItemId: item.id,
         general: {
@@ -274,7 +321,6 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
       console.log('Sending general line item details:', generalPayload);
       const response = await post('/Admin/SaleEditor/SetLineItemDetail', generalPayload);
       
-      // If there's a custom picture selected, send a separate request for the thumbnail
       if (formData.customPicture?.pictureId) {
         const thumbnailPayload = {
           lineItemId: item.id,
@@ -286,7 +332,6 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
         console.log('Sending thumbnail update:', thumbnailPayload);
         const thumbnailResponse = await post('/Admin/SaleEditor/SetLineItemDetail', thumbnailPayload);
         
-        // Update customThumbnail from thumbnail response if available
         if (thumbnailResponse?.customThumbnail) {
           const updatedFormData = { 
             ...formData, 
@@ -297,7 +342,6 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
         }
       }
 
-      // Update sourceUri from general response if available
       if (response?.sourceUri) {
         const updatedFormData = { ...formData, sourceUri: response.sourceUri };
         setFormData(updatedFormData);
@@ -329,10 +373,8 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
   return (
     <>
       <Card className="overflow-hidden border border-gray-200 hover:border-purple-300 transition-all duration-200">
-        {/* Compact Header */}
         <div className="p-3 bg-gradient-to-r from-gray-50 to-purple-50 border-b">
           <div className="flex items-start gap-3">
-            {/* Product Image with Change Option */}
             <div className="w-12 h-12 bg-gray-100 rounded border flex-shrink-0 relative group overflow-hidden">
               {currentImageUrl ? (
                 <>
@@ -378,7 +420,6 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
               )}
             </div>
 
-            {/* Item Info */}
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
@@ -401,7 +442,6 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
                       <span className="text-orange-600">Profit: ${profit.toFixed(2)}</span>
                     )}
                   </div>
-                  {/* Display variant, method, color info in header */}
                   {(formData.variantName || formData.methodName || formData.color) && (
                     <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
                       {formData.variantName && formData.variantName !== 'No Variant' && (
@@ -452,10 +492,8 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
           </div>
         </div>
 
-        {/* Expanded Content */}
         {isExpanded && (
           <div className="p-3 space-y-3 bg-white">
-            {/* Product Selection */}
             <div>
               <ProductDropdown
                 selectedProduct={formData.selectedProduct}
@@ -464,7 +502,6 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
               />
             </div>
 
-            {/* Basic Info */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               <FormInput
                 label="Product Name"
@@ -482,7 +519,6 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
               />
             </div>
 
-            {/* Product Details with API Dropdowns */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
               <div className="form-input-group">
                 <label className="form-label block text-xs font-medium text-gray-700 mb-1">
@@ -539,7 +575,6 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
               />
             </div>
 
-            {/* Pricing */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
               <FormInput
                 label="Customer Unit Price"
@@ -599,7 +634,6 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
               />
             </div>
 
-            {/* SKUs */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               <FormInput
                 label="Product Item #"
@@ -617,20 +651,39 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
               />
             </div>
 
-            {/* Product Image Section */}
             {currentImageUrl && (
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="font-medium text-gray-900 text-sm">Product Image</h4>
-                  <Button
-                    onClick={openImageSelector}
-                    size="sm"
-                    variant="secondary"
-                    icon={Grid}
-                    className="text-xs"
-                  >
-                    Change Image
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={() => downloadImage(currentImageUrl, `${formData.productName || 'product'}-image`)}
+                      size="sm"
+                      variant="secondary"
+                      icon={Download}
+                      className="text-xs"
+                    >
+                      Download
+                    </Button>
+                    <Button
+                      onClick={() => downloadImageAsPNG(currentImageUrl, `${formData.productName || 'product'}-image`)}
+                      size="sm"
+                      variant="secondary"
+                      icon={Download}
+                      className="text-xs"
+                    >
+                      PNG
+                    </Button>
+                    <Button
+                      onClick={openImageSelector}
+                      size="sm"
+                      variant="secondary"
+                      icon={Grid}
+                      className="text-xs"
+                    >
+                      Change
+                    </Button>
+                  </div>
                 </div>
                 <div className="w-24 h-24 bg-gray-100 rounded border overflow-hidden">
                   <img 
@@ -649,7 +702,6 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
               </div>
             )}
 
-            {/* Artwork */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               <div className="form-input-group">
                 <label className="form-label block text-xs font-medium text-gray-700 mb-1">
@@ -677,7 +729,6 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
               </div>
             </div>
 
-            {/* Financial Summary */}
             <div className="grid grid-cols-4 gap-2 p-2 bg-blue-50 rounded">
               <div className="text-center">
                 <div className="text-xs text-blue-700 font-medium">Customer Total</div>
@@ -701,7 +752,6 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
               </div>
             </div>
 
-            {/* Additional Images Gallery */}
             <div>
               <ImageGallery
                 images={formData.images || []}
@@ -712,7 +762,6 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
               />
             </div>
 
-            {/* Save Button */}
             {hasUnsavedChanges && (
               <div className="flex justify-end pt-2 border-t border-gray-200">
                 <Button
@@ -730,7 +779,6 @@ export const LineItemCard: React.FC<LineItemCardProps> = ({
         )}
       </Card>
 
-      {/* Product Image Selector Modal */}
       <ProductImageSelector
         isOpen={showImageSelector}
         onClose={() => setShowImageSelector(false)}
