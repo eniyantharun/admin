@@ -47,11 +47,9 @@ export const QuoteDetailsStep: React.FC<QuoteDetailsStepProps> = ({
     try {
       const checkoutDetails: { [key: string]: string } = {};
       
-      // Get current values from form data
       const dateValue = formData.checkoutDetails?.dateOrderNeededBy || formData.inHandDate || '';
       const instructionsValue = formData.checkoutDetails?.additionalInstructions || '';
       
-      // Add non-empty values to checkout details
       if (dateValue.trim()) {
         checkoutDetails.dateOrderNeededBy = dateValue.trim();
       }
@@ -60,7 +58,6 @@ export const QuoteDetailsStep: React.FC<QuoteDetailsStepProps> = ({
         checkoutDetails.additionalInstructions = instructionsValue.trim();
       }
 
-      // Always make the API call, even if empty (to clear values)
       const payload = {
         saleId: currentSaleId,
         checkoutDetails: checkoutDetails
@@ -93,16 +90,13 @@ export const QuoteDetailsStep: React.FC<QuoteDetailsStepProps> = ({
   const instructionsTimeoutRef = useRef<NodeJS.Timeout>();
   const dateTimeoutRef = useRef<NodeJS.Timeout>();
 
-  // Handle in-hand date changes (local state only)
   const handleInHandDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     
-    // Update both inHandDate and checkoutDetails.dateOrderNeededBy in form state
     handleInputChange({
       target: { name: 'inHandDate', value }
     } as React.ChangeEvent<HTMLInputElement>);
     
-    // Update checkoutDetails specifically
     const updatedCheckoutDetails = {
       ...formData.checkoutDetails,
       dateOrderNeededBy: value
@@ -116,11 +110,9 @@ export const QuoteDetailsStep: React.FC<QuoteDetailsStepProps> = ({
     } as any);
   };
 
-  // Handle instructions changes (local state only)
   const handleInstructionsChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
     
-    // Update checkoutDetails in form state
     const updatedCheckoutDetails = {
       ...formData.checkoutDetails,
       additionalInstructions: value
@@ -134,7 +126,6 @@ export const QuoteDetailsStep: React.FC<QuoteDetailsStepProps> = ({
     } as any);
   };
 
-  // Cleanup on unmount (no longer needed for timeouts, but keep for safety)
   useEffect(() => {
     return () => {
       if (instructionsTimeoutRef.current) {
@@ -185,73 +176,69 @@ export const QuoteDetailsStep: React.FC<QuoteDetailsStepProps> = ({
     );
   };
 
-  // Get the current date value - prioritize checkoutDetails
   const currentDateValue = formData.checkoutDetails?.dateOrderNeededBy || formData.inHandDate || '';
 
   return (
-    <div className="space-y-4">
-      <Card className="p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h4 className="font-medium text-gray-900 text-sm flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-blue-500" />
-            Checkout Details
-          </h4>
-          <SaveStatusIndicator />
-        </div>
-        
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="form-input-group">
-              <label className="form-label block text-xs font-medium text-gray-700 mb-1">
-                In-Hand Date
-                <span className="text-xs text-gray-500 font-normal ml-1">(When customer needs order)</span>
-              </label>
-              <input
-                type="date"
-                name="inHandDate"
-                value={currentDateValue}
-                onChange={handleInHandDateChange}
-                className="form-input w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-              />
-            </div>
-          </div>
-
+    <Card className="p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-3">
+          <Calendar className="w-5 h-5 text-blue-500" />
+          Quote Details
+        </h3>
+        <SaveStatusIndicator />
+      </div>
+      
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           <div className="form-input-group">
-            <label className="form-label block text-xs font-medium text-gray-700 mb-1">
-              Additional Instructions
-              <span className="text-xs text-gray-500 font-normal ml-1">(Optional)</span>
+            <label className="form-label block text-sm font-medium text-gray-700 mb-2">
+              In-Hand Date
+              <span className="text-xs text-gray-500 font-normal ml-1">(When customer needs order)</span>
             </label>
-            <textarea
-              name="additionalInstructions"
-              value={formData.checkoutDetails?.additionalInstructions || ''}
-              onChange={handleInstructionsChange}
-              className="form-input w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 resize-none"
-              placeholder="Any special instructions for processing this order..."
-              rows={3}
+            <input
+              type="date"
+              name="inHandDate"
+              value={currentDateValue}
+              onChange={handleInHandDateChange}
+              className="form-input w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
             />
-            <p className="text-xs text-gray-500 mt-1">
-              These instructions will be visible to your team when processing the order
-            </p>
-          </div>
-
-          {/* Save Button */}
-          <div className="flex justify-end pt-2 border-t border-gray-200">
-            <Button
-              onClick={saveCheckoutDetails}
-              loading={saveStatus === 'saving'}
-              disabled={saveStatus === 'saving'}
-              icon={Save}
-              size="sm"
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-            >
-              Save Checkout Details
-            </Button>
           </div>
         </div>
-      </Card>
+
+        <div className="form-input-group">
+          <label className="form-label block text-sm font-medium text-gray-700 mb-2">
+            Additional Instructions
+            <span className="text-xs text-gray-500 font-normal ml-1">(Optional)</span>
+          </label>
+          <textarea
+            name="additionalInstructions"
+            value={formData.checkoutDetails?.additionalInstructions || ''}
+            onChange={handleInstructionsChange}
+            className="form-input w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 resize-none"
+            placeholder="Any special instructions for processing this order..."
+            rows={3}
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            These instructions will be visible to your team when processing the order
+          </p>
+        </div>
+
+        <div className="flex justify-end pt-4 border-t border-gray-200">
+          <Button
+            onClick={saveCheckoutDetails}
+            loading={saveStatus === 'saving'}
+            disabled={saveStatus === 'saving'}
+            icon={Save}
+            size="sm"
+            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+          >
+            Save Checkout Details
+          </Button>
+        </div>
+      </div>
 
       {saleSummary && (
-        <Card className="p-4 bg-gray-50">
+        <Card className="p-4 bg-gray-50 mt-6">
           <h5 className="font-medium text-gray-800 mb-3 text-sm flex items-center gap-2">
             <FileText className="w-4 h-4 text-gray-600" />
             Financial Summary
@@ -291,6 +278,6 @@ export const QuoteDetailsStep: React.FC<QuoteDetailsStepProps> = ({
           </div>
         </Card>
       )}
-    </div>
+    </Card>
   );
 };

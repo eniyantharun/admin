@@ -40,7 +40,6 @@ export const QuoteCustomerStep: React.FC<QuoteCustomerStepProps> = ({
       customerEmail: customer.email,
     }));
     
-    // Fetch customer addresses
     if (customer.id) {
       await onFetchCustomerAddresses(customer.id);
     }
@@ -48,7 +47,6 @@ export const QuoteCustomerStep: React.FC<QuoteCustomerStepProps> = ({
 
   const handleSkipAddresses = () => {
     setAddressesOptional(true);
-    // Clear any existing address data
     setFormData(prev => ({
       ...prev,
       billingAddress: {
@@ -77,7 +75,6 @@ export const QuoteCustomerStep: React.FC<QuoteCustomerStepProps> = ({
   };
 
   useEffect(() => {
-    // Auto-populate addresses when customer addresses are loaded
     if (customerAddresses.length > 0 && selectedCustomer && !addressesOptional) {
       const billingAddress = customerAddresses.find(addr => addr.type === 'billing' && addr.isPrimary) || 
                             customerAddresses.find(addr => addr.type === 'billing') ||
@@ -157,302 +154,302 @@ export const QuoteCustomerStep: React.FC<QuoteCustomerStepProps> = ({
   };
 
   return (
-    <div className="space-y-4">
-      <Card className="p-4">
-        <h4 className="font-medium text-gray-900 text-sm mb-3 flex items-center gap-2">
-          <User className="w-4 h-4 text-blue-500" />
-          Customer Selection
-        </h4>
-        
-        {selectedCustomer ? (
-          <Card className="p-4 bg-blue-50 border-blue-200">
-            <div className="flex items-center space-x-3">
-              <EntityAvatar
-                name={`${selectedCustomer.firstName} ${selectedCustomer.lastName}`}
-                id={selectedCustomer.idNum}
-                type="customer"
-                size="lg"
-              />
-              <div className="flex-1">
-                <div className="flex items-center space-x-2 mb-2">
-                  <h6 className="text-sm font-semibold text-blue-800">
-                    {selectedCustomer.firstName} {selectedCustomer.lastName}
-                  </h6>
-                  {selectedCustomer.isBusinessCustomer ? (
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        Business Customer
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                        Individual Customer
-                      </span>
-                    )}
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                  <div className="flex items-center gap-1 text-blue-700">
-                    <Mail className="w-3 h-3" />
-                    <span>{selectedCustomer.email}</span>
+    <Card className="p-6">
+      <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-3">
+        <User className="w-5 h-5 text-blue-500" />
+        Customer & Address Information
+      </h3>
+      
+      <div className="space-y-6">
+        <div>
+          <h4 className="font-medium text-gray-900 text-sm mb-3 flex items-center gap-2">
+            Customer Selection
+          </h4>
+          
+          {selectedCustomer ? (
+            <Card className="p-4 bg-blue-50 border-blue-200">
+              <div className="flex items-center space-x-3">
+                <EntityAvatar
+                  name={`${selectedCustomer.firstName} ${selectedCustomer.lastName}`}
+                  id={selectedCustomer.idNum}
+                  type="customer"
+                  size="lg"
+                />
+                <div className="flex-1">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <h6 className="text-sm font-semibold text-blue-800">
+                      {selectedCustomer.firstName} {selectedCustomer.lastName}
+                    </h6>
+                    {selectedCustomer.isBusinessCustomer ? (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          Business Customer
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                          Individual Customer
+                        </span>
+                      )}
                   </div>
-                  <div className="flex items-center gap-1 text-blue-700">
-                    <Phone className="w-3 h-3" />
-                    <span>{selectedCustomer.phone}</span>
-                  </div>
-                  {selectedCustomer.companyName && (
-                    <div className="flex items-center gap-1 text-blue-700 sm:col-span-2">
-                      <Building className="w-3 h-3" />
-                      <span>{selectedCustomer.companyName}</span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    <div className="flex items-center gap-1 text-blue-700">
+                      <Mail className="w-3 h-3" />
+                      <span>{selectedCustomer.email}</span>
                     </div>
+                    <div className="flex items-center gap-1 text-blue-700">
+                      <Phone className="w-3 h-3" />
+                      <span>{selectedCustomer.phone}</span>
+                    </div>
+                    {selectedCustomer.companyName && (
+                      <div className="flex items-center gap-1 text-blue-700 sm:col-span-2">
+                        <Building className="w-3 h-3" />
+                        <span>{selectedCustomer.companyName}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <CheckCircle className="w-6 h-6 text-green-500" />
+              </div>
+              
+              <div className="mt-3 pt-3 border-t border-blue-200">
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={() => onCustomerSelect(null as any)}
+                    variant="secondary"
+                    size="sm"
+                    className="bg-white border-blue-300 text-blue-700 hover:bg-blue-50"
+                  >
+                    Change Customer
+                  </Button>
+                  {!isEditing && (
+                    <Button
+                      onClick={() => {
+                        onCustomerSelect(null as any);
+                        setFormData(prev => ({
+                          ...prev,
+                          customer: '',
+                          customerEmail: '',
+                          billingAddress: {
+                            type: 'billing' as const,
+                            label: '',
+                            name: '',
+                            street: '',
+                            city: '',
+                            state: '',
+                            zipCode: '',
+                            country: 'US',
+                            isPrimary: false,
+                          },
+                          shippingAddress: {
+                            type: 'shipping' as const,
+                            label: '',
+                            name: '',
+                            street: '',
+                            city: '',
+                            state: '',
+                            zipCode: '',
+                            country: 'US',
+                            isPrimary: false,
+                          }
+                        }));
+                      }}
+                      variant="secondary"
+                      size="sm"
+                      className="bg-gray-100 border-gray-300 text-gray-700 hover:bg-gray-50"
+                    >
+                      Back to Selection
+                    </Button>
                   )}
                 </div>
               </div>
-              <CheckCircle className="w-6 h-6 text-green-500" />
-            </div>
-            
-            {/* Customer Change Button */}
-            <div className="mt-3 pt-3 border-t border-blue-200">
-  <div className="flex items-center gap-2">
-    <Button
-      onClick={() => onCustomerSelect(null as any)}
-      variant="secondary"
-      size="sm"
-      className="bg-white border-blue-300 text-blue-700 hover:bg-blue-50"
-    >
-      Change Customer
-    </Button>
-    {!isEditing && (
-      <Button
-        onClick={() => {
-          // Reset to initial state
-          onCustomerSelect(null as any);
-          setFormData(prev => ({
-            ...prev,
-            customer: '',
-            customerEmail: '',
-            billingAddress: {
-              type: 'billing' as const,
-              label: '',
-              name: '',
-              street: '',
-              city: '',
-              state: '',
-              zipCode: '',
-              country: 'US',
-              isPrimary: false,
-            },
-            shippingAddress: {
-              type: 'shipping' as const,
-              label: '',
-              name: '',
-              street: '',
-              city: '',
-              state: '',
-              zipCode: '',
-              country: 'US',
-              isPrimary: false,
-            }
-          }));
-        }}
-        variant="secondary"
-        size="sm"
-        className="bg-gray-100 border-gray-300 text-gray-700 hover:bg-gray-50"
-      >
-        Back to Selection
-      </Button>
-    )}
-  </div>
-</div>
-          </Card>
-        ) : (
-          <CustomerSearch 
-            onCustomerSelect={handleCustomerSelect}
-            selectedCustomer={selectedCustomer}
-            onNewCustomer={() => {}}
-          />
-        )}
-      </Card>
-
-      {selectedCustomer && (
-        <>
-          
-
-          {/* Addresses Section */}
-          {!addressesOptional && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <Card className="p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-medium text-gray-900 text-sm flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-green-500" />
-                    Billing Address
-                    <span className="text-xs text-gray-500 font-normal">(Optional)</span>
-                  </h4>
-                  <div className="flex items-center gap-2">
-                    {customerAddresses.filter(addr => addr.type === 'billing').length > 0 && (
-                      <select
-                        onChange={(e) => {
-                          const selectedAddr = customerAddresses.find(addr => addr.id === e.target.value);
-                          if (selectedAddr) handleAddressSelect(selectedAddr, 'billing');
-                        }}
-                        className="text-xs border border-gray-300 rounded px-2 py-1"
-                        defaultValue=""
-                      >
-                        <option value="">Select saved address</option>
-                        {customerAddresses.filter(addr => addr.type === 'billing').map(addr => (
-                          <option key={addr.id} value={addr.id}>
-                            {addr.label} - {addr.street}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                    <Button
-                      onClick={() => {
-                        setShowBillingAddressForm(!showBillingAddressForm);
-                        setEditingAddress('billing');
-                      }}
-                      variant="secondary"
-                      size="sm"
-                      icon={formData.billingAddress.street ? Edit : Plus}
-                      className="h-7"
-                    >
-                      {formData.billingAddress.street ? 'Edit' : 'Add'}
-                    </Button>
-                  </div>
-                </div>
-                
-                {formData.billingAddress.street ? (
-                  <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
-                    <p className="font-medium text-gray-900">{formData.billingAddress.name}</p>
-                    <p>{formData.billingAddress.street}</p>
-                    <p>{formData.billingAddress.city}, {formData.billingAddress.state} {formData.billingAddress.zipCode}</p>
-                    <p className="text-xs text-blue-600 mt-1">{formData.billingAddress.label}</p>
-                  </div>
-                ) : (
-                  <div className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg border-dashed border-2">
-                    <p>No billing address added</p>
-                    <p className="text-xs mt-1">You can add this later if needed</p>
-                  </div>
-                )}
-                
-                {showBillingAddressForm && (
-                  <div className="border-t pt-3 mt-3">
-                    <AddressForm
-                      address={editingAddress === 'billing' ? formData.billingAddress : undefined}
-                      onSubmit={(data) => handleNewAddressSubmit(data, 'billing')}
-                      onCancel={() => {
-                        setShowBillingAddressForm(false);
-                        setEditingAddress(null);
-                      }}
-                    />
-                  </div>
-                )}
-              </Card>
-
-              <Card className="p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-medium text-gray-900 text-sm flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-purple-500" />
-                    Shipping Address
-                    <span className="text-xs text-gray-500 font-normal">(Optional)</span>
-                  </h4>
-                  <div className="flex items-center space-x-2">
-                    <label className="flex items-center text-xs">
-                      <input
-                        type="checkbox"
-                        checked={formData.sameAsShipping}
-                        onChange={(e) => {
-                          setFormData(prev => ({
-                            ...prev,
-                            sameAsShipping: e.target.checked,
-                            shippingAddress: e.target.checked ? prev.billingAddress : prev.shippingAddress
-                          }));
-                        }}
-                        className="mr-1 w-3 h-3"
-                      />
-                      Same as billing
-                    </label>
-                    {!formData.sameAsShipping && customerAddresses.filter(addr => addr.type === 'shipping').length > 0 && (
-                      <select
-                        onChange={(e) => {
-                          const selectedAddr = customerAddresses.find(addr => addr.id === e.target.value);
-                          if (selectedAddr) handleAddressSelect(selectedAddr, 'shipping');
-                        }}
-                        className="text-xs border border-gray-300 rounded px-2 py-1"
-                        defaultValue=""
-                      >
-                        <option value="">Select saved address</option>
-                        {customerAddresses.filter(addr => addr.type === 'shipping').map(addr => (
-                          <option key={addr.id} value={addr.id}>
-                            {addr.label} - {addr.street}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                    <Button
-                      onClick={() => {
-                        setShowShippingAddressForm(!showShippingAddressForm);
-                        setEditingAddress('shipping');
-                      }}
-                      variant="secondary"
-                      size="sm"
-                      icon={formData.shippingAddress.street ? Edit : Plus}
-                      disabled={formData.sameAsShipping}
-                      className="h-7"
-                    >
-                      {formData.shippingAddress.street ? 'Edit' : 'Add'}
-                    </Button>
-                  </div>
-                </div>
-                
-                {formData.shippingAddress.street ? (
-                  <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
-                    <p className="font-medium text-gray-900">{formData.shippingAddress.name}</p>
-                    <p>{formData.shippingAddress.street}</p>
-                    <p>{formData.shippingAddress.city}, {formData.shippingAddress.state} {formData.shippingAddress.zipCode}</p>
-                    <p className="text-xs text-blue-600 mt-1">{formData.shippingAddress.label}</p>
-                  </div>
-                ) : (
-                  <div className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg border-dashed border-2">
-                    <p>No shipping address added</p>
-                    <p className="text-xs mt-1">You can add this later if needed</p>
-                  </div>
-                )}
-                
-                {showShippingAddressForm && !formData.sameAsShipping && (
-                  <div className="border-t pt-3 mt-3">
-                    <AddressForm
-                      address={editingAddress === 'shipping' ? formData.shippingAddress : undefined}
-                      onSubmit={(data) => handleNewAddressSubmit(data, 'shipping')}
-                      onCancel={() => {
-                        setShowShippingAddressForm(false);
-                        setEditingAddress(null);
-                      }}
-                    />
-                  </div>
-                )}
-              </Card>
-            </div>
-          )}
-
-          {/* Show skipped addresses notice */}
-          {addressesOptional && (
-            <Card className="p-4 bg-gray-50 border-gray-200">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-500" />
-                  <span className="text-sm text-gray-700">Addresses skipped - you can add them later</span>
-                </div>
-                <Button
-                  onClick={() => setAddressesOptional(false)}
-                  variant="secondary"
-                  size="sm"
-                  className="text-xs"
-                >
-                  Add Addresses Now
-                </Button>
-              </div>
             </Card>
+          ) : (
+            <CustomerSearch 
+              onCustomerSelect={handleCustomerSelect}
+              selectedCustomer={selectedCustomer}
+              onNewCustomer={() => {}}
+            />
           )}
-        </>
-      )}
-    </div>
+        </div>
+
+        {selectedCustomer && (
+          <>
+            {!addressesOptional && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card className="p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-medium text-gray-900 text-sm flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-green-500" />
+                      Billing Address
+                      <span className="text-xs text-gray-500 font-normal">(Optional)</span>
+                    </h4>
+                    <div className="flex items-center gap-2">
+                      {customerAddresses.filter(addr => addr.type === 'billing').length > 0 && (
+                        <select
+                          onChange={(e) => {
+                            const selectedAddr = customerAddresses.find(addr => addr.id === e.target.value);
+                            if (selectedAddr) handleAddressSelect(selectedAddr, 'billing');
+                          }}
+                          className="text-xs border border-gray-300 rounded px-2 py-1"
+                          defaultValue=""
+                        >
+                          <option value="">Select saved address</option>
+                          {customerAddresses.filter(addr => addr.type === 'billing').map(addr => (
+                            <option key={addr.id} value={addr.id}>
+                              {addr.label} - {addr.street}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                      <Button
+                        onClick={() => {
+                          setShowBillingAddressForm(!showBillingAddressForm);
+                          setEditingAddress('billing');
+                        }}
+                        variant="secondary"
+                        size="sm"
+                        icon={formData.billingAddress.street ? Edit : Plus}
+                        className="h-7"
+                      >
+                        {formData.billingAddress.street ? 'Edit' : 'Add'}
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  {formData.billingAddress.street ? (
+                    <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+                      <p className="font-medium text-gray-900">{formData.billingAddress.name}</p>
+                      <p>{formData.billingAddress.street}</p>
+                      <p>{formData.billingAddress.city}, {formData.billingAddress.state} {formData.billingAddress.zipCode}</p>
+                      <p className="text-xs text-blue-600 mt-1">{formData.billingAddress.label}</p>
+                    </div>
+                  ) : (
+                    <div className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg border-dashed border-2">
+                      <p>No billing address added</p>
+                      <p className="text-xs mt-1">You can add this later if needed</p>
+                    </div>
+                  )}
+                  
+                  {showBillingAddressForm && (
+                    <div className="border-t pt-3 mt-3">
+                      <AddressForm
+                        address={editingAddress === 'billing' ? formData.billingAddress : undefined}
+                        onSubmit={(data) => handleNewAddressSubmit(data, 'billing')}
+                        onCancel={() => {
+                          setShowBillingAddressForm(false);
+                          setEditingAddress(null);
+                        }}
+                      />
+                    </div>
+                  )}
+                </Card>
+
+                <Card className="p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-medium text-gray-900 text-sm flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-purple-500" />
+                      Shipping Address
+                      <span className="text-xs text-gray-500 font-normal">(Optional)</span>
+                    </h4>
+                    <div className="flex items-center space-x-2">
+                      <label className="flex items-center text-xs">
+                        <input
+                          type="checkbox"
+                          checked={formData.sameAsShipping}
+                          onChange={(e) => {
+                            setFormData(prev => ({
+                              ...prev,
+                              sameAsShipping: e.target.checked,
+                              shippingAddress: e.target.checked ? prev.billingAddress : prev.shippingAddress
+                            }));
+                          }}
+                          className="mr-1 w-3 h-3"
+                        />
+                        Same as billing
+                      </label>
+                      {!formData.sameAsShipping && customerAddresses.filter(addr => addr.type === 'shipping').length > 0 && (
+                        <select
+                          onChange={(e) => {
+                            const selectedAddr = customerAddresses.find(addr => addr.id === e.target.value);
+                            if (selectedAddr) handleAddressSelect(selectedAddr, 'shipping');
+                          }}
+                          className="text-xs border border-gray-300 rounded px-2 py-1"
+                          defaultValue=""
+                        >
+                          <option value="">Select saved address</option>
+                          {customerAddresses.filter(addr => addr.type === 'shipping').map(addr => (
+                            <option key={addr.id} value={addr.id}>
+                              {addr.label} - {addr.street}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                      <Button
+                        onClick={() => {
+                          setShowShippingAddressForm(!showShippingAddressForm);
+                          setEditingAddress('shipping');
+                        }}
+                        variant="secondary"
+                        size="sm"
+                        icon={formData.shippingAddress.street ? Edit : Plus}
+                        disabled={formData.sameAsShipping}
+                        className="h-7"
+                      >
+                        {formData.shippingAddress.street ? 'Edit' : 'Add'}
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  {formData.shippingAddress.street ? (
+                    <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+                      <p className="font-medium text-gray-900">{formData.shippingAddress.name}</p>
+                      <p>{formData.shippingAddress.street}</p>
+                      <p>{formData.shippingAddress.city}, {formData.shippingAddress.state} {formData.shippingAddress.zipCode}</p>
+                      <p className="text-xs text-blue-600 mt-1">{formData.shippingAddress.label}</p>
+                    </div>
+                  ) : (
+                    <div className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg border-dashed border-2">
+                      <p>No shipping address added</p>
+                      <p className="text-xs mt-1">You can add this later if needed</p>
+                    </div>
+                  )}
+                  
+                  {showShippingAddressForm && !formData.sameAsShipping && (
+                    <div className="border-t pt-3 mt-3">
+                      <AddressForm
+                        address={editingAddress === 'shipping' ? formData.shippingAddress : undefined}
+                        onSubmit={(data) => handleNewAddressSubmit(data, 'shipping')}
+                        onCancel={() => {
+                          setShowShippingAddressForm(false);
+                          setEditingAddress(null);
+                        }}
+                      />
+                    </div>
+                  )}
+                </Card>
+              </div>
+            )}
+
+            {addressesOptional && (
+              <Card className="p-4 bg-gray-50 border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-500" />
+                    <span className="text-sm text-gray-700">Addresses skipped - you can add them later</span>
+                  </div>
+                  <Button
+                    onClick={() => setAddressesOptional(false)}
+                    variant="secondary"
+                    size="sm"
+                    className="text-xs"
+                  >
+                    Add Addresses Now
+                  </Button>
+                </div>
+              </Card>
+            )}
+          </>
+        )}
+      </div>
+    </Card>
   );
 };

@@ -177,16 +177,16 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
   }, [formData.checkoutDetails, formData.shippingDetails, handleInputChange, updateSaleDetail]);
 
   return (
-    <div className="space-y-6">
-      <Card className="p-4">
-        <h4 className="font-medium text-gray-900 text-sm mb-4 flex items-center gap-2">
-          <Truck className="w-4 h-4 text-purple-500" />
-          Shipping Details
-        </h4>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <Card className="p-6">
+      <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-3">
+        <Truck className="w-5 h-5 text-purple-500" />
+        Shipping Details
+      </h3>
+      
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="form-input-group">
-            <label className="form-label block text-xs font-medium text-gray-700 mb-1">
+            <label className="form-label block text-sm font-medium text-gray-700 mb-2">
               Shipping Company
             </label>
             <select
@@ -212,7 +212,7 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
           </div>
 
           <div className="form-input-group">
-            <label className="form-label block text-xs font-medium text-gray-700 mb-1">
+            <label className="form-label block text-sm font-medium text-gray-700 mb-2">
               Shipping Type
             </label>
             
@@ -295,7 +295,7 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <FormInput
             label="Shipping Cost"
             name="shippingCost"
@@ -314,12 +314,11 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
             onChange={(e) => handleShippingChange('date', e.target.value)}
             helpText="Expected ship date"
           />
-
         </div>
-      </Card>
+      </div>
 
       {saleSummary && (
-        <Card className="p-4 bg-blue-50 border-blue-200">
+        <Card className="p-4 bg-blue-50 border-blue-200 mt-6">
           <h5 className="font-medium text-blue-800 mb-3 text-sm">Final Quote Summary</h5>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
@@ -364,6 +363,6 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
           )}
         </Card>
       )}
-    </div>
+    </Card>
   );
 };
