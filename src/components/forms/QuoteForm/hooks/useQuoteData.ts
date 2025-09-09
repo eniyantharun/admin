@@ -92,6 +92,16 @@ const transformApiLineItem = (apiItem: any): LineItemData => {
     product: apiItem.product
   });
 
+  let sourceUri = apiItem.sourceUri;
+  
+  if (!apiItem.customThumbnail && !apiItem.customPicture && !apiItem.sourceUri) {
+    if (apiItem.product?.primaryPicture?.sourceUri) {
+      sourceUri = apiItem.product.primaryPicture.sourceUri;
+    } else if (apiItem.product?.id && apiItem.product?.pictures?.[0]) {
+      sourceUri = `https://static2.promotionalproductinc.com/p2/src/${apiItem.product.id}/${apiItem.product.pictures[0]}.webp`;
+    }
+  }
+
   return {
     id: apiItem.id,
     productName: apiItem.form?.productName || '',
@@ -112,8 +122,7 @@ const transformApiLineItem = (apiItem: any): LineItemData => {
     variantId: apiItem.form?.variantId,
     methodId: apiItem.form?.methodId,
     colorId: apiItem.form?.colorId,
-    // Handle image data from API response - extract ALL possible image sources
-    sourceUri: apiItem.sourceUri || null,
+    sourceUri: sourceUri,
     customPicture: apiItem.customPicture || null,
     customThumbnail: apiItem.customThumbnail || null
   };
