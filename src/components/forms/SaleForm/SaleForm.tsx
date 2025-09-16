@@ -5,68 +5,100 @@ import { EntityDrawer } from "@/components/helpers/EntityDrawer";
 import { iCustomer, iCustomerAddress } from "@/types/customer";
 import {
   iQuoteFormData,
-  iQuoteFormProps,
   iQuote,
   LineItemData,
   SaleSummary,
   QuoteDetailsResponse,
 } from "@/types/quotes";
+import { iOrderFormData, iOrder } from "@/types/order";
 import { useApi } from "@/hooks/useApi";
 import { showToast } from "@/components/ui/toast";
-import { useQuoteData } from "./hooks/useQuoteData";
-import { QuoteCustomerStep } from "./components/QuoteCustomerStep";
-import { QuoteItemsStep } from "./components/QuoteItemsStep";
-import { QuoteDetailsStep } from "./components/QuoteDetailsStep";
-import { QuoteNotesStep } from "./components/QuoteNotesStep";
-import { QuoteInformation } from "./components/QuoteInformation";
-import { QuoteShippingStep } from "./components/QuoteShippingStep";
+import { useSaleData } from "./hooks/useSaleData";
+import { SaleCustomerStep } from "./components/SaleCustomerStep";
+import { SaleItemsStep } from "./components/SaleItemsStep";
+import { SaleDetailsStep } from "./components/SaleDetailsStep";
+import { SaleNotesStep } from "./components/SaleNotesStep";
+import { SaleInformation } from "./components/SaleInformation";
+import { SaleShippingStep } from "./components/SaleShippingStep";
+import { SalePaymentStep } from "./components/SalePaymentStep";
 
-export const QuoteForm: React.FC<iQuoteFormProps> = ({
-  quote,
+type SaleType = 'quote' | 'order';
+
+interface SaleFormProps {
+  saleType: SaleType;
+  sale?: iQuote | iOrder | null;
+  isEditing: boolean;
+  onSubmit: (formData: iQuoteFormData | iOrderFormData) => Promise<void>;
+  loading?: boolean;
+}
+
+export const SaleForm: React.FC<SaleFormProps> = ({
+  saleType,
+  sale,
   isEditing,
   onSubmit,
   loading = false,
 }) => {
-  const [formData, setFormData] = useState<iQuoteFormData>({
-    customer: "",
-    customerEmail: "",
-    status: "new-quote",
-    customerTotal: "0",
-    inHandDate: "",
-    notes: "",
-    billingAddress: {
-      type: "billing" as const,
-      label: "",
-      name: "",
-      street: "",
-      city: "",
-      state: "",
-      zipCode: "",
-      country: "US",
-      isPrimary: false,
-    },
-    shippingAddress: {
-      type: "shipping" as const,
-      label: "",
-      name: "",
-      street: "",
-      city: "",
-      state: "",
-      zipCode: "",
-      country: "US",
-      isPrimary: false,
-    },
-    sameAsShipping: false,
-    checkoutDetails: {
-      dateOrderNeededBy: "",
-      additionalInstructions: ""
-    },
+  const [formData, setFormData] = useState<iQuoteFormData | iOrderFormData>(() => {
+    const baseData = {
+      customer: "",
+      customerEmail: "",
+      status: saleType === 'quote' ? "new-quote" : "new",
+      customerTotal: "0",
+      inHandDate: "",
+      notes: "",
+      billingAddress: {
+        type: "billing" as const,
+        label: "",
+        name: "",
+        street: "",
+        city: "",
+        state: "",
+        zipCode: "",
+        country: "US",
+        isPrimary: false,
+      },
+      shippingAddress: {
+        type: "shipping" as const,
+        label: "",
+        name: "",
+        street: "",
+        city: "",
+        state: "",
+        zipCode: "",
+        country: "US",
+        isPrimary: false,
+      },
+      sameAsShipping: false,
+      checkoutDetails: {
+        dateOrderNeededBy: "",
+        additionalInstructions: ""
+      },
+    };
+
+    if (saleType === 'order') {
+      return {
+        ...baseData,
+        paymentMethod: "Credit Card",
+        supplierTotal: "0",
+        items: [],
+        shippingDetails: {
+          type: "Ground",
+          company: "UPS",
+          cost: 25.50,
+          date: "",
+          trackingNumber: ""
+        }
+      } as iOrderFormData;
+    }
+
+    return baseData as iQuoteFormData;
   });
-  const [formErrors, setFormErrors] = useState<Partial<iQuoteFormData>>({});
+  const [formErrors, setFormErrors] = useState<Partial<iQuoteFormData | iOrderFormData>>({});
   const [customerAddresses, setCustomerAddresses] = useState<
     iCustomerAddress[]
   >([]);
-  const [isCreatingQuote, setIsCreatingQuote] = useState(false);
+  const [isCreatingRecord, setIsCreatingRecord] = useState(false);
 
   const {
     selectedCustomer,
@@ -76,18 +108,19 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
     saleSummary,
     setSaleSummary,
     isLoadingLineItems,
-    quoteDetails,
+    saleDetails,
     currentSaleId,
     handleAddEmptyLineItem,
     handleUpdateLineItem,
     handleRemoveLineItem,
     fetchSaleSummary,
     fetchCustomerAddresses,
-    createNewQuote,
+    createNewSale,
     setSaleDetail,
-    updateQuoteNotesId,
-  } = useQuoteData(
-    quote,
+    updateSaleNotesId,
+  } = useSaleData(
+    saleType,
+    sale,
     isEditing,
     formData,
     setFormData,
@@ -100,23 +133,23 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
     setSelectedCustomer(customer);
 
     if (!isEditing && !currentSaleId && customer.id) {
-      setIsCreatingQuote(true);
+      setIsCreatingRecord(true);
       try {
-        const saleId = await createNewQuote(customer.id);
+        const saleId = await createNewSale(customer.id);
         if (saleId) {
-          showToast.success("New quote created successfully");
-          console.log("New quote created with saleId:", saleId);
+          showToast.success(`New ${saleType} created successfully`);
+          console.log(`New ${saleType} created with saleId:`, saleId);
         }
       } catch (error) {
-        console.error("Error creating new quote:", error);
+        console.error(`Error creating new ${saleType}:`, error);
       } finally {
-        setIsCreatingQuote(false);
+        setIsCreatingRecord(false);
       }
     }
   };
 
   const validateForm = (): boolean => {
-    const errors: Partial<iQuoteFormData> = {};
+    const errors: Partial<iQuoteFormData | iOrderFormData> = {};
 
     if (!selectedCustomer) {
       errors.customer = "Customer is required";
@@ -125,7 +158,7 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
     }
 
     if (!currentSaleId) {
-      showToast.error("Quote not properly created. Please try again.");
+      showToast.error(`${saleType === 'quote' ? 'Quote' : 'Order'} not properly created. Please try again.`);
       return false;
     }
 
@@ -139,9 +172,10 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
     if (!validateForm()) return;
 
     try {
-      if (isEditing && quote && formData.status !== quote.status) {
-        await post("/Admin/SaleEditor/SetQuoteDetail", {
-          id: quote.id,
+      if (isEditing && sale && formData.status !== sale.status) {
+        const endpoint = saleType === 'quote' ? "/Admin/SaleEditor/SetQuoteDetail" : "/Admin/SaleEditor/SetOrderDetail";
+        await post(endpoint, {
+          id: sale.id,
           status: formData.status,
         });
       }
@@ -159,10 +193,10 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
         }
       }
 
-      await onSubmit(formData);
+      await onSubmit(formData as any);
     } catch (error) {
-      console.error("Error submitting quote:", error);
-      showToast.error("Failed to save quote");
+      console.error(`Error submitting ${saleType}:`, error);
+      showToast.error(`Failed to save ${saleType}`);
     }
   };
 
@@ -179,7 +213,7 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
       [name]: type === "checkbox" ? checked : value,
     }));
 
-    if (formErrors[name as keyof iQuoteFormData]) {
+    if (formErrors[name as keyof (iQuoteFormData | iOrderFormData)]) {
       setFormErrors((prev) => ({ ...prev, [name]: undefined }));
     }
   };
@@ -193,19 +227,20 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
 
   return (
     <div className="space-y-6">
-      {isCreatingQuote && (
+      {isCreatingRecord && (
         <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
           <div className="flex items-center gap-3">
             <div className="w-5 h-5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent"></div>
-            <span className="text-blue-700 text-sm font-medium">Creating new quote...</span>
+            <span className="text-blue-700 text-sm font-medium">Creating new {saleType}...</span>
           </div>
         </div>
       )}
 
-      {isEditing && quote && quoteDetails && (
-        <QuoteInformation
-          quote={quote}
-          quoteDetails={quoteDetails}
+      {isEditing && sale && saleDetails && (
+        <SaleInformation
+          saleType={saleType}
+          sale={sale}
+          saleDetails={saleDetails}
           lineItems={lineItems}
           currentSaleId={currentSaleId}
           formData={formData}
@@ -214,7 +249,7 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <QuoteCustomerStep
+        <SaleCustomerStep
           selectedCustomer={selectedCustomer}
           onCustomerSelect={handleCustomerSelect}
           formData={formData}
@@ -226,7 +261,7 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
 
         {canProceedToNext(0) && (
           <>
-            <QuoteItemsStep
+            <SaleItemsStep
               lineItems={lineItems}
               isLoadingLineItems={isLoadingLineItems}
               saleSummary={saleSummary}
@@ -235,39 +270,51 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
               onRemoveLineItem={handleRemoveLineItem}
               onRefreshSummary={fetchSaleSummary}
               currentSaleId={currentSaleId}
+              saleType={saleType}
             />
 
-            <QuoteDetailsStep
+            <SaleDetailsStep
+              saleType={saleType}
               formData={formData}
               handleInputChange={handleInputChange}
               saleSummary={saleSummary}
-              quoteId={quote?.id}
+              saleId={sale?.id}
               isEditing={isEditing}
               currentSaleId={currentSaleId}
               onRefreshSummary={fetchSaleSummary}
             />
 
-            <QuoteShippingStep
+            <SaleShippingStep
               formData={formData}
               handleInputChange={handleInputChange}
               saleSummary={saleSummary}
+              saleType={saleType}
             />
 
-            <QuoteNotesStep
+            {saleType === 'order' && (
+              <SalePaymentStep
+                formData={formData as iOrderFormData}
+                handleInputChange={handleInputChange}
+                saleSummary={saleSummary}
+              />
+            )}
+
+            <SaleNotesStep
+              saleType={saleType}
               formData={formData}
               handleInputChange={handleInputChange}
               saleSummary={saleSummary}
               lineItems={lineItems}
               isEditing={isEditing}
               currentSaleId={currentSaleId}
-              documentId={quoteDetails?.quote?.sale?.notesId}
+              documentId={saleDetails?.quote?.sale?.notesId}
               onDocumentIdCreated={async (newDocumentId) => {
                 console.log("New document created:", newDocumentId);
-                if (isEditing && quote?.id) {
+                if (isEditing && sale?.id) {
                   try {
-                    await updateQuoteNotesId(quote.id, newDocumentId);
+                    await updateSaleNotesId(sale.id, newDocumentId);
                   } catch (error) {
-                    console.error('Failed to link document to quote:', error);
+                    console.error('Failed to link document to sale:', error);
                   }
                 }
               }}
@@ -278,11 +325,11 @@ export const QuoteForm: React.FC<iQuoteFormProps> = ({
         <div className="flex justify-end pt-6 border-t border-gray-200 gap-3">
           <Button
             type="submit"
-            loading={loading || isCreatingQuote}
+            loading={loading || isCreatingRecord}
             icon={isEditing ? Save : CheckCircle}
             className=""
           >
-            {isEditing ? "Save Quote" : "Create Quote"}
+            {isEditing ? `Save ${saleType === 'quote' ? 'Quote' : 'Order'}` : `Create ${saleType === 'quote' ? 'Quote' : 'Order'}`}
           </Button>
         </div>
       </form>

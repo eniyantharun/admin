@@ -10,9 +10,10 @@ import {
   QuoteDetailsResponse,
   ProductPicture,
 } from "@/types/quotes";
+import { iOrder, iOrderFormData } from "@/types/order";
 import { documentFormatToHtml } from "@/lib/documentConverter";
 
-interface CreateQuoteResponse {
+interface CreateSaleResponse {
   saleId: string;
   id: number;
 }
@@ -41,11 +42,16 @@ interface SetSaleDetailRequest {
   };
 }
 
-export const useQuoteData = (
-  quote: iQuote | null | undefined,
+type SaleType = 'quote' | 'order';
+type SaleData = iQuote | iOrder;
+type FormData = iQuoteFormData | iOrderFormData;
+
+export const useSaleData = (
+  saleType: SaleType,
+  sale: SaleData | null | undefined,
   isEditing: boolean,
-  formData: iQuoteFormData,
-  setFormData: React.Dispatch<React.SetStateAction<iQuoteFormData>>,
+  formData: FormData,
+  setFormData: React.Dispatch<React.SetStateAction<FormData>>,
   setCustomerAddresses: React.Dispatch<React.SetStateAction<iCustomerAddress[]>>
 ) => {
   const [selectedCustomer, setSelectedCustomer] = useState<iCustomer | null>(
@@ -54,7 +60,7 @@ export const useQuoteData = (
   const [lineItems, setLineItems] = useState<LineItemData[]>([]);
   const [saleSummary, setSaleSummary] = useState<SaleSummary | null>(null);
   const [isLoadingLineItems, setIsLoadingLineItems] = useState(false);
-  const [quoteDetails, setQuoteDetails] = useState<QuoteDetailsResponse | null>(
+  const [saleDetails, setSaleDetails] = useState<QuoteDetailsResponse | null>(
     null
   );
   const [currentSaleId, setCurrentSaleId] = useState<string>("");
@@ -81,52 +87,51 @@ export const useQuoteData = (
     [get, setCustomerAddresses]
   );
 
-  // Updated transformApiLineItem function - replace in useQuoteData.ts
-const transformApiLineItem = (apiItem: any): LineItemData => {
-  console.log('Transforming API line item:', {
-    id: apiItem.id,
-    productName: apiItem.form?.productName,
-    sourceUri: apiItem.sourceUri,
-    customThumbnail: apiItem.customThumbnail,
-    customPicture: apiItem.customPicture,
-    product: apiItem.product
-  });
+  const transformApiLineItem = (apiItem: any): LineItemData => {
+    console.log('Transforming API line item:', {
+      id: apiItem.id,
+      productName: apiItem.form?.productName,
+      sourceUri: apiItem.sourceUri,
+      customThumbnail: apiItem.customThumbnail,
+      customPicture: apiItem.customPicture,
+      product: apiItem.product
+    });
 
-  let sourceUri = apiItem.sourceUri;
-  
-  if (!apiItem.customThumbnail && !apiItem.customPicture && !apiItem.sourceUri) {
-    if (apiItem.product?.primaryPicture?.sourceUri) {
-      sourceUri = apiItem.product.primaryPicture.sourceUri;
-    } else if (apiItem.product?.id && apiItem.product?.pictures?.[0]) {
-      sourceUri = `https://static2.promotionalproductinc.com/p2/src/${apiItem.product.id}/${apiItem.product.pictures[0]}.webp`;
+    let sourceUri = apiItem.sourceUri;
+    
+    if (!apiItem.customThumbnail && !apiItem.customPicture && !apiItem.sourceUri) {
+      if (apiItem.product?.primaryPicture?.sourceUri) {
+        sourceUri = apiItem.product.primaryPicture.sourceUri;
+      } else if (apiItem.product?.id && apiItem.product?.pictures?.[0]) {
+        sourceUri = `https://static2.promotionalproductinc.com/p2/src/${apiItem.product.id}/${apiItem.product.pictures[0]}.webp`;
+      }
     }
-  }
 
-  return {
-    id: apiItem.id,
-    productName: apiItem.form?.productName || '',
-    variantName: apiItem.form?.variantName || '',
-    methodName: apiItem.form?.methodName || '',
-    color: apiItem.form?.color || '',
-    quantity: apiItem.form?.quantity || 1,
-    productItemNumber: apiItem.form?.productItemNumber || '',
-    supplierItemNumber: apiItem.form?.supplierItemNumber || '',
-    customerPricePerQuantity: apiItem.form?.customerPricePerQuantity || 0,
-    customerSetupCharge: apiItem.form?.customerSetupCharge || 0,
-    supplierPricePerQuantity: apiItem.form?.supplierPricePerQuantity || 0,
-    supplierSetupCharge: apiItem.form?.supplierSetupCharge || 0,
-    artworkText: apiItem.form?.artworkText || '',
-    artworkSpecialInstructions: apiItem.form?.artworkSpecialInstructions || '',
-    images: [],
-    selectedProduct: apiItem.product || null,
-    variantId: apiItem.form?.variantId,
-    methodId: apiItem.form?.methodId,
-    colorId: apiItem.form?.colorId,
-    sourceUri: sourceUri,
-    customPicture: apiItem.customPicture || null,
-    customThumbnail: apiItem.customThumbnail || null
+    return {
+      id: apiItem.id,
+      productName: apiItem.form?.productName || '',
+      variantName: apiItem.form?.variantName || '',
+      methodName: apiItem.form?.methodName || '',
+      color: apiItem.form?.color || '',
+      quantity: apiItem.form?.quantity || 1,
+      productItemNumber: apiItem.form?.productItemNumber || '',
+      supplierItemNumber: apiItem.form?.supplierItemNumber || '',
+      customerPricePerQuantity: apiItem.form?.customerPricePerQuantity || 0,
+      customerSetupCharge: apiItem.form?.customerSetupCharge || 0,
+      supplierPricePerQuantity: apiItem.form?.supplierPricePerQuantity || 0,
+      supplierSetupCharge: apiItem.form?.supplierSetupCharge || 0,
+      artworkText: apiItem.form?.artworkText || '',
+      artworkSpecialInstructions: apiItem.form?.artworkSpecialInstructions || '',
+      images: [],
+      selectedProduct: apiItem.product || null,
+      variantId: apiItem.form?.variantId,
+      methodId: apiItem.form?.methodId,
+      colorId: apiItem.form?.colorId,
+      sourceUri: sourceUri,
+      customPicture: apiItem.customPicture || null,
+      customThumbnail: apiItem.customThumbnail || null
+    };
   };
-};
 
   const loadNotesContent = useCallback(
     async (documentId: string): Promise<string> => {
@@ -161,35 +166,38 @@ const transformApiLineItem = (apiItem: any): LineItemData => {
     [get]
   );
 
-  const updateQuoteNotesId = useCallback(
-    async (quoteId: number, notesId: string) => {
+  const updateSaleNotesId = useCallback(
+    async (saleId: number, notesId: string) => {
       try {
-        await post("/Admin/SaleEditor/SetQuoteDetail", {
-          id: quoteId,
+        const endpoint = saleType === 'quote' ? "/Admin/SaleEditor/SetQuoteDetail" : "/Admin/SaleEditor/SetOrderDetail";
+        await post(endpoint, {
+          id: saleId,
           notesId: notesId,
         });
-        console.log("Successfully updated quote notesId:", notesId);
+        console.log(`Successfully updated ${saleType} notesId:`, notesId);
       } catch (error) {
-        console.error("Failed to update quote notesId:", error);
+        console.error(`Failed to update ${saleType} notesId:`, error);
         throw error;
       }
     },
-    [post]
+    [post, saleType]
   );
 
-  const fetchQuoteDetails = async (quoteId: number) => {
+  const fetchSaleDetails = async (saleId: number) => {
     setIsLoadingLineItems(true);
     try {
-      const response = (await get(
-        `/Admin/SaleEditor/GetQuoteDetail?id=${quoteId}`
-      )) as QuoteDetailsResponse;
+      const endpoint = saleType === 'quote' ? 
+        `/Admin/SaleEditor/GetQuoteDetail?id=${saleId}` :
+        `/Admin/SaleEditor/GetOrderDetail?id=${saleId}`;
+      
+      const response = (await get(endpoint)) as QuoteDetailsResponse;
 
       if (response?.quote?.sale) {
-        setQuoteDetails(response);
+        setSaleDetails(response);
         setCurrentSaleId(response.quote.saleId);
 
         console.log(
-          "Fetched quote details with notesId:",
+          `Fetched ${saleType} details with notesId:`,
           response.quote.sale.notesId
         );
 
@@ -255,6 +263,9 @@ const transformApiLineItem = (apiItem: any): LineItemData => {
           customerTotal: customerTotal.toString(),
           inHandDate: response.quote.sale.dates.inHandDate || "",
           notes: fallbackNotes,
+          ...(saleType === 'order' && {
+            supplierTotal: supplierTotal.toString()
+          })
         }));
 
         const customer = response.quote.sale.customer;
@@ -315,8 +326,8 @@ const transformApiLineItem = (apiItem: any): LineItemData => {
         }
       }
     } catch (error) {
-      console.error("Error fetching quote details:", error);
-      showToast.error("Failed to load quote details");
+      console.error(`Error fetching ${saleType} details:`, error);
+      showToast.error(`Failed to load ${saleType} details`);
       setLineItems([]);
       setSaleSummary(null);
     } finally {
@@ -344,27 +355,31 @@ const transformApiLineItem = (apiItem: any): LineItemData => {
     }
   }, [currentSaleId, get, setFormData]);
 
-  const createNewQuote = useCallback(
+  const createNewSale = useCallback(
     async (customerId: string): Promise<string | null> => {
       try {
-        const response = (await post("/Admin/SaleEditor/AddEmptyQuote", {
+        const endpoint = saleType === 'quote' ? 
+          "/Admin/SaleEditor/AddEmptyQuote" :
+          "/Admin/SaleEditor/AddEmptyOrder";
+          
+        const response = (await post(endpoint, {
           customerId: customerId,
-        })) as CreateQuoteResponse;
+        })) as CreateSaleResponse;
 
         if (response && response.saleId) {
           setCurrentSaleId(response.saleId);
-          console.log("Created new quote:", response);
+          console.log(`Created new ${saleType}:`, response);
           return response.saleId;
         }
 
         return null;
       } catch (error) {
-        console.error("Failed to create new quote:", error);
-        showToast.error("Failed to create new quote");
+        console.error(`Failed to create new ${saleType}:`, error);
+        showToast.error(`Failed to create new ${saleType}`);
         return null;
       }
     },
-    [post]
+    [post, saleType]
   );
 
   const setSaleDetail = useCallback(
@@ -405,10 +420,10 @@ const transformApiLineItem = (apiItem: any): LineItemData => {
         console.log("Set sale detail successfully");
       } catch (error) {
         console.error("Failed to set sale detail:", error);
-        showToast.error("Failed to update quote addresses");
+        showToast.error(`Failed to update ${saleType} addresses`);
       }
     },
-    [post]
+    [post, saleType]
   );
 
   const handleAddEmptyLineItem = async () => {
@@ -470,22 +485,26 @@ const transformApiLineItem = (apiItem: any): LineItemData => {
   };
 
   useEffect(() => {
-    if (isEditing && quote) {
-      if (!quoteDetails || quoteDetails.quote.id !== quote.id) {
-        fetchQuoteDetails(quote.id);
+    if (isEditing && sale) {
+      if (!saleDetails || saleDetails.quote.id !== sale.id) {
+        fetchSaleDetails(sale.id);
       }
 
       if (
         !selectedCustomer ||
-        selectedCustomer.firstName !== quote.customer.split(" ")[0]
+        selectedCustomer.firstName !== sale.customer.split(" ")[0]
       ) {
         setFormData((prev) => ({
           ...prev,
-          customer: quote.customer,
-          customerEmail: quote.customerEmail,
-          status: quote.status,
-          customerTotal: quote.customerTotal.toString(),
-          inHandDate: quote.inHandDate || "",
+          customer: sale.customer,
+          customerEmail: sale.customerEmail,
+          status: sale.status,
+          customerTotal: sale.customerTotal.toString(),
+          inHandDate: sale.inHandDate || "",
+          ...(saleType === 'order' && 'supplierTotal' in sale && {
+            supplierTotal: sale.supplierTotal.toString(),
+            paymentMethod: (sale as iOrder).paymentMethod
+          }),
           billingAddress: prev.billingAddress.street
             ? prev.billingAddress
             : {
@@ -516,20 +535,19 @@ const transformApiLineItem = (apiItem: any): LineItemData => {
         }));
       }
     } else if (!isEditing) {
-      // Reset all state for new quotes
       setSelectedCustomer(null);
       setFormData((prev) => ({
         ...prev,
         customer: "",
         customerEmail: "",
-        notes: "", // Clear notes for new quotes
+        notes: "",
       }));
       setLineItems([]);
       setSaleSummary(null);
-      setQuoteDetails(null);
+      setSaleDetails(null);
       setCurrentSaleId("");
     }
-  }, [quote?.id, isEditing]);
+  }, [sale?.id, isEditing, saleType]);
 
   return {
     selectedCustomer,
@@ -539,16 +557,16 @@ const transformApiLineItem = (apiItem: any): LineItemData => {
     saleSummary,
     setSaleSummary,
     isLoadingLineItems,
-    quoteDetails,
+    saleDetails,
     currentSaleId,
     handleAddEmptyLineItem,
     handleUpdateLineItem,
     handleRemoveLineItem,
     fetchSaleSummary,
     fetchCustomerAddresses,
-    createNewQuote,
+    createNewSale,
     setSaleDetail,
     loadNotesContent,
-    updateQuoteNotesId,
+    updateSaleNotesId,
   };
 };

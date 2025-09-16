@@ -10,7 +10,7 @@ import { DateDisplay } from "@/components/helpers/DateDisplay";
 import { EmptyState, LoadingState } from "@/components/helpers/EmptyLoadingStates";
 import { PaginationControls } from "@/components/helpers/PaginationControls";
 import { EntityDrawer } from "@/components/helpers/EntityDrawer";
-import { OrderForm } from "@/components/forms/OrderForm";
+import { SaleForm } from "@/components/forms/SaleForm";
 import { useOrdersHeaderContext } from "@/hooks/useHeaderContext";
 import { iOrder, iOrderFormData, iApiSale, iApiSalesResponse, iApiSalesRequest } from "@/types/order";
 import { OrderStatus, PaymentMethod } from "@/lib/enums";
@@ -89,7 +89,6 @@ const getStatusConfig = (status: string) => {
   }
 };
 
-
 export default function OrdersPage() {
   const [orders, setOrders] = useState<iOrder[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -113,7 +112,6 @@ export default function OrdersPage() {
     onAddNew: () => openNewOrderDrawer(),
     statusFilter,
     onStatusFilterChange: setStatusFilter,
-   
   });
 
   const transformApiSaleToOrder = useCallback((sale: iApiSale): iOrder | null => {
@@ -486,10 +484,11 @@ export default function OrdersPage() {
           size="xxl"
           loading={submitApi.loading}
         >
-          <OrderForm
-            order={selectedOrder}
+          <SaleForm
+            saleType="order"
+            sale={selectedOrder}
             isEditing={isEditing}
-            onSubmit={handleSubmit}
+            onSubmit={handleSubmit as (formData: any) => Promise<void>}
             loading={submitApi.loading}
           />
         </EntityDrawer>

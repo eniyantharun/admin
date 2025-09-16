@@ -47,16 +47,18 @@ export interface iOrderItem {
 }
 
 export interface iOrderCheckoutDetails {
-  inHandDate?: string;
+  dateOrderNeededBy?: string;
   additionalInstructions?: string;
   paymentMethod?: string;
   paymentDate?: string;
-  paymentStatus?: 'Paid' | 'Pending' | 'Failed';
+  paymentStatus?: 'Paid' | 'Pending' | 'Failed' | 'Refunded';
+  transactionReference?: string;
+  paymentNotes?: string;
 }
 
 export interface iOrderShippingDetails {
   type?: 'Ground' | 'Express' | 'Overnight';
-  company?: 'UPS' | 'FedEx' | 'USPS' | 'DHL';
+  company?: 'UPS' | 'FedEx' | 'USPS' | 'DHL' | string;
   cost?: number;
   date?: string;
   trackingNumber?: string;
@@ -75,8 +77,8 @@ export interface iOrderFormData {
   shippingAddress: iCustomerAddressFormData;
   sameAsShipping: boolean;
   items: iOrderItem[];
-  checkoutDetails?: iOrderCheckoutDetails;
-  shippingDetails?: iOrderShippingDetails;
+  checkoutDetails: iOrderCheckoutDetails;
+  shippingDetails: iOrderShippingDetails;
 }
 
 export interface iOrderFormProps {
@@ -177,25 +179,4 @@ export interface iApiSalesRequest {
   website: string;
   orderStatus?: string[];
   quoteStatus?: string[];
-}
-
-export interface iOrder {
-  id: number;
-  orderNumber: string;
-  customer: string;
-  customerEmail: string;
-  status: 'new' | 'in-production' | 'shipped' | 'delivered' | 'cancelled';
-  dateTime: string;
-  inHandDate: string | null;
-  customerTotal: number;
-  supplierTotal: number;
-  profit: number;
-  paymentMethod: string;
-  itemCount?: number;
-  notes?: string;
-  billingAddress?: iOrderAddress;
-  shippingAddress?: iOrderAddress;
-  items?: iOrderItem[];
-  checkoutDetails?: iOrderCheckoutDetails;
-  shippingDetails?: iOrderShippingDetails;
 }

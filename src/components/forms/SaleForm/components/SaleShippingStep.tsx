@@ -5,6 +5,7 @@ import { FormInput } from '@/components/helpers/FormInput';
 import { useApi } from '@/hooks/useApi';
 import { showToast } from '@/components/ui/toast';
 import { iQuoteFormData, SaleSummary } from '@/types/quotes';
+import { iOrderFormData } from '@/types/order';
 
 interface ShippingCompany {
   name: string;
@@ -14,18 +15,20 @@ interface ShippingType {
   name: string;
 }
 
-interface QuoteShippingStepProps {
-  formData: iQuoteFormData;
+interface SaleShippingStepProps {
+  formData: iQuoteFormData | iOrderFormData;
   handleInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
   saleSummary: SaleSummary | null;
+  saleType: 'quote' | 'order';
   currentSaleId?: string; 
   onRefreshSummary?: () => void; 
 }
 
-export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
+export const SaleShippingStep: React.FC<SaleShippingStepProps> = ({
   formData,
   handleInputChange,
   saleSummary,
+  saleType,
   currentSaleId,
   onRefreshSummary
 }) => {
@@ -144,6 +147,7 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
       }
     }
   }, [currentSaleId, post, onRefreshSummary]);
+  
   const handleShippingChange = useCallback(async (field: string, value: string) => {
     const updatedShippingDetails = {
       ...formData.shippingDetails,
@@ -157,8 +161,10 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
       }
     } as any);
 
-    await updateSaleDetail(updatedShippingDetails, formData.checkoutDetails);
-  }, [formData.shippingDetails, formData.checkoutDetails, handleInputChange, updateSaleDetail]);
+    if (currentSaleId) {
+      await updateSaleDetail(updatedShippingDetails, formData.checkoutDetails);
+    }
+  }, [formData.shippingDetails, formData.checkoutDetails, handleInputChange, updateSaleDetail, currentSaleId]);
 
   const handleCheckoutChange = useCallback(async (field: string, value: string) => {
     const updatedCheckoutDetails = {
@@ -173,8 +179,10 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
       }
     } as any);
 
-    await updateSaleDetail(formData.shippingDetails, updatedCheckoutDetails);
-  }, [formData.checkoutDetails, formData.shippingDetails, handleInputChange, updateSaleDetail]);
+    if (currentSaleId) {
+      await updateSaleDetail(formData.shippingDetails, updatedCheckoutDetails);
+    }
+  }, [formData.checkoutDetails, formData.shippingDetails, handleInputChange, updateSaleDetail, currentSaleId]);
 
   return (
     <Card className="p-6">
@@ -184,117 +192,6 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
       </h3>
       
       <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="form-input-group">
-            <label className="form-label block text-sm font-medium text-gray-700 mb-2">
-              Shipping Company
-            </label>
-            <select
-              value={formData.shippingDetails?.company || ''}
-              onChange={(e) => handleShippingChange('company', e.target.value)}
-              onFocus={handleCompaniesDropdownClick}
-              onClick={handleCompaniesDropdownClick}
-              disabled={loadingCompanies}
-              className="form-input w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 disabled:bg-gray-100"
-            >
-              <option value="">
-                {loadingCompanies ? 'Loading companies...' : 'Select shipping company'}
-              </option>
-              {shippingCompanies.map((company) => (
-                <option key={company.name} value={company.name}>
-                  {company.name}
-                </option>
-              ))}
-            </select>
-            {loadingCompanies && (
-              <p className="text-xs text-gray-500 mt-1">Loading companies...</p>
-            )}
-          </div>
-
-          <div className="form-input-group">
-            <label className="form-label block text-sm font-medium text-gray-700 mb-2">
-              Shipping Type
-            </label>
-            
-            <div className="space-y-2">
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Search shipping types (e.g., Ground, Air, Sea, Express)..."
-                  value={typeSearchTerm}
-                  onChange={(e) => handleTypeSearch(e.target.value)}
-                  onFocus={() => {
-                    setShowTypeSearch(true);
-                    handleTypesDropdownClick();
-                  }}
-                  className="form-input w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
-                />
-                <div className="absolute right-3 top-2.5 flex items-center gap-1">
-                  {typeSearchTerm && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setTypeSearchTerm('');
-                        fetchShippingTypes('');
-                      }}
-                      className="text-gray-400 hover:text-gray-600"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
-                  <Search className="w-4 h-4 text-gray-400" />
-                </div>
-              </div>
-
-              {showTypeSearch && (
-                <div className="relative">
-                  <select
-                    value={formData.shippingDetails?.type || ''}
-                    onChange={(e) => {
-                      handleShippingChange('type', e.target.value);
-                      if (e.target.value) {
-                        setShowTypeSearch(false);
-                        setTypeSearchTerm(e.target.value);
-                      }
-                    }}
-                    disabled={loadingTypes}
-                    className="form-input w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 disabled:bg-gray-100"
-                    size={Math.min(shippingTypes.length + 1, 8)}
-                  >
-                    <option value="">
-                      {loadingTypes ? 'Searching...' : 'Select from results'}
-                    </option>
-                    {shippingTypes.map((type) => (
-                      <option key={type.name} value={type.name}>
-                        {type.name}
-                      </option>
-                    ))}
-                  </select>
-                  
-                  <button
-                    type="button"
-                    onClick={() => setShowTypeSearch(false)}
-                    className="mt-1 text-xs text-gray-500 hover:text-gray-700"
-                  >
-                    Close results
-                  </button>
-                </div>
-              )}
-              
-            </div>
-
-            {loadingTypes && (
-              <p className="text-xs text-gray-500 mt-1">
-                {typeSearchTerm ? `Searching for "${typeSearchTerm}"...` : 'Loading types...'}
-              </p>
-            )}
-            
-            <p className="text-xs text-gray-500 mt-1">
-              Search for specific shipping methods or browse all available options
-            </p>
-          </div>
-        </div>
-
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <FormInput
             label="Shipping Cost"
@@ -314,12 +211,23 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
             onChange={(e) => handleShippingChange('date', e.target.value)}
             helpText="Expected ship date"
           />
+
+          {saleType === 'order' && (
+            <FormInput
+              label="Tracking Number"
+              name="trackingNumber"
+              value={formData.shippingDetails?.trackingNumber || ''}
+              onChange={(e) => handleShippingChange('trackingNumber', e.target.value)}
+              placeholder="Enter tracking number"
+              helpText="Package tracking ID"
+            />
+          )}
         </div>
       </div>
 
       {saleSummary && (
         <Card className="p-4 bg-blue-50 border-blue-200 mt-6">
-          <h5 className="font-medium text-blue-800 mb-3 text-sm">Final Quote Summary</h5>
+          <h5 className="font-medium text-blue-800 mb-3 text-sm">Final {saleType === 'quote' ? 'Quote' : 'Order'} Summary</h5>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-blue-700">Items Total:</span>
@@ -336,7 +244,7 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
               </div>
             )}
             <div className="flex justify-between border-t pt-2">
-              <span className="text-blue-700 font-medium">Quote Total:</span>
+              <span className="text-blue-700 font-medium">{saleType === 'quote' ? 'Quote' : 'Order'} Total:</span>
               <span className="font-bold text-green-600 text-lg">
                 ${(
                   saleSummary.customerSummary.total + 
@@ -359,10 +267,16 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
                   {formData.shippingDetails.date && ` on ${formData.shippingDetails.date}`}
                 </span>
               </div>
+              {saleType === 'order' && formData.shippingDetails?.trackingNumber && (
+                <div className="flex items-center gap-2 text-blue-700 text-sm mt-1">
+                  <Hash className="w-4 h-4" />
+                  <span>Tracking: {formData.shippingDetails.trackingNumber}</span>
+                </div>
+              )}
             </div>
           )}
         </Card>
       )}
     </Card>
   );
-};
+}; 

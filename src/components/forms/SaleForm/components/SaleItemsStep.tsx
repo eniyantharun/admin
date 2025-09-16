@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/Card';
 import { LineItemCard } from '@/components/ui/LineItemCard';
 import { LineItemData, SaleSummary } from '@/types/quotes';
 
-interface QuoteItemsStepProps {
+interface SaleItemsStepProps {
   lineItems: LineItemData[];
   isLoadingLineItems: boolean;
   saleSummary: SaleSummary | null;
@@ -14,9 +14,10 @@ interface QuoteItemsStepProps {
   onRemoveLineItem: (itemId: string) => Promise<void>;
   onRefreshSummary: () => Promise<void>;
   currentSaleId: string;
+  saleType: 'quote' | 'order';
 }
 
-export const QuoteItemsStep: React.FC<QuoteItemsStepProps> = ({
+export const SaleItemsStep: React.FC<SaleItemsStepProps> = ({
   lineItems,
   isLoadingLineItems,
   saleSummary,
@@ -24,14 +25,15 @@ export const QuoteItemsStep: React.FC<QuoteItemsStepProps> = ({
   onUpdateLineItem,
   onRemoveLineItem,
   onRefreshSummary,
-  currentSaleId
+  currentSaleId,
+  saleType
 }) => {
   return (
     <Card className="p-6">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-3">
           <Package className="w-5 h-5 text-purple-500" />
-          Quote Items
+          {saleType === 'quote' ? 'Quote' : 'Order'} Items
         </h3>
         <Button
           onClick={onAddEmptyLineItem}
@@ -54,7 +56,7 @@ export const QuoteItemsStep: React.FC<QuoteItemsStepProps> = ({
         ) : lineItems.length === 0 ? (
           <Card className="p-8 text-center border-dashed border-2 border-gray-300">
             <Package className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-            <p className="text-sm text-gray-500 mb-4">No items added to this quote yet</p>
+            <p className="text-sm text-gray-500 mb-4">No items added to this {saleType} yet</p>
             <Button
               onClick={onAddEmptyLineItem}
               variant="primary"
@@ -85,7 +87,7 @@ export const QuoteItemsStep: React.FC<QuoteItemsStepProps> = ({
         {saleSummary && !isLoadingLineItems && lineItems.length > 0 && (
           <Card className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
             <div className="flex justify-between items-center">
-              <span className="text-sm font-semibold text-blue-800">Quote Summary</span>
+              <span className="text-sm font-semibold text-blue-800">{saleType === 'quote' ? 'Quote' : 'Order'} Summary</span>
               <div className="text-right">
                 <div className="text-xl font-bold text-green-600">
                   ${saleSummary.customerSummary.total.toFixed(2)}

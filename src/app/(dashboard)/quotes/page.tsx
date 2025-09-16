@@ -10,10 +10,9 @@ import { DateDisplay } from "@/components/helpers/DateDisplay";
 import { EmptyState, LoadingState } from "@/components/helpers/EmptyLoadingStates";
 import { PaginationControls } from "@/components/helpers/PaginationControls";
 import { EntityDrawer } from "@/components/helpers/EntityDrawer";
-import { QuoteForm } from "@/components/forms/QuoteForm/QuoteForm";
+import { SaleForm } from "@/components/forms/SaleForm";
 import { useQuotesHeaderContext } from "@/hooks/useHeaderContext";
-import { iQuote, iQuoteFormData, iApiQuote } from "@/types/quotes";
-import { iApiSale, iApiSalesResponse, iApiSalesRequest } from "@/types/order";
+import { iQuote, iQuoteFormData, iApiSale, iApiSalesResponse, iApiSalesRequest } from "@/types/quotes";
 import { QuoteStatus } from "@/lib/enums";
 import { showToast } from "@/components/ui/toast";
 import { Header } from "@/components/layout/Header";
@@ -220,13 +219,13 @@ export default function QuotesPage() {
   const handleSubmit = async (formData: iQuoteFormData) => {
     try {
       if (isEditing && selectedQuote) {
-        //showToast.success("Quote updated successfully");
+        showToast.success("Quote updated successfully");
       } else {
         showToast.success("Quote created successfully");
       }
 
       await fetchQuotes();
-      
+      closeDrawer();
     } catch (error: any) {
       if (error?.name !== "CanceledError" && error?.code !== "ERR_CANCELED") {
         showToast.error("Error saving quote");
@@ -400,8 +399,9 @@ export default function QuotesPage() {
           size="xxl"
           loading={submitApi.loading}
         >
-          <QuoteForm
-            quote={selectedQuote}
+          <SaleForm
+            saleType="quote"
+            sale={selectedQuote}
             isEditing={isEditing}
             onSubmit={handleSubmit}
             loading={submitApi.loading}

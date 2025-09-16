@@ -28,6 +28,7 @@ import {
   InvoiceResponse,
 } from "@/lib/pdfUtils";
 import { iQuoteFormData, SaleSummary, LineItemData } from "@/types/quotes";
+import { iOrderFormData } from "@/types/order";
 import { useApi } from "@/hooks/useApi";
 import {
   htmlToDocumentFormat,
@@ -45,8 +46,9 @@ const ReactQuill = dynamic(() => import("react-quill"), {
 
 import "react-quill/dist/quill.snow.css";
 
-interface QuoteNotesStepProps {
-  formData: iQuoteFormData;
+interface SaleNotesStepProps {
+  saleType: 'quote' | 'order';
+  formData: iQuoteFormData | iOrderFormData;
   handleInputChange: (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
@@ -62,7 +64,8 @@ interface QuoteNotesStepProps {
 
 type SaveStatus = "idle" | "saving" | "saved" | "error" | "offline";
 
-export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
+export const SaleNotesStep: React.FC<SaleNotesStepProps> = ({
+  saleType,
   formData,
   handleInputChange,
   saleSummary,
@@ -233,13 +236,17 @@ export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
 
         if (currentSaleId) {
           try {
-            await post("/Admin/SaleEditor/SetQuoteDetail", {
+            const endpoint = saleType === 'quote' ? 
+              "/Admin/SaleEditor/SetQuoteDetail" :
+              "/Admin/SaleEditor/SetOrderDetail";
+            
+            await post(endpoint, {
               id: currentSaleId,
               notesId: response.id,
             });
-            console.log("Successfully linked document to quote");
+            console.log(`Successfully linked document to ${saleType}`);
           } catch (linkError) {
-            console.error("Failed to link document to quote:", linkError);
+            console.error(`Failed to link document to ${saleType}:`, linkError);
           }
         }
 
@@ -254,7 +261,7 @@ export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
     } finally {
       setIsCreatingDocument(false);
     }
-  }, [post, currentSaleId, isCreatingDocument]);
+  }, [post, currentSaleId, isCreatingDocument, saleType]);
 
   const debouncedSave = useMemo(
     () =>
@@ -434,12 +441,12 @@ export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
 
   const handleGeneratePDF = async () => {
     if (!currentSaleId) {
-      showToast.error("No sale ID available. Please save the quote first.");
+      showToast.error(`No sale ID available. Please save the ${saleType} first.`);
       return;
     }
 
     if (!isEditing) {
-      showToast.error("Please save the quote before generating PDF");
+      showToast.error(`Please save the ${saleType} before generating PDF`);
       return;
     }
 
@@ -490,7 +497,7 @@ export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-3">
           <FileText className="w-5 h-5 text-green-500" />
-          Quote Notes
+          {saleType === 'quote' ? 'Quote' : 'Order'} Notes
         </h3>
         <div className="flex items-center gap-2">
           <SaveStatusIndicator />
@@ -510,7 +517,7 @@ export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
       <div className="space-y-6">
         <div className="form-input-group">
           <label className="form-label block text-sm font-medium text-gray-700 mb-2">
-            Quote Notes & Instructions
+            {saleType === 'quote' ? 'Quote' : 'Order'} Notes & Instructions
           </label>
 
           <div className="border border-gray-300 rounded-lg overflow-hidden bg-white">
@@ -528,7 +535,7 @@ export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
                 onChange={handleQuillChange}
                 modules={quillModules}
                 formats={quillFormats}
-                placeholder="Add any special instructions, requirements, or notes for this quote..."
+                placeholder={`Add any special instructions, requirements, or notes for this ${saleType}...`}
                 style={{
                   minHeight: "150px",
                 }}
@@ -612,7 +619,7 @@ export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
         {saleSummary && (
           <Card className="p-4 bg-blue-50 border-blue-200">
             <h5 className="font-medium text-blue-800 mb-3 text-sm">
-              Quote Summary
+              {saleType === 'quote' ? 'Quote' : 'Order'} Summary
             </h5>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
@@ -678,11 +685,16 @@ export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
               <div className="flex justify-between">
                 <span className="text-blue-700">Status:</span>
                 <span className="font-medium text-blue-800">
-                  {formData.status === "new-quote"
-                    ? "New Quote"
-                    : formData.status === "quote-sent-to-customer"
-                    ? "Quote Sent"
-                    : "Converted to Order"}
+                  {saleType === 'quote' ? (
+                    formData.status === "new-quote" ? "New Quote" :
+                    formData.status === "quote-sent-to-customer" ? "Quote Sent" :
+                    "Converted to Order"
+                  ) : (
+                    formData.status === "new" ? "New Order" :
+                    formData.status === "in-production" ? "In Production" :
+                    formData.status === "shipped" ? "Shipped" :
+                    formData.status === "delivered" ? "Delivered" : "Cancelled"
+                  )}
                 </span>
               </div>
             </div>
@@ -692,17 +704,17 @@ export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
         {isEditing && currentSaleId && (
           <Card className="p-4 bg-gray-50 border-gray-200">
             <h5 className="font-medium text-gray-800 mb-3 text-sm">
-              Invoice Generation
+              {saleType === 'quote' ? 'Invoice' : 'Order'} Generation
             </h5>
 
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-700 font-medium">
-                    Generate PDF Invoice
+                    Generate PDF {saleType === 'quote' ? 'Invoice' : 'Receipt'}
                   </p>
                   <p className="text-xs text-gray-500">
-                    Create a downloadable PDF invoice for this quote
+                    Create a downloadable PDF {saleType === 'quote' ? 'invoice' : 'receipt'} for this {saleType}
                   </p>
                 </div>
                 <Button
@@ -723,7 +735,7 @@ export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
                   <div className="flex items-center justify-between mb-2">
                     <div>
                       <p className="text-sm text-green-700 font-medium">
-                        Invoice #{lastGeneratedInvoice.invoice.number} Generated
+                        {saleType === 'quote' ? 'Invoice' : 'Receipt'} #{lastGeneratedInvoice.invoice.number} Generated
                       </p>
                       <p className="text-xs text-gray-500">
                         Generated:{" "}
@@ -765,7 +777,7 @@ export const QuoteNotesStep: React.FC<QuoteNotesStepProps> = ({
             <Button
               onClick={() =>
                 showToast.success(
-                  "Quote sent successfully to " + formData.customerEmail
+                  `${saleType === 'quote' ? 'Quote' : 'Order'} sent successfully to ` + formData.customerEmail
                 )
               }
               variant="primary"

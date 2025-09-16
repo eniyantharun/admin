@@ -7,18 +7,19 @@ import { CustomerSearch } from '@/components/helpers/CustomerSearch';
 import { AddressForm } from '@/components/forms/AddressForm';
 import { iCustomer, iCustomerAddressFormData, iCustomerAddress } from '@/types/customer';
 import { iQuoteFormData } from '@/types/quotes';
+import { iOrderFormData } from '@/types/order';
 
-interface QuoteCustomerStepProps {
+interface SaleCustomerStepProps {
   selectedCustomer: iCustomer | null;
   onCustomerSelect: (customer: iCustomer) => void;
-  formData: iQuoteFormData;
-  setFormData: React.Dispatch<React.SetStateAction<iQuoteFormData>>;
+  formData: iQuoteFormData | iOrderFormData;
+  setFormData: React.Dispatch<React.SetStateAction<iQuoteFormData | iOrderFormData>>;
   customerAddresses: iCustomerAddress[];
   onFetchCustomerAddresses: (customerId: string) => Promise<void>;
   isEditing?: boolean;
 }
 
-export const QuoteCustomerStep: React.FC<QuoteCustomerStepProps> = ({
+export const SaleCustomerStep: React.FC<SaleCustomerStepProps> = ({
   selectedCustomer,
   onCustomerSelect,
   formData,

@@ -6,12 +6,14 @@ import { Calendar, FileText, Clock, CheckCircle, AlertCircle, Save } from 'lucid
 import { useApi } from '@/hooks/useApi';
 import { showToast } from '@/components/ui/toast';
 import { iQuoteFormData, SaleSummary } from '@/types/quotes';
+import { iOrderFormData } from '@/types/order';
 
-interface QuoteDetailsStepProps {
-  formData: iQuoteFormData;
+interface SaleDetailsStepProps {
+  saleType: 'quote' | 'order';
+  formData: iQuoteFormData | iOrderFormData;
   handleInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
   saleSummary: SaleSummary | null;
-  quoteId?: number;
+  saleId?: number;
   isEditing?: boolean;
   currentSaleId?: string;
   onRefreshSummary?: () => void;
@@ -19,11 +21,12 @@ interface QuoteDetailsStepProps {
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
-export const QuoteDetailsStep: React.FC<QuoteDetailsStepProps> = ({
+export const SaleDetailsStep: React.FC<SaleDetailsStepProps> = ({
+  saleType,
   formData,
   handleInputChange,
   saleSummary,
-  quoteId,
+  saleId,
   isEditing = false,
   currentSaleId,
   onRefreshSummary
@@ -126,7 +129,7 @@ export const QuoteDetailsStep: React.FC<QuoteDetailsStepProps> = ({
     } as any);
   };
 
-  useEffect(() => {
+    useEffect(() => {
     return () => {
       if (instructionsTimeoutRef.current) {
         clearTimeout(instructionsTimeoutRef.current);
@@ -178,12 +181,34 @@ export const QuoteDetailsStep: React.FC<QuoteDetailsStepProps> = ({
 
   const currentDateValue = formData.checkoutDetails?.dateOrderNeededBy || formData.inHandDate || '';
 
+  const getStatusOptions = () => {
+    if (saleType === 'quote') {
+      return [
+        { value: "new-quote", label: "New Quote" },
+        { value: "waiting-for-supplier", label: "Waiting for Supplier" },
+        { value: "quote-sent-to-customer", label: "Quote Sent to Customer" },
+        { value: "on-hold", label: "On Hold" },
+        { value: "quote-converted-to-order", label: "Quote Converted to Order" },
+        { value: "converted-to-order-by-customer", label: "Converted to Order by Customer" },
+        { value: "cancelled", label: "Cancelled" }
+      ];
+    } else {
+      return [
+        { value: "new", label: "New Order" },
+        { value: "in-production", label: "In Production" },
+        { value: "shipped", label: "Shipped" },
+        { value: "delivered", label: "Delivered" },
+        { value: "cancelled", label: "Cancelled" }
+      ];
+    }
+  };
+
   return (
     <Card className="p-6">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-3">
           <Calendar className="w-5 h-5 text-blue-500" />
-          Quote Details
+          {saleType === 'quote' ? 'Quote' : 'Order'} Details
         </h3>
         <SaveStatusIndicator />
       </div>
@@ -192,8 +217,26 @@ export const QuoteDetailsStep: React.FC<QuoteDetailsStepProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           <div className="form-input-group">
             <label className="form-label block text-sm font-medium text-gray-700 mb-2">
+              Status <span className="text-red-500">*</span>
+            </label>
+            <select
+              name="status"
+              value={formData.status}
+              onChange={handleInputChange}
+              className="form-input w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+            >
+              {getStatusOptions().map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-input-group">
+            <label className="form-label block text-sm font-medium text-gray-700 mb-2">
               In-Hand Date
-              <span className="text-xs text-gray-500 font-normal ml-1">(When customer needs order)</span>
+              <span className="text-xs text-gray-500 font-normal ml-1">(When customer needs {saleType})</span>
             </label>
             <input
               type="date"
@@ -214,11 +257,11 @@ export const QuoteDetailsStep: React.FC<QuoteDetailsStepProps> = ({
             value={formData.checkoutDetails?.additionalInstructions || ''}
             onChange={handleInstructionsChange}
             className="form-input w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 resize-none"
-            placeholder="Any special instructions for processing this order..."
+            placeholder={`Any special instructions for processing this ${saleType}...`}
             rows={3}
           />
           <p className="text-xs text-gray-500 mt-1">
-            These instructions will be visible to your team when processing the order
+            These instructions will be visible to your team when processing the {saleType}
           </p>
         </div>
 
@@ -231,7 +274,7 @@ export const QuoteDetailsStep: React.FC<QuoteDetailsStepProps> = ({
             size="sm"
             className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
           >
-            Save Checkout Details
+            Save Details
           </Button>
         </div>
       </div>
