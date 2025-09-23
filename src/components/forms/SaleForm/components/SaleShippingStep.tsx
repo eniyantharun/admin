@@ -4,33 +4,25 @@ import { Card } from '@/components/ui/Card';
 import { FormInput } from '@/components/helpers/FormInput';
 import { useApi } from '@/hooks/useApi';
 import { showToast } from '@/components/ui/toast';
-import { iQuoteFormData, SaleSummary } from '@/types/quotes';
+import { SaleSummary } from '@/types/quotes';
 
-interface ShippingCompany {
-  name: string;
-}
-
-interface ShippingType {
-  name: string;
-}
-
-interface QuoteShippingStepProps {
-  formData: iQuoteFormData;
+interface SaleShippingStepProps {
+  formData: any;
   handleInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
   saleSummary: SaleSummary | null;
-  currentSaleId?: string; 
-  onRefreshSummary?: () => void; 
+  currentSaleId?: string;
+  onRefreshSummary?: () => void;
 }
 
-export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
+export const SaleShippingStep: React.FC<SaleShippingStepProps> = ({
   formData,
   handleInputChange,
   saleSummary,
   currentSaleId,
   onRefreshSummary
 }) => {
-  const [shippingCompanies, setShippingCompanies] = useState<ShippingCompany[]>([]);
-  const [shippingTypes, setShippingTypes] = useState<ShippingType[]>([]);
+  const [shippingCompanies, setShippingCompanies] = useState<any[]>([]);
+  const [shippingTypes, setShippingTypes] = useState<any[]>([]);
   const [loadingCompanies, setLoadingCompanies] = useState(false);
   const [loadingTypes, setLoadingTypes] = useState(false);
   const [companiesLoaded, setCompaniesLoaded] = useState(false);
@@ -40,24 +32,21 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
 
   const { get, post } = useApi({
     cancelOnUnmount: true,
-    dedupe: false, 
-    cacheDuration: 0, 
+    dedupe: false,
+    cacheDuration: 0,
   });
 
   const handleCompaniesDropdownClick = useCallback(async () => {
-    if (companiesLoaded || loadingCompanies) return; 
+    if (companiesLoaded || loadingCompanies) return;
     
     setLoadingCompanies(true);
     try {
-      const response = await get('https://api.promowe.com/Admin/SaleEditor/GetShippingCompanies');
-      console.log('Shipping companies response:', response);
+      const response = await get('/Admin/SaleEditor/GetShippingCompanies');
       if (response?.companies) {
-        const companies = response.companies.map((name: string) => ({ name }));
-        setShippingCompanies(companies);
+        setShippingCompanies(response.companies.map((name: string) => ({ name })));
         setCompaniesLoaded(true);
       }
     } catch (error: any) {
-      console.error('Error fetching shipping companies:', error);
       if (error?.name !== 'CanceledError') {
         showToast.error('Failed to load shipping companies');
       }
@@ -69,17 +58,14 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
   const fetchShippingTypes = useCallback(async (prefix: string = '') => {
     setLoadingTypes(true);
     try {
-      const response = await get(`https://api.promowe.com/Admin/SaleEditor/GetShippingTypes?prefix=${encodeURIComponent(prefix)}&count=50`);
-      console.log('Shipping types response with prefix:', prefix, response);
+      const response = await get(`/Admin/SaleEditor/GetShippingTypes?prefix=${encodeURIComponent(prefix)}&count=50`);
       if (response?.types) {
-        const types = response.types.map((name: string) => ({ name }));
-        setShippingTypes(types);
+        setShippingTypes(response.types.map((name: string) => ({ name })));
         if (!prefix) {
-          setTypesLoaded(true); 
+          setTypesLoaded(true);
         }
       }
     } catch (error: any) {
-      console.error('Error fetching shipping types:', error);
       if (error?.name !== 'CanceledError') {
         showToast.error('Failed to load shipping types');
       }
@@ -90,7 +76,7 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
 
   const handleTypesDropdownClick = useCallback(async () => {
     if (typesLoaded || loadingTypes) return;
-    await fetchShippingTypes(''); 
+    await fetchShippingTypes('');
   }, [fetchShippingTypes, typesLoaded, loadingTypes]);
 
   const handleTypeSearch = useCallback((searchTerm: string) => {
@@ -103,14 +89,9 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
   }, [fetchShippingTypes]);
 
   const updateSaleDetail = useCallback(async (shippingDetails: any, checkoutDetails: any) => {
-    if (!currentSaleId) {
-      console.warn('No saleId available for updating sale details');
-      return;
-    }
+    if (!currentSaleId) return;
 
     try {
-      console.log('Updating sale detail with:', { saleId: currentSaleId, shippingDetails, checkoutDetails });
-      
       const payload = {
         saleId: currentSaleId,
         shippingDetails: {
@@ -126,11 +107,8 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
         }
       };
 
-      const setSaleResponse = await post('/Admin/SaleEditor/SetSaleDetail', payload);
-      console.log('SetSaleDetail response:', setSaleResponse);
-
-      const summaryResponse = await get(`/Admin/SaleEditor/GetSaleSummary?saleId=${currentSaleId}`);
-      console.log('GetSaleSummary response:', summaryResponse);
+      await post('/Admin/SaleEditor/SetSaleDetail', payload);
+      await get(`/Admin/SaleEditor/GetSaleSummary?saleId=${currentSaleId}`);
 
       if (onRefreshSummary) {
         onRefreshSummary();
@@ -138,12 +116,12 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
 
       showToast.success('Shipping details updated successfully');
     } catch (error: any) {
-      console.error('Error updating sale details:', error);
       if (error?.name !== 'CanceledError') {
         showToast.error('Failed to update shipping details');
       }
     }
-  }, [currentSaleId, post, onRefreshSummary]);
+  }, [currentSaleId, post, get, onRefreshSummary]);
+
   const handleShippingChange = useCallback(async (field: string, value: string) => {
     const updatedShippingDetails = {
       ...formData.shippingDetails,
@@ -157,24 +135,10 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
       }
     } as any);
 
-    await updateSaleDetail(updatedShippingDetails, formData.checkoutDetails);
-  }, [formData.shippingDetails, formData.checkoutDetails, handleInputChange, updateSaleDetail]);
-
-  const handleCheckoutChange = useCallback(async (field: string, value: string) => {
-    const updatedCheckoutDetails = {
-      ...formData.checkoutDetails,
-      [field]: value
-    };
-    
-    handleInputChange({
-      target: { 
-        name: 'checkoutDetails', 
-        value: updatedCheckoutDetails 
-      }
-    } as any);
-
-    await updateSaleDetail(formData.shippingDetails, updatedCheckoutDetails);
-  }, [formData.checkoutDetails, formData.shippingDetails, handleInputChange, updateSaleDetail]);
+    if (currentSaleId) {
+      await updateSaleDetail(updatedShippingDetails, formData.checkoutDetails);
+    }
+  }, [formData.shippingDetails, formData.checkoutDetails, handleInputChange, updateSaleDetail, currentSaleId]);
 
   return (
     <Card className="p-6">
@@ -198,7 +162,7 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
               className="form-input w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 disabled:bg-gray-100"
             >
               <option value="">
-                {loadingCompanies ? 'Loading companies...' : 'Select shipping company'}
+                {loadingCompanies ? 'Loading...' : 'Select shipping company'}
               </option>
               {shippingCompanies.map((company) => (
                 <option key={company.name} value={company.name}>
@@ -206,9 +170,6 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
                 </option>
               ))}
             </select>
-            {loadingCompanies && (
-              <p className="text-xs text-gray-500 mt-1">Loading companies...</p>
-            )}
           </div>
 
           <div className="form-input-group">
@@ -220,7 +181,7 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="Search shipping types (e.g., Ground, Air, Sea, Express)..."
+                  placeholder="Search shipping types..."
                   value={typeSearchTerm}
                   onChange={(e) => handleTypeSearch(e.target.value)}
                   onFocus={() => {
@@ -280,18 +241,7 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
                   </button>
                 </div>
               )}
-              
             </div>
-
-            {loadingTypes && (
-              <p className="text-xs text-gray-500 mt-1">
-                {typeSearchTerm ? `Searching for "${typeSearchTerm}"...` : 'Loading types...'}
-              </p>
-            )}
-            
-            <p className="text-xs text-gray-500 mt-1">
-              Search for specific shipping methods or browse all available options
-            </p>
           </div>
         </div>
 
@@ -319,7 +269,7 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
 
       {saleSummary && (
         <Card className="p-4 bg-blue-50 border-blue-200 mt-6">
-          <h5 className="font-medium text-blue-800 mb-3 text-sm">Final Quote Summary</h5>
+          <h5 className="font-medium text-blue-800 mb-3 text-sm">Final Summary</h5>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-blue-700">Items Total:</span>
@@ -336,7 +286,7 @@ export const QuoteShippingStep: React.FC<QuoteShippingStepProps> = ({
               </div>
             )}
             <div className="flex justify-between border-t pt-2">
-              <span className="text-blue-700 font-medium">Quote Total:</span>
+              <span className="text-blue-700 font-medium">Total:</span>
               <span className="font-bold text-green-600 text-lg">
                 ${(
                   saleSummary.customerSummary.total + 

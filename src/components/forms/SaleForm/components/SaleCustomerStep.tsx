@@ -6,19 +6,18 @@ import { EntityAvatar } from '@/components/helpers/EntityAvatar';
 import { CustomerSearch } from '@/components/helpers/CustomerSearch';
 import { AddressForm } from '@/components/forms/AddressForm';
 import { iCustomer, iCustomerAddressFormData, iCustomerAddress } from '@/types/customer';
-import { iQuoteFormData } from '@/types/quotes';
 
-interface QuoteCustomerStepProps {
+interface SaleCustomerStepProps {
   selectedCustomer: iCustomer | null;
   onCustomerSelect: (customer: iCustomer) => void;
-  formData: iQuoteFormData;
-  setFormData: React.Dispatch<React.SetStateAction<iQuoteFormData>>;
+  formData: any;
+  setFormData: React.Dispatch<React.SetStateAction<any>>;
   customerAddresses: iCustomerAddress[];
   onFetchCustomerAddresses: (customerId: string) => Promise<void>;
   isEditing?: boolean;
 }
 
-export const QuoteCustomerStep: React.FC<QuoteCustomerStepProps> = ({
+export const SaleCustomerStep: React.FC<SaleCustomerStepProps> = ({
   selectedCustomer,
   onCustomerSelect,
   formData,
@@ -34,7 +33,7 @@ export const QuoteCustomerStep: React.FC<QuoteCustomerStepProps> = ({
 
   const handleCustomerSelect = async (customer: iCustomer) => {
     onCustomerSelect(customer);
-    setFormData(prev => ({
+    setFormData((prev: any) => ({
       ...prev,
       customer: `${customer.firstName} ${customer.lastName}`,
       customerEmail: customer.email,
@@ -47,7 +46,7 @@ export const QuoteCustomerStep: React.FC<QuoteCustomerStepProps> = ({
 
   const handleSkipAddresses = () => {
     setAddressesOptional(true);
-    setFormData(prev => ({
+    setFormData((prev: any) => ({
       ...prev,
       billingAddress: {
         type: 'billing' as const,
@@ -85,7 +84,7 @@ export const QuoteCustomerStep: React.FC<QuoteCustomerStepProps> = ({
                              customerAddresses[0];
 
       if (billingAddress && !formData.billingAddress.street) {
-        setFormData(prev => ({
+        setFormData((prev: any) => ({
           ...prev,
           billingAddress: {
             type: 'billing' as const,
@@ -102,7 +101,7 @@ export const QuoteCustomerStep: React.FC<QuoteCustomerStepProps> = ({
       }
 
       if (shippingAddress && !formData.shippingAddress.street) {
-        setFormData(prev => ({
+        setFormData((prev: any) => ({
           ...prev,
           shippingAddress: {
             type: 'shipping' as const,
@@ -121,7 +120,7 @@ export const QuoteCustomerStep: React.FC<QuoteCustomerStepProps> = ({
   }, [customerAddresses, selectedCustomer, formData.billingAddress.street, formData.shippingAddress.street, setFormData, addressesOptional]);
 
   const handleAddressSelect = (address: iCustomerAddress, type: 'billing' | 'shipping') => {
-    setFormData(prev => ({
+    setFormData((prev: any) => ({
       ...prev,
       [type === 'billing' ? 'billingAddress' : 'shippingAddress']: {
         type: type,
@@ -139,7 +138,7 @@ export const QuoteCustomerStep: React.FC<QuoteCustomerStepProps> = ({
   };
 
   const handleNewAddressSubmit = (addressData: iCustomerAddressFormData, type: 'billing' | 'shipping') => {
-    setFormData(prev => ({
+    setFormData((prev: any) => ({
       ...prev,
       [type === 'billing' ? 'billingAddress' : 'shippingAddress']: addressData
     }));
@@ -224,7 +223,7 @@ export const QuoteCustomerStep: React.FC<QuoteCustomerStepProps> = ({
                     <Button
                       onClick={() => {
                         onCustomerSelect(null as any);
-                        setFormData(prev => ({
+                        setFormData((prev: any) => ({
                           ...prev,
                           customer: '',
                           customerEmail: '',
@@ -325,12 +324,11 @@ export const QuoteCustomerStep: React.FC<QuoteCustomerStepProps> = ({
                   ) : (
                     <div className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg border-dashed border-2">
                       <p>No billing address added</p>
-                      
                     </div>
                   )}
                   
                   {showBillingAddressForm && (
-                    <div className="border-t pt-3 mt-3">
+                    <div className="border-t pt-2 mt-2">
                       <AddressForm
                         address={editingAddress === 'billing' ? formData.billingAddress : undefined}
                         onSubmit={(data) => handleNewAddressSubmit(data, 'billing')}
@@ -356,7 +354,7 @@ export const QuoteCustomerStep: React.FC<QuoteCustomerStepProps> = ({
                           type="checkbox"
                           checked={formData.sameAsShipping}
                           onChange={(e) => {
-                            setFormData(prev => ({
+                            setFormData((prev: any) => ({
                               ...prev,
                               sameAsShipping: e.target.checked,
                               shippingAddress: e.target.checked ? prev.billingAddress : prev.shippingAddress
@@ -409,12 +407,11 @@ export const QuoteCustomerStep: React.FC<QuoteCustomerStepProps> = ({
                   ) : (
                     <div className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg border-dashed border-2">
                       <p>No shipping address added</p>
-                      
                     </div>
                   )}
                   
                   {showShippingAddressForm && !formData.sameAsShipping && (
-                    <div className="border-t pt-3 mt-3">
+                    <div className="border-t pt-2 mt-2">
                       <AddressForm
                         address={editingAddress === 'shipping' ? formData.shippingAddress : undefined}
                         onSubmit={(data) => handleNewAddressSubmit(data, 'shipping')}

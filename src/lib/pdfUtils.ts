@@ -11,7 +11,7 @@ export interface InvoiceResponse {
     };
     createdAt: string;
     generatedAt: string;
-    // ... other invoice properties
+    
   };
   asset: {
     id: string;
@@ -46,7 +46,7 @@ export const generateInvoicePDF = async (saleId: string): Promise<InvoiceRespons
     }
   } catch (error: any) {
     showToast.dismiss();
-    console.error('Error generating invoice:', error);
+    console.log('Error generating invoice:', error);
     
     if (error?.response?.status === 404) {
       showToast.error('Sale not found - cannot generate invoice');
