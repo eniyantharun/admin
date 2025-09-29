@@ -59,7 +59,6 @@ export const useHeaderContext = ({
   };
 };
 
-// Specific hooks for different pages
 export const useCustomersHeaderContext = ({
   totalCount,
   onAddNew,
@@ -82,27 +81,39 @@ export const useCustomersHeaderContext = ({
   const [searchTerm, setSearchTerm] = useState('');
 
   const filters: IFilterConfig[] = [
-  {
-    key: 'status',
-    label: 'Status',
-    type: 'select',
-    value: statusFilter,
-    onChange: (value: string | boolean) => {
-      if (typeof value === 'string') {
-        onStatusFilterChange(value);
-      }
+    {
+      key: 'status',
+      label: 'Status',
+      type: 'select',
+      value: statusFilter,
+      onChange: (value: string | boolean) => {
+        if (typeof value === 'string') {
+          onStatusFilterChange(value);
+        }
+      },
+      options: [
+        { value: 'all', label: 'All Customers' },
+        { value: 'active', label: 'Active' },
+        { value: 'blocked', label: 'Blocked' }
+      ]
     },
-    options: [
-      { value: 'all', label: 'All Quotes' },
-      { value: QuoteStatus.NEW_QUOTE, label: 'New Quotes' },
-      { value: QuoteStatus.WAITING_FOR_SUPPLIER, label: 'Waiting for Supplier' },
-      { value: QuoteStatus.QUOTE_SENT_TO_CUSTOMER, label: 'Sent to Customer' },
-      { value: QuoteStatus.ON_HOLD, label: 'On Hold' },
-      { value: QuoteStatus.QUOTE_CONVERTED_TO_ORDER, label: 'Converted to Order' },
-      { value: QuoteStatus.CANCELLED, label: 'Cancelled' }
-    ]
-  }
-];
+    {
+      key: 'business',
+      label: 'Type',
+      type: 'select',
+      value: businessFilter,
+      onChange: (value: string | boolean) => {
+        if (typeof value === 'string') {
+          onBusinessFilterChange(value);
+        }
+      },
+      options: [
+        { value: 'all', label: 'All Types' },
+        { value: 'business', label: 'Business' },
+        { value: 'individual', label: 'Individual' }
+      ]
+    }
+  ];
 
   const actions: IActionConfig[] = [];
   
@@ -408,6 +419,96 @@ export const useSuppliersHeaderContext = ({
     onSearchChange: setSearchTerm,
     onAddNew,
     filters: [],
+    actions
+  };
+
+  return { contextData, searchTerm };
+};
+
+export const useProductsHeaderContext = ({
+  totalCount,
+  onAddNew,
+  statusFilter,
+  onStatusFilterChange,
+  featuredFilter,
+  onFeaturedFilterChange,
+  onRefresh,
+  onExport
+}: {
+  totalCount: number;
+  onAddNew: () => void;
+  statusFilter: string;
+  onStatusFilterChange: (value: string) => void;
+  featuredFilter: string;
+  onFeaturedFilterChange: (value: string) => void;
+  onRefresh?: () => void;
+  onExport?: () => void;
+}) => {
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filters: IFilterConfig[] = [
+    {
+      key: 'status',
+      label: 'Status',
+      type: 'select',
+      value: statusFilter,
+      onChange: (value: string | boolean) => {
+        if (typeof value === 'string') {
+          onStatusFilterChange(value);
+        }
+      },
+      options: [
+        { value: 'all', label: 'All Products' },
+        { value: 'enabled', label: 'Active Products' },
+        { value: 'disabled', label: 'Inactive Products' }
+      ]
+    },
+    {
+      key: 'featured',
+      label: 'Featured',
+      type: 'select',
+      value: featuredFilter,
+      onChange: (value: string | boolean) => {
+        if (typeof value === 'string') {
+          onFeaturedFilterChange(value);
+        }
+      },
+      options: [
+        { value: 'all', label: 'All Products' },
+        { value: 'featured', label: 'Featured Only' },
+        { value: 'not-featured', label: 'Not Featured' }
+      ]
+    }
+  ];
+
+  const actions: IActionConfig[] = [];
+  
+  if (onRefresh) {
+    actions.push({
+      key: 'refresh',
+      label: 'Refresh',
+      icon: RefreshCw,
+      onClick: onRefresh,
+      variant: 'secondary'
+    });
+  }
+
+  if (onExport) {
+    actions.push({
+      key: 'export',
+      label: 'Export',
+      icon: Download,
+      onClick: onExport,
+      variant: 'secondary'
+    });
+  }
+
+  const contextData: IHeaderContextData = {
+    totalCount,
+    searchTerm,
+    onSearchChange: setSearchTerm,
+    onAddNew,
+    filters,
     actions
   };
 
