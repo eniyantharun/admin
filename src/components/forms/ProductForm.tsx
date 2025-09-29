@@ -329,7 +329,10 @@ export const ProductForm: React.FC<iProductFormProps> = ({
                   name="enabled"
                   type="checkbox"
                   value={formData.enabled}
-                  onChange={(e) => handleInputChange('enabled', e.target.checked)}
+                  onChange={(e) => {
+                    const target = e.target as HTMLInputElement;
+                    handleInputChange('enabled', target.checked);
+                  }}
                   placeholder="Product is active and available"
                 />
                 
@@ -338,7 +341,10 @@ export const ProductForm: React.FC<iProductFormProps> = ({
                   name="featured"
                   type="checkbox"
                   value={formData.featured}
-                  onChange={(e) => handleInputChange('featured', e.target.checked)}
+                  onChange={(e) => {
+                    const target = e.target as HTMLInputElement;
+                    handleInputChange('featured', target.checked);
+                  }}
                   placeholder="Show as featured product"
                 />
                 
@@ -347,7 +353,10 @@ export const ProductForm: React.FC<iProductFormProps> = ({
                   name="exclusive"
                   type="checkbox"
                   value={formData.exclusive}
-                  onChange={(e) => handleInputChange('exclusive', e.target.checked)}
+                  onChange={(e) => {
+                    const target = e.target as HTMLInputElement;
+                    handleInputChange('exclusive', target.checked);
+                  }}
                   placeholder="Exclusive to our platform"
                 />
               </div>
