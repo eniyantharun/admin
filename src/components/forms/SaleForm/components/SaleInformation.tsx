@@ -118,19 +118,7 @@ export const SaleInformation: React.FC<SaleInformationProps> = ({
 
   return (
     <Card className="p-6 bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-blue-200">
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-3">
-          <FileText className="w-5 h-5 text-blue-500" />
-          {type === 'quote' ? 'Quote' : 'Order'} Information
-        </h3>
-        
-        <div className="flex items-center gap-3">
-          <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(formData.status)}`}>
-            <Activity className="w-4 h-4 mr-2" />
-            {getStatusLabel(formData.status)}
-          </span>
-        </div>
-      </div>
+      
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="space-y-4">
@@ -160,31 +148,11 @@ export const SaleInformation: React.FC<SaleInformationProps> = ({
               )}
             </div>
           </Card>
-
-          <Card className="p-4 bg-white/70 backdrop-blur-sm">
-            <h4 className="font-medium text-gray-900 text-sm mb-3 flex items-center gap-2">
-              <User className="w-4 h-4 text-green-500" />
-              Customer Information
-            </h4>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Name:</span>
-                <span className="font-medium text-gray-900">{sale.customer}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Email:</span>
-                <span className="font-medium text-gray-900">{sale.customerEmail}</span>
-              </div>
-            </div>
-          </Card>
         </div>
 
         <div className="space-y-4">
           <Card className="p-4 bg-white/70 backdrop-blur-sm">
-            <h4 className="font-medium text-gray-900 text-sm mb-3 flex items-center gap-2">
-              <Activity className="w-4 h-4 text-purple-500" />
-              Status Management
-            </h4>
+           
             <div className="space-y-3">
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-2">
@@ -219,24 +187,7 @@ export const SaleInformation: React.FC<SaleInformationProps> = ({
             </div>
           </Card>
 
-          <Card className="p-4 bg-white/70 backdrop-blur-sm">
-            <h4 className="font-medium text-gray-900 text-sm mb-3 flex items-center gap-2">
-              <Package className="w-4 h-4 text-orange-500" />
-              Statistics
-            </h4>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">{lineItems.length}</div>
-                <div className="text-gray-600 text-xs">Line Items</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-purple-600">
-                  {lineItems.reduce((sum, item) => sum + (item.images?.length || 0), 0)}
-                </div>
-                <div className="text-gray-600 text-xs">Total Images</div>
-              </div>
-            </div>
-          </Card>
+          
         </div>
       </div>
 

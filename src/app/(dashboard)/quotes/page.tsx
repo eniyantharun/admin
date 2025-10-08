@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Eye, Calendar, DollarSign, User, FileText, Mail, CheckCircle, Clock, Send } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -9,11 +10,8 @@ import { StatusBadge } from "@/components/helpers/StatusBadge";
 import { DateDisplay } from "@/components/helpers/DateDisplay";
 import { EmptyState, LoadingState } from "@/components/helpers/EmptyLoadingStates";
 import { PaginationControls } from "@/components/helpers/PaginationControls";
-import { EntityDrawer } from "@/components/helpers/EntityDrawer";
-import { QuoteForm } from "@/components/forms/QuoteForm/QuoteForm";
 import { useQuotesHeaderContext } from "@/hooks/useHeaderContext";
-import { iQuote, iQuoteFormData, iApiQuote } from "@/types/quotes";
-import { iApiSale, iApiSalesResponse, iApiSalesRequest } from "@/types/order";
+import { iQuote, iApiSale, iApiSalesResponse, iApiSalesRequest } from "@/types/quotes";
 import { QuoteStatus } from "@/lib/enums";
 import { showToast } from "@/components/ui/toast";
 import { Header } from "@/components/layout/Header";
@@ -78,11 +76,9 @@ const getStatusConfig = (status: string) => {
 };
 
 export default function QuotesPage() {
+  const router = useRouter();
   const [quotes, setQuotes] = useState<iQuote[]>([]);
   const [totalCount, setTotalCount] = useState(0);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [selectedQuote, setSelectedQuote] = useState<iQuote | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(20);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
@@ -93,14 +89,27 @@ export default function QuotesPage() {
     dedupe: true,
     cacheDuration: 30000,
   });
-  const submitApi = useApi();
 
   const { contextData, searchTerm } = useQuotesHeaderContext({
     totalCount,
-    onAddNew: () => openNewQuoteDrawer(),
+    onAddNew: () => handleCreateNewQuote(),
     statusFilter,
     onStatusFilterChange: setStatusFilter,
   });
+
+  const handleCreateNewQuote = async () => {
+    try {
+      const response = await post('/Admin/SaleEditor/AddEmptyQuote', {
+        customerId: null
+      });
+      
+      if (response?.saleId) {
+        router.push(`/quotes/${response.id}`);
+      }
+    } catch (error) {
+      showToast.error('Failed to create new quote');
+    }
+  };
 
   const transformApiSaleToQuote = useCallback((sale: iApiSale): iQuote | null => {
     if (!sale.quote) return null;
@@ -122,43 +131,43 @@ export default function QuotesPage() {
   }, []);
 
   const mapApiStatusToQuoteStatus = useCallback((apiStatus: string): iQuote['status'] => {
-  switch (apiStatus) {
-    case QuoteStatus.NEW_QUOTE:
-      return QuoteStatus.NEW_QUOTE;
-    case QuoteStatus.WAITING_FOR_SUPPLIER:
-      return QuoteStatus.WAITING_FOR_SUPPLIER;
-    case QuoteStatus.QUOTE_SENT_TO_CUSTOMER:
-      return QuoteStatus.QUOTE_SENT_TO_CUSTOMER;
-    case QuoteStatus.ON_HOLD:
-      return QuoteStatus.ON_HOLD;
-    case QuoteStatus.QUOTE_CONVERTED_TO_ORDER:
-    case QuoteStatus.CONVERTED_TO_ORDER_BY_CUSTOMER:
-      return QuoteStatus.QUOTE_CONVERTED_TO_ORDER;
-    case QuoteStatus.CANCELLED:
-      return QuoteStatus.CANCELLED;
-    default:
-      return QuoteStatus.NEW_QUOTE;
-  }
-}, []);
+    switch (apiStatus) {
+      case QuoteStatus.NEW_QUOTE:
+        return QuoteStatus.NEW_QUOTE;
+      case QuoteStatus.WAITING_FOR_SUPPLIER:
+        return QuoteStatus.WAITING_FOR_SUPPLIER;
+      case QuoteStatus.QUOTE_SENT_TO_CUSTOMER:
+        return QuoteStatus.QUOTE_SENT_TO_CUSTOMER;
+      case QuoteStatus.ON_HOLD:
+        return QuoteStatus.ON_HOLD;
+      case QuoteStatus.QUOTE_CONVERTED_TO_ORDER:
+      case QuoteStatus.CONVERTED_TO_ORDER_BY_CUSTOMER:
+        return QuoteStatus.QUOTE_CONVERTED_TO_ORDER;
+      case QuoteStatus.CANCELLED:
+        return QuoteStatus.CANCELLED;
+      default:
+        return QuoteStatus.NEW_QUOTE;
+    }
+  }, []);
 
   const mapStatusFilterToApi = useCallback((filter: string): string[] => {
-  switch (filter) {
-    case QuoteStatus.NEW_QUOTE:
-      return [QuoteStatus.NEW_QUOTE];
-    case QuoteStatus.WAITING_FOR_SUPPLIER:
-      return [QuoteStatus.WAITING_FOR_SUPPLIER];
-    case QuoteStatus.QUOTE_SENT_TO_CUSTOMER:
-      return [QuoteStatus.QUOTE_SENT_TO_CUSTOMER];
-    case QuoteStatus.ON_HOLD:
-      return [QuoteStatus.ON_HOLD];
-    case QuoteStatus.QUOTE_CONVERTED_TO_ORDER:
-      return [QuoteStatus.QUOTE_CONVERTED_TO_ORDER, QuoteStatus.CONVERTED_TO_ORDER_BY_CUSTOMER];
-    case QuoteStatus.CANCELLED:
-      return [QuoteStatus.CANCELLED];
-    default:
-      return [];
-  }
-}, []);
+    switch (filter) {
+      case QuoteStatus.NEW_QUOTE:
+        return [QuoteStatus.NEW_QUOTE];
+      case QuoteStatus.WAITING_FOR_SUPPLIER:
+        return [QuoteStatus.WAITING_FOR_SUPPLIER];
+      case QuoteStatus.QUOTE_SENT_TO_CUSTOMER:
+        return [QuoteStatus.QUOTE_SENT_TO_CUSTOMER];
+      case QuoteStatus.ON_HOLD:
+        return [QuoteStatus.ON_HOLD];
+      case QuoteStatus.QUOTE_CONVERTED_TO_ORDER:
+        return [QuoteStatus.QUOTE_CONVERTED_TO_ORDER, QuoteStatus.CONVERTED_TO_ORDER_BY_CUSTOMER];
+      case QuoteStatus.CANCELLED:
+        return [QuoteStatus.CANCELLED];
+      default:
+        return [];
+    }
+  }, []);
 
   const fetchQuotes = useCallback(async () => {
     if (loading) return;
@@ -217,39 +226,8 @@ export default function QuotesPage() {
   const startIndex = (currentPage - 1) * rowsPerPage;
   const endIndex = Math.min(startIndex + rowsPerPage, totalCount);
 
-  const handleSubmit = async (formData: iQuoteFormData) => {
-    try {
-      if (isEditing && selectedQuote) {
-        //showToast.success("Quote updated successfully");
-      } else {
-        showToast.success("Quote created successfully");
-      }
-
-      await fetchQuotes();
-      
-    } catch (error: any) {
-      if (error?.name !== "CanceledError" && error?.code !== "ERR_CANCELED") {
-        showToast.error("Error saving quote");
-      }
-    }
-  };
-
-  const openNewQuoteDrawer = () => {
-    setIsEditing(false);
-    setSelectedQuote(null);
-    setIsDrawerOpen(true);
-  };
-
-  const openEditQuoteDrawer = (quote: iQuote) => {
-    setIsEditing(true);
-    setSelectedQuote(quote);
-    setIsDrawerOpen(true);
-  };
-
-  const closeDrawer = () => {
-    setIsDrawerOpen(false);
-    setSelectedQuote(null);
-    setIsEditing(false);
+  const handleQuoteClick = (quoteId: number) => {
+    router.push(`/quotes/${quoteId}`);
   };
 
   return (
@@ -308,7 +286,7 @@ export default function QuotesPage() {
                       <tr
                         key={quote.id}
                         className="hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
-                        onClick={() => openEditQuoteDrawer(quote)}
+                        onClick={() => handleQuoteClick(quote.id)}
                       >
                         <td className="px-2 py-2">
                           <div className="flex items-center">
@@ -357,7 +335,7 @@ export default function QuotesPage() {
                           <Button
                             onClick={(e) => {
                               e.stopPropagation();
-                              openEditQuoteDrawer(quote);
+                              handleQuoteClick(quote.id);
                             }}
                             variant="secondary"
                             size="sm"
@@ -392,21 +370,6 @@ export default function QuotesPage() {
             />
           </Card>
         )}
-
-        <EntityDrawer
-          isOpen={isDrawerOpen}
-          onClose={closeDrawer}
-          title={isEditing ? "Edit Quote" : "Create New Quote"}
-          size="xxl"
-          loading={submitApi.loading}
-        >
-          <QuoteForm
-            quote={selectedQuote}
-            isEditing={isEditing}
-            onSubmit={handleSubmit}
-            loading={submitApi.loading}
-          />
-        </EntityDrawer>
       </div>
     </div>
   );
