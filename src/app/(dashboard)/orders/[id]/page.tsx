@@ -78,7 +78,7 @@ export default function OrderDetailPage() {
   const handleSubmit = async (formData: iOrderFormData) => {
     try {
       showToast.success(isNewOrder ? 'Order created successfully' : 'Order updated successfully');
-      router.push('/orders');
+      //router.push('/orders');
     } catch (error: any) {
       if (error?.name !== 'CanceledError') {
         showToast.error('Failed to save order');

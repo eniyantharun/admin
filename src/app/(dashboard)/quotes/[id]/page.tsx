@@ -50,6 +50,7 @@ export default function QuoteDetailPage() {
 
         const transformedQuote: iQuote = {
           id: parseInt(quoteId),
+          saleId: response.quote.saleId, 
           quoteNumber: quoteId,
           customer: `${saleData.customer.form.firstName} ${saleData.customer.form.lastName}`,
           customerEmail: saleData.customer.form.email,
@@ -73,10 +74,10 @@ export default function QuoteDetailPage() {
 
   const handleSubmit = async (formData: iQuoteFormData) => {
     try {
-      showToast.success(
-        isNewQuote ? "Quote created successfully" : "Quote updated successfully"
-      );
-      router.push("/quotes");
+      // showToast.success(
+      //   isNewQuote ? "Quote created successfully" : "Quote updated successfully"
+      // );
+      //router.push("/quotes");
     } catch (error: any) {
       if (error?.name !== "CanceledError") {
         showToast.error("Failed to save quote");

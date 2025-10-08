@@ -87,7 +87,7 @@ export const VariantDropdown: React.FC<VariantDropdownProps> = ({
   const fetchVariants = async () => {
   setVariants([]); // Clear existing data
   try {
-    const response = await get(`/Admin/ProductEditor/GetVariantsList?productId=${productId}&_t=${Date.now()}`) as ApiVariantsResponse;
+    const response = await get(`https://api.promowe.com/Admin/ProductEditor/GetVariantsList?productId=${productId}&_t=${Date.now()}`) as ApiVariantsResponse;
     
     if (response?.variants) {
       setVariants(response.variants);
@@ -243,7 +243,7 @@ export const MethodDropdown: React.FC<MethodDropdownProps> = ({
   const fetchMethods = async () => {
   setMethods([]); // Clear existing data
   try {
-    const response = await get(`/Admin/ProductEditor/GetDecorationMethods?productId=${productId}&_t=${Date.now()}`) as ApiMethodsResponse;
+    const response = await get(`https://api.promowe.com/Admin/ProductEditor/GetDecorationMethods?productId=${productId}&_t=${Date.now()}`) as ApiMethodsResponse;
     
     if (response?.methods) {
       const filteredMethods = response.methods.filter(
@@ -390,7 +390,7 @@ export const ColorDropdown: React.FC<ColorDropdownProps> = ({
   const fetchColors = async () => {
   setColors([]); // Clear existing data
   try {
-    const response = await get(`/Admin/ProductEditor/GetProductColorOptionsList?productId=${productId}&_t=${Date.now()}`) as ApiColorsResponse;
+    const response = await get(`https://api.promowe.com/Admin/ProductEditor/GetProductColorOptionsList?productId=${productId}&_t=${Date.now()}`) as ApiColorsResponse;
     
     if (response?.colors) {
       setColors(response.colors);

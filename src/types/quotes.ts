@@ -3,6 +3,7 @@ import { QuoteStatus } from '@/lib/enums';
 
 export interface iQuote {
   id: number;
+  saleId?: string;
   quoteNumber: string;
   customer: string;
   customerEmail: string;
