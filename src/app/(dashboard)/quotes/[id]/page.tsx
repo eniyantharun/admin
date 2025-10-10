@@ -114,16 +114,6 @@ export default function QuoteDetailPage() {
       <Header contextData={contextData} />
 
       <div className="p-6 max-w-7xl mx-auto">
-        <div className="mb-6">
-          <Button
-            onClick={handleBack}
-            variant="secondary"
-            icon={ArrowLeft}
-            size="sm"
-          >
-            Back to Quotes
-          </Button>
-        </div>
 
         <Card className="p-6">
           <QuoteForm
