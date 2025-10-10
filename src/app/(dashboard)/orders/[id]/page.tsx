@@ -115,18 +115,7 @@ export default function OrderDetailPage() {
       <Header contextData={contextData} />
       
       <div className="p-6 max-w-7xl mx-auto">
-        <div className="mb-6">
-          <Button
-            onClick={handleBack}
-            variant="secondary"
-            icon={ArrowLeft}
-            size="sm"
-          >
-            Back to Orders
-          </Button>
-        </div>
-
-        <Card className="p-6">
+                <Card className="p-6">
           <h1 className="text-2xl font-bold text-gray-900 mb-6">
             {isNewOrder ? 'Create New Order' : `Edit Order #${orderId}`}
           </h1>
