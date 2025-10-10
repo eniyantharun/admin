@@ -223,7 +223,7 @@ export const SaleDetailsStep: React.FC<SaleDetailsStepProps> = ({
           <div className="form-input-group">
             <label className="form-label block text-sm font-medium text-gray-700 mb-2">
               In-Hand Date
-              <span className="text-xs text-gray-500 font-normal ml-1">(When customer needs {type})</span>
+              
             </label>
             <input
               type="date"
