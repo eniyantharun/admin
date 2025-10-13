@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
-import { FileText, Send, Download, ExternalLink, ImageIcon, Upload, CheckCircle, Clock, AlertCircle, Wifi, WifiOff } from "lucide-react";
+import { FileText, Send, Download, ExternalLink, ImageIcon, Upload, CheckCircle, Clock, AlertCircle, Wifi, WifiOff, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { showToast } from "@/components/ui/toast";
@@ -26,6 +26,7 @@ interface SaleNotesStepProps {
   currentSaleId?: string;
   documentId?: string | null;
   onDocumentIdCreated?: (documentId: string) => void;
+  saleDetails?: any;
 }
 
 type SaveStatus = "idle" | "saving" | "saved" | "error" | "offline";
@@ -40,6 +41,7 @@ export const SaleNotesStep: React.FC<SaleNotesStepProps> = ({
   currentSaleId,
   documentId,
   onDocumentIdCreated,
+  saleDetails,
 }) => {
   const [generatingPDF, setGeneratingPDF] = useState(false);
   const [lastGeneratedInvoice, setLastGeneratedInvoice] = useState<InvoiceResponse | null>(null);
@@ -51,11 +53,25 @@ export const SaleNotesStep: React.FC<SaleNotesStepProps> = ({
   const [hasLoadedInitialContent, setHasLoadedInitialContent] = useState(false);
   const [localDocumentId, setLocalDocumentId] = useState<string | null>(documentId || null);
   const [isCreatingDocument, setIsCreatingDocument] = useState(false);
+  const [newComment, setNewComment] = useState("");
 
   const saveTimeoutRef = useRef<NodeJS.Timeout>();
   const lastSaveAttemptRef = useRef<string>("");
 
   const { get, post } = useApi({ cancelOnUnmount: false, dedupe: false });
+
+  // Debug logging
+  useEffect(() => {
+    console.log('SaleNotesStep - saleDetails:', saleDetails);
+    console.log('SaleNotesStep - type:', type);
+    if (saleDetails) {
+      console.log('SaleNotesStep - saleDetails.sale:', saleDetails.sale);
+      console.log('SaleNotesStep - saleDetails[type]:', saleDetails[type]);
+      if (saleDetails.sale) {
+        console.log('SaleNotesStep - comments:', saleDetails.sale.comments);
+      }
+    }
+  }, [saleDetails, type]);
 
   useEffect(() => {
     const loadNotesContent = async () => {
@@ -160,7 +176,7 @@ export const SaleNotesStep: React.FC<SaleNotesStepProps> = ({
               : "/Admin/SaleEditor/SetSaleDetail";
               
             await post(endpoint, {
-              saleId: currentSaleId,
+              saleId: response.quote?.sale?.saleId,
               notesId: response.id,
             });
           } catch (linkError) {
@@ -239,6 +255,17 @@ export const SaleNotesStep: React.FC<SaleNotesStepProps> = ({
     } finally {
       setGeneratingPDF(false);
     }
+  };
+
+  const handleAddComment = () => {
+    if (!newComment.trim()) {
+      showToast.error("Please enter a comment");
+      return;
+    }
+    
+    // This will be connected to API later
+    showToast.success("Comment functionality will be connected to API");
+    setNewComment("");
   };
 
   const SaveStatusIndicator = () => {
@@ -370,6 +397,63 @@ export const SaleNotesStep: React.FC<SaleNotesStepProps> = ({
             </div>
           </Card>
         )}
+
+        {/* Add Comment Section */}
+        <Card className="p-4 bg-white border-gray-200">
+          <h4 className="font-medium text-gray-900 text-sm mb-3 flex items-center gap-2">
+            <MessageSquare className="w-4 h-4" />
+            Add Comment
+          </h4>
+          <div className="space-y-3">
+            <textarea
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              placeholder="Enter your comment here..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              rows={3}
+            />
+            <div className="flex justify-end">
+              <Button
+                onClick={handleAddComment}
+                disabled={!newComment.trim()}
+                size="sm"
+                icon={Send}
+                className="bg-gradient-to-r"
+              >
+                COMMENT
+              </Button>
+            </div>
+          </div>
+        </Card>
+
+        {(() => {
+          const comments = saleDetails?.sale?.comments || 
+                          saleDetails?.[type]?.sale?.comments || 
+                          [];
+          
+          console.log('Rendering comments, found:', comments.length, 'comments');
+          
+          return comments.length > 0 ? (
+            <Card className="p-4 bg-white border-gray-200">
+              <h4 className="font-medium text-gray-900 text-sm mb-3 flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-blue-500" />
+                Recent Comments ({comments.length})
+              </h4>
+              <div className="space-y-3 max-h-64 overflow-y-auto">
+                {comments.map((comment: any) => (
+                  <div key={comment.id} className="border-l-2 border-blue-300 pl-3 py-2 bg-blue-50 rounded-r">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs text-blue-600 font-medium">
+                        {new Date(comment.createdAt).toLocaleDateString()} at {new Date(comment.createdAt).toLocaleTimeString()}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-700">{comment.comment}</p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          ) : null;
+        })()}
       </div>
     </Card>
   );

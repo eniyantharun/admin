@@ -53,8 +53,8 @@ export const SaleInformation: React.FC<SaleInformationProps> = ({
         showToast.loading(`Updating ${type} status...`);
         
         const endpoint = type === 'quote'
-          ? '/Admin/SaleEditor/SetQuoteDetail'
-          : '/Admin/SaleEditor/SetOrderDetail';
+            ? '/Admin/SaleEditor/SetQuoteDetail'
+            : '/Admin/SaleEditor/SetOrderDetail';
           
         await post(endpoint, {
           id: sale.id,
@@ -118,8 +118,6 @@ export const SaleInformation: React.FC<SaleInformationProps> = ({
 
   return (
     <Card className="p-6 bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-blue-200">
-      
-      
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="space-y-4">
           <Card className="p-4 bg-white/70 backdrop-blur-sm">
@@ -152,7 +150,6 @@ export const SaleInformation: React.FC<SaleInformationProps> = ({
 
         <div className="space-y-4">
           <Card className="p-4 bg-white/70 backdrop-blur-sm">
-           
             <div className="space-y-3">
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-2">
@@ -186,31 +183,8 @@ export const SaleInformation: React.FC<SaleInformationProps> = ({
               </div>
             </div>
           </Card>
-
-          
         </div>
       </div>
-
-      {saleDetails?.[type]?.sale?.comments?.length > 0 && (
-        <Card className="p-4 bg-white/70 backdrop-blur-sm mt-6">
-          <h4 className="font-medium text-gray-900 text-sm mb-3 flex items-center gap-2">
-            <MessageSquare className="w-4 h-4 text-blue-500" />
-            Recent Comments
-          </h4>
-          <div className="space-y-3 max-h-32 overflow-y-auto">
-            {saleDetails[type].sale.comments.map((comment: any) => (
-              <div key={comment.id} className="border-l-2 border-blue-300 pl-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs text-blue-600 font-medium">
-                    {new Date(comment.createdAt).toLocaleDateString()} at {new Date(comment.createdAt).toLocaleTimeString()}
-                  </span>
-                </div>
-                <p className="text-sm text-gray-700">{comment.comment}</p>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
     </Card>
   );
 };

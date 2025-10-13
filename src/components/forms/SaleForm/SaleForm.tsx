@@ -109,6 +109,13 @@ export const SaleForm: React.FC<SaleFormProps> = ({
 
   const { post } = useApi();
 
+  // Add console log to debug saleDetails
+  useEffect(() => {
+    console.log('SaleForm - saleDetails:', saleDetails);
+    console.log('SaleForm - sale:', sale);
+    console.log('SaleForm - type:', type);
+  }, [saleDetails, sale, type]);
+
   const handleCustomerSelect = async (customer: iCustomer) => {
     setSelectedCustomer(customer);
 
@@ -293,6 +300,7 @@ export const SaleForm: React.FC<SaleFormProps> = ({
               isEditing={isEditing}
               currentSaleId={currentSaleId}
               documentId={saleDetails?.sale?.notesId}
+              saleDetails={saleDetails}
               onDocumentIdCreated={async (newDocumentId: any) => {
                 if (isEditing && sale?.id) {
                   try {
