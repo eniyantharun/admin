@@ -32,7 +32,7 @@ export const generateInvoicePDF = async (saleId: string): Promise<InvoiceRespons
     showToast.loading('Generating PDF invoice...');
     
     const response = await api.get<InvoiceResponse>(
-      `/Admin/Invoice/GenerateInvoice?saleId=${saleId}`
+      `https://u19zobmmph.execute-api.us-east-1.amazonaws.com/dev/api/generateinvoice?SaleId=${saleId}`
     );
     
     showToast.dismiss();
