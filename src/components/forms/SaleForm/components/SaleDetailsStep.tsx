@@ -193,7 +193,7 @@ export const SaleDetailsStep: React.FC<SaleDetailsStepProps> = ({
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-3">
           <Calendar className="w-5 h-5 text-blue-500" />
-          Details
+          Checkout Details
         </h3>
         <SaveStatusIndicator />
       </div>
@@ -263,47 +263,7 @@ export const SaleDetailsStep: React.FC<SaleDetailsStepProps> = ({
         </div>
       </div>
 
-      {saleSummary && (
-        <Card className="p-4 bg-gray-50 mt-6">
-          <h5 className="font-medium text-gray-800 mb-3 text-sm flex items-center gap-2">
-            <FileText className="w-4 h-4 text-gray-600" />
-            Financial Summary
-          </h5>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-600">Items Total:</span>
-              <span className="font-medium">${saleSummary.customerSummary.itemsTotal.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Setup Charges:</span>
-              <span className="font-medium">${saleSummary.customerSummary.setupCharge.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Subtotal:</span>
-              <span className="font-medium">${saleSummary.customerSummary.subTotal.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between border-t pt-2">
-              <span className="text-gray-600 font-medium">Total Amount:</span>
-              <span className="font-bold text-green-600 text-lg">
-                ${saleSummary.customerSummary.total.toFixed(2)}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Profit:</span>
-              <span className="font-bold text-orange-600">${saleSummary.profit.toFixed(2)}</span>
-            </div>
-            
-            {currentDateValue && (
-              <div className="flex justify-between border-t pt-2">
-                <span className="text-gray-600">Needed By:</span>
-                <span className="font-medium text-blue-600">
-                  {new Date(currentDateValue).toLocaleDateString()}
-                </span>
-              </div>
-            )}
-          </div>
-        </Card>
-      )}
+      
     </Card>
   );
 };
