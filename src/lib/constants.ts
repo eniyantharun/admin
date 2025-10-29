@@ -31,7 +31,8 @@ export const API_ENDPOINTS = {
     CREATE: '/products',
     UPDATE: '/products',
     DELETE: '/products',
-    CATEGORIES: '/products/categories',
+    CATEGORIES: '/categories', 
+    THEMES: '/themes'
   },
   ORDERS: {
     LIST: '/orders',
@@ -82,7 +83,6 @@ export const ROUTES = {
   BRANDS: '/brands',
   SUPPLIERS: '/suppliers',
   QUOTES: '/quotes',
-  KEYWORDS: '/keywords',
   THEMES: '/themes',
   SEARCHES: '/searches',
   SITEMAPS: '/sitemaps',
@@ -138,12 +138,6 @@ export const NAVIGATION_ITEMS = [
     label: 'Brands',
     href: ROUTES.BRANDS,
     icon: 'Award',
-  },
-  {
-    id: 'keywords',
-    label: 'Keywords',
-    href: ROUTES.KEYWORDS,
-    icon: 'Hash',
   },
   {
     id: 'themes',
