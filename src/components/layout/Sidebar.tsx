@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAppSelector, useAppDispatch } from '@/hooks/redux';
@@ -49,11 +49,11 @@ const navigation: NavigationItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { 
     name: 'Products', 
+    href: '/products',
     icon: Package,
     submenu: [
-      { name: 'Categories', href: '/products/categories', icon: Layers },
-      { name: 'Themes', href: '/products/themes', icon: Palette },
-      { name: 'Keyword', href: '/products/keywords', icon: Hash },
+      { name: 'Categories', href: '/categories', icon: Layers },
+      { name: 'Themes', href: '/themes', icon: Palette },
     ]
   },
   { name: 'Quotes', href: '/quotes', icon: FileText },
@@ -68,7 +68,12 @@ export const Sidebar: React.FC = () => {
   const pathname = usePathname();
 const { sidebarOpen } = useAppSelector((state: RootState) => state.dashboard);
   const dispatch = useAppDispatch();
-  const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
+  const [expandedMenus, setExpandedMenus] = useState<string[]>(['Products']); // Products expanded by default
+
+  // Keep Products submenu expanded by default
+  useEffect(() => {
+    setExpandedMenus(['Products']);
+  }, []);
 
   const handleOverlayClick = () => {
     dispatch(setSidebarOpen(false));
@@ -189,44 +194,81 @@ const isSubmenuItemActive = (submenuItems: SubmenuItem[]): boolean => {
                     {hasSubmenu ? (
                       // Menu item with submenu
                       <>
-                        <button
-                          onClick={() => sidebarOpen && toggleSubmenu(item.name)}
-                          className={`dashboard-sidebar-link group flex items-center w-full px-3 py-3 text-sm font-medium rounded-xl transition-all duration-300 relative overflow-hidden ${
-                            isSubmenuActive || isActive
-                              ? 'dashboard-sidebar-link-active bg-gradient-to-r from-blue-600/20 via-indigo-600/20 to-purple-600/20 text-white shadow-lg border border-blue-500/30'
-                              : 'dashboard-sidebar-link-inactive text-slate-300 hover:bg-white/10 hover:text-white hover:shadow-lg'
-                          } ${!sidebarOpen ? 'justify-center' : ''}`}
-                          title={!sidebarOpen ? item.name : undefined}
-                        >
-                          {(isSubmenuActive || isActive) && (
-                            <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-400 via-indigo-400 to-purple-400 rounded-r-full"></div>
-                          )}
-                          
-                          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-indigo-500/10 to-purple-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl"></div>
-                          
-                          <Icon className={`dashboard-sidebar-link-icon w-5 h-5 flex-shrink-0 relative z-10 ${
-                            sidebarOpen ? 'mr-3' : ''
-                          } ${
-                            isSubmenuActive || isActive
-                              ? 'text-blue-300 drop-shadow-sm' 
-                              : 'text-slate-400 group-hover:text-blue-300 group-hover:drop-shadow-sm'
-                          } transition-all duration-300`} />
-                          
-                          {sidebarOpen && (
-                            <>
-                              <span className="dashboard-sidebar-link-text truncate relative z-10 transition-all duration-300 flex-1 text-left">
-                                {item.name}
-                              </span>
-                              {hasSubmenu && (
-                                <div className={`ml-2 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
-                                  <ChevronDown className="w-4 h-4" />
-                                </div>
+                        <div className="flex flex-col">
+                          {/* Main menu item - clickable when it has href */}
+                          {item.href ? (
+                            <Link
+                              href={item.href}
+                              className={`dashboard-sidebar-link group flex items-center px-3 py-3 text-sm font-medium rounded-xl transition-all duration-300 relative overflow-hidden ${
+                                isActive
+                                  ? 'dashboard-sidebar-link-active bg-gradient-to-r from-blue-600/20 via-indigo-600/20 to-purple-600/20 text-white shadow-lg border border-blue-500/30'
+                                  : 'dashboard-sidebar-link-inactive text-slate-300 hover:bg-white/10 hover:text-white hover:shadow-lg'
+                              } ${!sidebarOpen ? 'justify-center' : ''}`}
+                              title={!sidebarOpen ? item.name : undefined}
+                            >
+                              {isActive && (
+                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-400 via-indigo-400 to-purple-400 rounded-r-full"></div>
                               )}
-                            </>
+                              
+                              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-indigo-500/10 to-purple-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl"></div>
+                              
+                              <Icon className={`dashboard-sidebar-link-icon w-5 h-5 flex-shrink-0 relative z-10 ${
+                                sidebarOpen ? 'mr-3' : ''
+                              } ${
+                                isActive 
+                                  ? 'text-blue-300 drop-shadow-sm' 
+                                  : 'text-slate-400 group-hover:text-blue-300 group-hover:drop-shadow-sm'
+                              } transition-all duration-300`} />
+                              
+                              {sidebarOpen && (
+                                <span className="dashboard-sidebar-link-text truncate relative z-10 transition-all duration-300 flex-1 text-left">
+                                  {item.name}
+                                </span>
+                              )}
+                              
+                              <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-transparent via-white/5 to-transparent"></div>
+                            </Link>
+                          ) : (
+                            <button
+                              onClick={() => sidebarOpen && toggleSubmenu(item.name)}
+                              className={`dashboard-sidebar-link group flex items-center w-full px-3 py-3 text-sm font-medium rounded-xl transition-all duration-300 relative overflow-hidden ${
+                                isSubmenuActive
+                                  ? 'dashboard-sidebar-link-active bg-gradient-to-r from-blue-600/20 via-indigo-600/20 to-purple-600/20 text-white shadow-lg border border-blue-500/30'
+                                  : 'dashboard-sidebar-link-inactive text-slate-300 hover:bg-white/10 hover:text-white hover:shadow-lg'
+                              } ${!sidebarOpen ? 'justify-center' : ''}`}
+                              title={!sidebarOpen ? item.name : undefined}
+                            >
+                              {isSubmenuActive && (
+                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-400 via-indigo-400 to-purple-400 rounded-r-full"></div>
+                              )}
+                              
+                              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-indigo-500/10 to-purple-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl"></div>
+                              
+                              <Icon className={`dashboard-sidebar-link-icon w-5 h-5 flex-shrink-0 relative z-10 ${
+                                sidebarOpen ? 'mr-3' : ''
+                              } ${
+                                isSubmenuActive
+                                  ? 'text-blue-300 drop-shadow-sm' 
+                                  : 'text-slate-400 group-hover:text-blue-300 group-hover:drop-shadow-sm'
+                              } transition-all duration-300`} />
+                              
+                              {sidebarOpen && (
+                                <>
+                                  <span className="dashboard-sidebar-link-text truncate relative z-10 transition-all duration-300 flex-1 text-left">
+                                    {item.name}
+                                  </span>
+                                  {hasSubmenu && (
+                                    <div className={`ml-2 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
+                                      <ChevronDown className="w-4 h-4" />
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                              
+                              <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-transparent via-white/5 to-transparent"></div>
+                            </button>
                           )}
-                          
-                          <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-transparent via-white/5 to-transparent"></div>
-                        </button>
+                        </div>
 
                         {/* Submenu items */}
                         {sidebarOpen && hasSubmenu && (

@@ -1,24 +1,22 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Eye, Building, Package, DollarSign, Star, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/helpers/StatusBadge";
 import { EmptyState, LoadingState } from "@/components/helpers/EmptyLoadingStates";
 import { PaginationControls } from "@/components/helpers/PaginationControls";
-import { EntityDrawer } from "@/components/helpers/EntityDrawer";
 import { useProductsHeaderContext } from "@/hooks/useHeaderContext";
 import { Header } from "@/components/layout/Header";
 import { showToast } from "@/components/ui/toast";
 import { Product, ProductService } from "@/types/productService";
 
 export default function ProductsPage() {
+  const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [totalCount, setTotalCount] = useState(0);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(20);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
@@ -28,7 +26,7 @@ export default function ProductsPage() {
 
   const { contextData, searchTerm } = useProductsHeaderContext({
     totalCount,
-    onAddNew: () => openNewProductDrawer(),
+    onAddNew: () => router.push('/products/new'),
     statusFilter,
     onStatusFilterChange: setStatusFilter,
     featuredFilter,
@@ -88,22 +86,8 @@ export default function ProductsPage() {
   const startIndex = (currentPage - 1) * rowsPerPage;
   const endIndex = Math.min(startIndex + rowsPerPage, totalCount);
 
-  const openNewProductDrawer = () => {
-    setIsEditing(false);
-    setSelectedProduct(null);
-    setIsDrawerOpen(true);
-  };
-
-  const openEditProductDrawer = (product: Product) => {
-    setIsEditing(true);
-    setSelectedProduct(product);
-    setIsDrawerOpen(true);
-  };
-
-  const closeDrawer = () => {
-    setIsDrawerOpen(false);
-    setSelectedProduct(null);
-    setIsEditing(false);
+  const openProductDetail = (product: Product) => {
+    router.push(`/products/${product.id}`);
   };
 
   const getProductImageUrl = (product: Product): string | null => {
@@ -177,7 +161,7 @@ export default function ProductsPage() {
                       <tr
                         key={product.id}
                         className="hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
-                        onClick={() => openEditProductDrawer(product)}
+                        onClick={() => openProductDetail(product)}
                       >
                         <td className="px-2 py-2">
                           <div className="flex items-center">
@@ -301,7 +285,7 @@ export default function ProductsPage() {
                           <Button
                             onClick={(e) => {
                               e.stopPropagation();
-                              openEditProductDrawer(product);
+                              openProductDetail(product);
                             }}
                             variant="secondary"
                             size="sm"
@@ -336,103 +320,6 @@ export default function ProductsPage() {
             />
           </Card>
         )}
-
-        <EntityDrawer
-          isOpen={isDrawerOpen}
-          onClose={closeDrawer}
-          title={isEditing ? "Product Details" : "Create New Product"}
-          size="xxl"
-          loading={loading}
-        >
-          {selectedProduct && (
-            <div className="p-6">
-              <div className="space-y-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    {selectedProduct.name}
-                  </h3>
-                  <p className="text-sm text-gray-600">{selectedProduct.slug}</p>
-                </div>
-
-                {getProductImageUrl(selectedProduct) && (
-                  <div>
-                    <img
-                      src={getProductImageUrl(selectedProduct)!}
-                      alt={selectedProduct.name}
-                      className="w-full max-w-md rounded-lg border border-gray-200"
-                    />
-                  </div>
-                )}
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs font-medium text-gray-700">Supplier</label>
-                    <p className="text-sm text-gray-900">{selectedProduct.supplier.name}</p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-700">Status</label>
-                    <div className="mt-1">
-                      <StatusBadge 
-                        enabled={selectedProduct.visibility === "Enabled"}
-                        label={{ enabled: "Active", disabled: "Inactive" }}
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-700">Price Range</label>
-                    <p className="text-sm text-gray-900">
-                      ${selectedProduct.minPrice.toFixed(2)} - ${selectedProduct.maxPrice.toFixed(2)}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-700">Setup Charge</label>
-                    <p className="text-sm text-gray-900">${selectedProduct.setupCharge.toFixed(2)}</p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-700">Production Time</label>
-                    <p className="text-sm text-gray-900">{getProductionTime(selectedProduct)}</p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-700">Variants</label>
-                    <p className="text-sm text-gray-900">{selectedProduct.variants.length}</p>
-                  </div>
-                </div>
-
-                {selectedProduct.categories && selectedProduct.categories.length > 0 && (
-                  <div>
-                    <label className="text-xs font-medium text-gray-700 mb-2 block">Categories</label>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedProduct.categories.map((category) => (
-                        <span 
-                          key={category.id}
-                          className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800"
-                        >
-                          {category.name}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {selectedProduct.decorations && selectedProduct.decorations.length > 0 && (
-                  <div>
-                    <label className="text-xs font-medium text-gray-700 mb-2 block">Decoration Methods</label>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedProduct.decorations.map((decoration) => (
-                        <span 
-                          key={decoration.id}
-                          className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
-                        >
-                          {decoration.name}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </EntityDrawer>
       </div>
     </div>
   );
