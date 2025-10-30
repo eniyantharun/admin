@@ -12,6 +12,8 @@ import { ProductImageSelector, ProductPicture } from '@/components/ui/ProductIma
 import { ProductFeatures } from '@/components/ui/ProductFeatures';
 import { ProductColors } from '@/components/ui/ProductColors';
 import { ProductPicturesManager } from '@/components/ui/ProductPicturesManager';
+import { PricesAndVariants, Variant } from '@/components/ui/PricesAndVariants';
+import { RichTextEditor } from '@/components/ui/RichTextEditor';
 import { Header } from '@/components/layout/Header';
 import { showToast } from '@/components/ui/toast';
 import { useApi } from '@/hooks/useApi';
@@ -165,6 +167,7 @@ interface ProductFormData {
   merchantCenterTitle: string;
   merchantCenterDescription: string;
   shortDescription: string;
+  description: string;
   visibility: string;
   isExclusive: boolean;
   isMerchantCenterEnabled: boolean;
@@ -183,6 +186,34 @@ export default function ProductEditPage() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showImageSelector, setShowImageSelector] = useState(false);
   const [selectedPicture, setSelectedPicture] = useState<ProductPicture | null>(null);
+  const [variants, setVariants] = useState<Variant[]>([
+    {
+      id: 'variant-1',
+      name: '',
+      supplierUrls: [''],
+      sku: '',
+      isPrimary: true,
+      imprintMethods: [
+        {
+          id: 'method-1',
+          name: 'Silkscreen',
+          priceIncludes: '',
+          areaAndLocation: '',
+          setupCharge: '',
+          productionTime: 5,
+          importStatus: 'Unchecked',
+          isPrimary: true,
+          hasFreeSetup: true,
+          pricingTiers: [
+            { quantity: 250, basePrice: 0, regularPrice: 0, discountedPrice: 0 },
+            { quantity: 1000, basePrice: 0, regularPrice: 0, discountedPrice: 0 },
+            { quantity: 2500, basePrice: 0, regularPrice: 0, discountedPrice: 0 },
+            { quantity: 5000, basePrice: 0, regularPrice: 0, discountedPrice: 0 },
+          ],
+        },
+      ],
+    },
+  ]);
 
   const { get, put, loading } = useApi({
     cancelOnUnmount: true,
@@ -207,6 +238,7 @@ export default function ProductEditPage() {
         merchantCenterTitle: product.product.merchantCenter.form.merchantCenterTitle || '',
         merchantCenterDescription: product.product.merchantCenter.form.merchantCenterDescription,
         shortDescription: product.product.shortDescription,
+        description: '',
         visibility: product.product.visibility,
         isExclusive: product.product.isExclusive,
         isMerchantCenterEnabled: product.product.merchantCenter.isMerchantCenterEnabled,
@@ -229,6 +261,7 @@ export default function ProductEditPage() {
         merchantCenterTitle: product.product.merchantCenter.form.merchantCenterTitle || '',
         merchantCenterDescription: product.product.merchantCenter.form.merchantCenterDescription,
         shortDescription: product.product.shortDescription,
+        description: '',
         visibility: product.product.visibility,
         isExclusive: product.product.isExclusive,
         isMerchantCenterEnabled: product.product.merchantCenter.isMerchantCenterEnabled,
@@ -245,10 +278,87 @@ export default function ProductEditPage() {
       const response = await get(`/Admin/ProductEditor/GetProductDetail?Id=${productId}`);
       if (response) {
         setProduct(response as ProductDetail);
+        // Fetch additional data for variants and pricing
+        await fetchVariantsAndPricing();
       }
     } catch (error) {
       console.error('Error fetching product:', error);
       //showToast.error('Failed to load product details');
+    }
+  };
+
+  const fetchVariantsAndPricing = async () => {
+    try {
+      // Fetch variants and decoration methods from API
+      const [variantsResponse, methodsResponse] = await Promise.all([
+        get(`/Admin/ProductEditor/GetVariantsList?productId=${productId}`),
+        get(`/Admin/ProductEditor/GetDecorationMethods?productId=${productId}`),
+      ]);
+
+      if (variantsResponse && methodsResponse) {
+        // Transform API data to match our Variant interface
+        const transformedVariants: Variant[] = variantsResponse.map((apiVariant: any, index: number) => {
+          // Get methods for this variant
+          const variantMethods = methodsResponse.filter((m: any) => m.variantId === apiVariant.id);
+
+          return {
+            id: `variant-${apiVariant.id}`,
+            name: apiVariant.name || '',
+            supplierUrls: apiVariant.entry?.url ? [apiVariant.entry.url] : [''],
+            sku: apiVariant.supplierItemNumber || '',
+            isPrimary: index === 0,
+            imprintMethods: variantMethods.length > 0
+              ? variantMethods.map((method: any, mIndex: number) => ({
+                  id: `method-${method.id}`,
+                  name: method.methodName || 'Method',
+                  priceIncludes: method.priceIncludes || '',
+                  areaAndLocation: method.areaAndLocation || '',
+                  setupCharge: method.setupCharge?.toString() || '',
+                  productionTime: method.productionTime || 5,
+                  importStatus: method.importStatus || 'Unchecked',
+                  isPrimary: mIndex === 0,
+                  hasFreeSetup: method.isFreeSetup || false,
+                  pricingTiers: method.tierPrices?.map((tier: any) => ({
+                    quantity: tier.quantity || 0,
+                    basePrice: tier.originalPrice || 0,
+                    regularPrice: tier.regularPrice || 0,
+                    discountedPrice: tier.discountPrice || 0,
+                  })) || [
+                    { quantity: 250, basePrice: 1.36, regularPrice: 1.36, discountedPrice: 1.36 },
+                    { quantity: 1000, basePrice: 1.24, regularPrice: 1.36, discountedPrice: 1.36 },
+                    { quantity: 2500, basePrice: 1.19, regularPrice: 1.24, discountedPrice: 1.24 },
+                    { quantity: 5000, basePrice: 1.09, regularPrice: 1.19, discountedPrice: 1.19 },
+                  ],
+                }))
+              : [
+                  {
+                    id: 'method-default',
+                    name: 'Default Method',
+                    priceIncludes: '',
+                    areaAndLocation: '',
+                    setupCharge: '',
+                    productionTime: 5,
+                    importStatus: 'Unchecked',
+                    isPrimary: true,
+                    hasFreeSetup: true,
+                    pricingTiers: [
+                      { quantity: 250, basePrice: 1.36, regularPrice: 1.36, discountedPrice: 1.36 },
+                      { quantity: 1000, basePrice: 1.24, regularPrice: 1.36, discountedPrice: 1.36 },
+                      { quantity: 2500, basePrice: 1.19, regularPrice: 1.24, discountedPrice: 1.24 },
+                      { quantity: 5000, basePrice: 1.09, regularPrice: 1.19, discountedPrice: 1.19 },
+                    ],
+                  },
+                ],
+          };
+        });
+
+        if (transformedVariants.length > 0) {
+          setVariants(transformedVariants);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching variants and pricing:', error);
+      // Keep default variant structure if API fails
     }
   };
 
@@ -392,18 +502,6 @@ export default function ProductEditPage() {
                     onChange={(e) => handleInputChange('dimensions', e.target.value)}
                   />
                 </div>
-
-                <div className="form-input-group">
-                  <label className="form-label block text-xs font-medium text-gray-700 mb-1">
-                    Short Description
-                  </label>
-                  <textarea
-                    value={formData.shortDescription}
-                    onChange={(e) => handleInputChange('shortDescription', e.target.value)}
-                    className="form-input w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
-                    rows={3}
-                  />
-                </div>
               </div>
             </Card>
 
@@ -440,6 +538,35 @@ export default function ProductEditPage() {
                   />
                 </div>
               </div>
+            </Card>
+
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-purple-600" />
+                Prices & Variants
+              </h3>
+
+              <PricesAndVariants variants={variants} onChange={setVariants} />
+            </Card>
+
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Short Description</h3>
+              <input
+                type="text"
+                value={formData.shortDescription}
+                onChange={(e) => handleInputChange('shortDescription', e.target.value)}
+                placeholder="Short Description"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+              />
+            </Card>
+
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Description</h3>
+              <RichTextEditor
+                value={formData.description}
+                onChange={(value) => handleInputChange('description', value)}
+                placeholder="Enter detailed product description..."
+              />
             </Card>
 
             <Card className="p-6">
@@ -575,58 +702,6 @@ export default function ProductEditPage() {
                   <a href={product.product.supplier.webUrl} target="_blank" rel="noopener noreferrer" className="font-medium text-blue-600 hover:underline">
                     {product.product.supplier.webUrl}
                   </a>
-                </div>
-              </div>
-            </Card>
-
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <DollarSign className="w-5 h-5 text-green-600" />
-                Pricing Information
-              </h3>
-
-              <div className="space-y-3 text-sm">
-                <div>
-                  <span className="text-gray-600">Variant:</span>
-                  <p className="font-medium text-gray-900">{product.product.primaryPriceTable.variantName}</p>
-                </div>
-                <div>
-                  <span className="text-gray-600">Method:</span>
-                  <p className="font-medium text-gray-900">{product.product.primaryPriceTable.methodName}</p>
-                </div>
-                <div>
-                  <span className="text-gray-600">Price:</span>
-                  <p className="font-medium text-green-600">${product.product.primaryPriceTable.tierPrice.regularPrice.toFixed(2)}</p>
-                </div>
-                <div>
-                  <span className="text-gray-600">Setup Charge:</span>
-                  <p className="font-medium text-gray-900">${product.product.primaryPriceTable.setupCharge?.toFixed(2)}</p>
-                </div>
-                <div>
-                  <span className="text-gray-600">Quantity:</span>
-                  <p className="font-medium text-gray-900">{product.product.primaryPriceTable.tierPrice.quantity}</p>
-                </div>
-              </div>
-            </Card>
-
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-purple-600" />
-                Dates
-              </h3>
-
-              <div className="space-y-3 text-sm">
-                <div>
-                  <span className="text-gray-600">Created:</span>
-                  <p className="font-medium text-gray-900">{new Date(product.product.dates.createdAt).toLocaleDateString()}</p>
-                </div>
-                <div>
-                  <span className="text-gray-600">Updated:</span>
-                  <p className="font-medium text-gray-900">{new Date(product.product.dates.updatedAt).toLocaleDateString()}</p>
-                </div>
-                <div>
-                  <span className="text-gray-600">Imported:</span>
-                  <p className="font-medium text-gray-900">{new Date(product.product.dates.importedAt).toLocaleDateString()}</p>
                 </div>
               </div>
             </Card>

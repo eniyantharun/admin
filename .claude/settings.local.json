@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Read(//c/Users/user/Pictures/Screenshots/**)",
-      "Read(//c/Users/user/Desktop/**)"
+      "Read(//c/Users/user/Desktop/**)",
+      "Bash(npm run type-check:*)",
+      "Bash(npm run dev:*)"
     ],
     "deny": [],
     "ask": []
