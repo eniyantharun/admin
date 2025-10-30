@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { FormInput } from '@/components/helpers/FormInput';
 import { ImageGallery } from '@/components/ui/ImageGallery';
+import { ProductPicturesManager } from '@/components/ui/ProductPicturesManager';
 import { iProduct, iProductFormData, iProductFormProps } from '@/types/product';
 
 export const ProductForm: React.FC<iProductFormProps> = ({
@@ -364,12 +365,8 @@ export const ProductForm: React.FC<iProductFormProps> = ({
           </Card>
 
           <Card className="p-4">
-            <ImageGallery
-              images={formData.images}
-              onImagesChange={(images) => handleInputChange('images', images)}
-              title="Product Images"
-              maxImages={10}
-              editable={true}
+            <ProductPicturesManager
+              productId={product?.id}
             />
           </Card>
         </div>

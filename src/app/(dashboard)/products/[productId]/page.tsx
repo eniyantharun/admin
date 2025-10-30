@@ -9,6 +9,9 @@ import { FormInput } from '@/components/helpers/FormInput';
 import { StatusBadge } from '@/components/helpers/StatusBadge';
 import { ImageGallery } from '@/components/ui/ImageGallery';
 import { ProductImageSelector, ProductPicture } from '@/components/ui/ProductImageSelector';
+import { ProductFeatures } from '@/components/ui/ProductFeatures';
+import { ProductColors } from '@/components/ui/ProductColors';
+import { ProductPicturesManager } from '@/components/ui/ProductPicturesManager';
 import { Header } from '@/components/layout/Header';
 import { showToast } from '@/components/ui/toast';
 import { useApi } from '@/hooks/useApi';
@@ -533,32 +536,19 @@ export default function ProductEditPage() {
 
           <div className="space-y-6">
             <Card className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <ImageIcon className="w-5 h-5 text-indigo-600" />
-                Product Images
-              </h3>
+              <ProductFeatures apiFeatures={product.product.features} />
+            </Card>
 
-              {primaryImage && (
-                <div className="mb-4">
-                  <img
-                    src={primaryImage}
-                    alt={product.product.name}
-                    className="w-full rounded-lg border border-gray-200"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                    }}
-                  />
-                </div>
-              )}
+            <Card className="p-6">
+              <ProductColors apiColors={product.product.colors} />
+            </Card>
 
-              <Button
-                onClick={() => setShowImageSelector(true)}
-                variant="secondary"
-                icon={Grid}
-                className="w-full"
-              >
-                View All Images ({product.product.pictures.length})
-              </Button>
+            <Card className="p-6">
+              <ProductPicturesManager
+                productId={productId}
+                apiPictures={product.product.pictures}
+                primaryPictureId={product.product.primaryPicture?.id}
+              />
             </Card>
 
             <Card className="p-6">
