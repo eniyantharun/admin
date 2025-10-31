@@ -205,11 +205,13 @@ export default function ProductEditPage() {
           isPrimary: true,
           hasFreeSetup: true,
           pricingTiers: [
-            { quantity: 250, basePrice: 0, regularPrice: 0, discountedPrice: 0 },
-            { quantity: 1000, basePrice: 0, regularPrice: 0, discountedPrice: 0 },
-            { quantity: 2500, basePrice: 0, regularPrice: 0, discountedPrice: 0 },
-            { quantity: 5000, basePrice: 0, regularPrice: 0, discountedPrice: 0 },
-          ],
+  { quantity: 250, basePrice: 1.36, regularPrice: 1.36, discountedPrice: 1.36 },
+  { quantity: 1000, basePrice: 1.24, regularPrice: 1.36, discountedPrice: 1.36 },
+  { quantity: 2500, basePrice: 1.19, regularPrice: 1.24, discountedPrice: 1.24 },
+  { quantity: 5000, basePrice: 1.09, regularPrice: 1.19, discountedPrice: 1.19 },
+  
+]
+
         },
       ],
     },

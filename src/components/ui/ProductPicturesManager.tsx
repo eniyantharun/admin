@@ -61,10 +61,9 @@ export const ProductPicturesManager: React.FC<ProductPicturesManagerProps> = ({
         colors: pic.colors && pic.colors.length > 0 ? pic.colors.map((c: any) => c.name).join(', ') : '',
       }));
       setPictures(mappedPictures);
-    } else if (initialPictures.length > 0) {
-      setPictures(initialPictures);
     }
-  }, [apiPictures, primaryPictureId, productId, initialPictures]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiPictures, primaryPictureId, productId]);
 
   const handleUploadClick = () => {
     fileInputRef.current?.click();
@@ -79,6 +78,7 @@ export const ProductPicturesManager: React.FC<ProductPicturesManagerProps> = ({
       reader.onload = (event) => {
         const newPicture: PictureItem = {
           id: Date.now().toString() + Math.random(),
+          pictureId: Date.now(),
           index: pictures.length + 1,
           url: event.target?.result as string,
           isMain: pictures.length === 0, // First image is main by default
