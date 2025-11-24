@@ -27,6 +27,8 @@ interface ProductPicturesManagerProps {
   primaryPictureId?: number;
   onChange?: (pictures: PictureItem[]) => void;
   productId?: string | number;
+  onUpload?: (file: File) => Promise<void>;
+  onDelete?: (pictureId: number) => Promise<void>;
 }
 
 // Helper function to construct image URL
@@ -41,6 +43,8 @@ export const ProductPicturesManager: React.FC<ProductPicturesManagerProps> = ({
   primaryPictureId,
   onChange,
   productId,
+  onUpload,
+  onDelete,
 }) => {
   const [pictures, setPictures] = useState<PictureItem[]>(initialPictures);
   const [selectedForRemoval, setSelectedForRemoval] = useState<Set<string>>(new Set());
@@ -69,43 +73,70 @@ export const ProductPicturesManager: React.FC<ProductPicturesManagerProps> = ({
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
 
-    Array.from(files).forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const newPicture: PictureItem = {
-          id: Date.now().toString() + Math.random(),
-          pictureId: Date.now(),
-          index: pictures.length + 1,
-          url: event.target?.result as string,
-          isMain: pictures.length === 0, // First image is main by default
-          variants: '',
-          colors: '',
-        };
+    // If onUpload callback is provided, use API upload
+    if (onUpload) {
+      for (const file of Array.from(files)) {
+        try {
+          await onUpload(file);
+        } catch (error) {
+          console.error('Failed to upload image:', error);
+        }
+      }
+    } else {
+      // Fallback to local preview
+      Array.from(files).forEach((file) => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const newPicture: PictureItem = {
+            id: Date.now().toString() + Math.random(),
+            pictureId: Date.now(),
+            index: pictures.length + 1,
+            url: event.target?.result as string,
+            isMain: pictures.length === 0,
+            variants: '',
+            colors: '',
+          };
 
-        const updatedPictures = [...pictures, newPicture];
-        setPictures(updatedPictures);
-        onChange?.(updatedPictures);
-      };
-      reader.readAsDataURL(file);
-    });
+          const updatedPictures = [...pictures, newPicture];
+          setPictures(updatedPictures);
+          onChange?.(updatedPictures);
+        };
+        reader.readAsDataURL(file);
+      });
+    }
   };
 
   const handleAddManual = () => {
     handleUploadClick();
   };
 
-  const handleRemoveSelected = () => {
+  const handleRemoveSelected = async () => {
     if (selectedForRemoval.size === 0) return;
 
     if (confirm(`Are you sure you want to remove ${selectedForRemoval.size} picture(s)?`)) {
-      const updatedPictures = pictures.filter(pic => !selectedForRemoval.has(pic.id));
-      setPictures(updatedPictures);
+      // If onDelete callback is provided, use API delete
+      if (onDelete) {
+        for (const pictureId of Array.from(selectedForRemoval)) {
+          const picture = pictures.find(p => p.id === pictureId);
+          if (picture) {
+            try {
+              await onDelete(picture.pictureId);
+            } catch (error) {
+              console.error('Failed to delete image:', error);
+            }
+          }
+        }
+      } else {
+        // Fallback to local removal
+        const updatedPictures = pictures.filter(pic => !selectedForRemoval.has(pic.id));
+        setPictures(updatedPictures);
+        onChange?.(updatedPictures);
+      }
       setSelectedForRemoval(new Set());
-      onChange?.(updatedPictures);
     }
   };
 

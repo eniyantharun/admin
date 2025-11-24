@@ -36,11 +36,15 @@ export interface Variant {
 interface PricesAndVariantsProps {
   variants: Variant[];
   onChange: (variants: Variant[]) => void;
+  onVariantSave?: (variantId: string, variantData: any) => void;
+  onPricingSave?: (methodId: string, pricingData: any) => void;
 }
 
 export const PricesAndVariants: React.FC<PricesAndVariantsProps> = ({
   variants,
   onChange,
+  onVariantSave,
+  onPricingSave,
 }) => {
   const [activeVariantIndex, setActiveVariantIndex] = useState(0);
   const [activeMethodIndex, setActiveMethodIndex] = useState(0);
@@ -134,6 +138,11 @@ export const PricesAndVariants: React.FC<PricesAndVariantsProps> = ({
       [field]: value,
     };
     onChange(updatedVariants);
+
+    // Trigger save callback if provided
+    if (onVariantSave) {
+      onVariantSave(updatedVariants[activeVariantIndex].id, updatedVariants[activeVariantIndex]);
+    }
   };
 
   const updateMethodField = (field: keyof ImprintMethod, value: any) => {
@@ -155,6 +164,14 @@ export const PricesAndVariants: React.FC<PricesAndVariantsProps> = ({
 
     updatedVariants[activeVariantIndex].imprintMethods[activeMethodIndex].pricingTiers = tiers;
     onChange(updatedVariants);
+
+    // Trigger save callback if provided (only save basePrice changes)
+    if (onPricingSave && field === 'basePrice') {
+      onPricingSave(
+        updatedVariants[activeVariantIndex].imprintMethods[activeMethodIndex].id,
+        updatedVariants[activeVariantIndex].imprintMethods[activeMethodIndex]
+      );
+    }
   };
 
   const addSupplierUrl = () => {
@@ -167,6 +184,11 @@ export const PricesAndVariants: React.FC<PricesAndVariantsProps> = ({
     const updatedVariants = [...variants];
     updatedVariants[activeVariantIndex].supplierUrls[urlIndex] = value;
     onChange(updatedVariants);
+
+    // Trigger save callback if provided
+    if (onVariantSave) {
+      onVariantSave(updatedVariants[activeVariantIndex].id, updatedVariants[activeVariantIndex]);
+    }
   };
 
   const removeSupplierUrl = (urlIndex: number) => {
@@ -186,8 +208,32 @@ export const PricesAndVariants: React.FC<PricesAndVariantsProps> = ({
     onChange(updatedVariants);
   };
 
-  if (!activeVariant || !activeMethod) {
-    return null;
+  // Handle empty states with informative UI
+  if (!variants.length) {
+    return (
+      <div className="text-center py-12 text-gray-500">
+        <p className="text-lg font-medium">No variants available</p>
+        <p className="text-sm mt-2">Add a product variant to manage pricing and imprint methods.</p>
+      </div>
+    );
+  }
+
+  if (!activeVariant) {
+    return (
+      <div className="text-center py-12 text-gray-500">
+        <p className="text-lg font-medium">Variant not found</p>
+        <p className="text-sm mt-2">The selected variant could not be loaded.</p>
+      </div>
+    );
+  }
+
+  if (!activeMethod) {
+    return (
+      <div className="text-center py-12 text-gray-500">
+        <p className="text-lg font-medium">No imprint methods available</p>
+        <p className="text-sm mt-2">Add an imprint method to manage pricing tiers for this variant.</p>
+      </div>
+    );
   }
 
   return (
@@ -491,18 +537,11 @@ export const PricesAndVariants: React.FC<PricesAndVariantsProps> = ({
                     Regular Price
                   </td>
                   {activeMethod.pricingTiers.map((tier, tierIndex) => (
-                    <td key={tierIndex} className="border border-gray-300 px-4 py-2 text-center bg-white">
+                    <td key={tierIndex} className="border border-gray-300 px-4 py-2 text-center bg-gray-50">
                       <div className="flex items-center justify-center">
-                        
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={tier.regularPrice}
-                          onChange={(e) =>
-                            updatePricingTier(tierIndex, 'regularPrice', parseFloat(e.target.value) || 0)
-                          }
-                          className="w-full text-center px-2 py-1 border-0 focus:outline-none focus:ring-2 focus:ring-purple-500 rounded text-sm"
-                        />
+                        <span className="text-sm text-gray-700 italic">
+                          ${tier.regularPrice.toFixed(2)}
+                        </span>
                       </div>
                     </td>
                   ))}
@@ -523,22 +562,11 @@ export const PricesAndVariants: React.FC<PricesAndVariantsProps> = ({
                     </div>
                   </td>
                   {activeMethod.pricingTiers.map((tier, tierIndex) => (
-                    <td key={tierIndex} className="border border-gray-300 px-4 py-2 text-center bg-white relative">
+                    <td key={tierIndex} className="border border-gray-300 px-4 py-2 text-center bg-gray-50 relative">
                       <div className="flex items-center justify-center">
-                        
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={tier.discountedPrice}
-                          onChange={(e) =>
-                            updatePricingTier(
-                              tierIndex,
-                              'discountedPrice',
-                              parseFloat(e.target.value) || 0
-                            )
-                          }
-                          className="w-full text-center px-2 py-1 border-0 focus:outline-none focus:ring-2 focus:ring-purple-500 rounded text-sm"
-                        />
+                        <span className="text-sm text-gray-700 italic">
+                          ${tier.discountedPrice.toFixed(2)}
+                        </span>
                       </div>
                       {activeMethod.pricingTiers.length > 1 && (
                         <button
