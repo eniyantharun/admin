@@ -65,7 +65,7 @@ export interface UpdateProductRequest {
   miscellaneous?: {
     inkColor?: string | null;
     penOpeningType?: string | null;
-    capacity?: number;
+    capacity?: number | null;
   };
 
   // SEO

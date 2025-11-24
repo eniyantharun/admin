@@ -132,8 +132,11 @@ export const ShippingForm: React.FC<ShippingFormProps> = ({
             label="Unit Weight (lbs)"
             name="unitWeight"
             type="number"
-            step="0.01"
-            {...form.register('unitWeight', { valueAsNumber: true })}
+            value={form.watch('unitWeight') ?? ''}
+            onChange={(e) => {
+              const value = e.target.value;
+              form.setValue('unitWeight', value === '' ? null : Number(value), { shouldDirty: true });
+            }}
             placeholder={calculations.unitWeight?.toString() || '...'}
           />
           {calculations.unitWeight && !formValues.unitWeight && (
@@ -146,7 +149,11 @@ export const ShippingForm: React.FC<ShippingFormProps> = ({
             label="Units Per Carton"
             name="unitsPerCarton"
             type="number"
-            {...form.register('unitsPerCarton', { valueAsNumber: true })}
+            value={form.watch('unitsPerCarton') ?? ''}
+            onChange={(e) => {
+              const value = e.target.value;
+              form.setValue('unitsPerCarton', value === '' ? null : Number(value), { shouldDirty: true });
+            }}
             placeholder={calculations.unitsPerCarton?.toString() || '...'}
           />
           {calculations.unitsPerCarton && !formValues.unitsPerCarton && (
@@ -159,8 +166,11 @@ export const ShippingForm: React.FC<ShippingFormProps> = ({
             label="Weight Per Carton (lbs)"
             name="weightPerCarton"
             type="number"
-            step="0.01"
-            {...form.register('weightPerCarton', { valueAsNumber: true })}
+            value={form.watch('weightPerCarton') ?? ''}
+            onChange={(e) => {
+              const value = e.target.value;
+              form.setValue('weightPerCarton', value === '' ? null : Number(value), { shouldDirty: true });
+            }}
             placeholder={calculations.weightPerCarton?.toString() || '...'}
           />
           {calculations.weightPerCarton && !formValues.weightPerCarton && (
@@ -174,8 +184,11 @@ export const ShippingForm: React.FC<ShippingFormProps> = ({
             label="Carton Length (in.)"
             name="cartonLength"
             type="number"
-            step="0.01"
-            {...form.register('cartonLength', { valueAsNumber: true })}
+            value={form.watch('cartonLength') ?? ''}
+            onChange={(e) => {
+              const value = e.target.value;
+              form.setValue('cartonLength', value === '' ? null : Number(value), { shouldDirty: true });
+            }}
           />
         </div>
 
@@ -184,8 +197,11 @@ export const ShippingForm: React.FC<ShippingFormProps> = ({
             label="Carton Width (in.)"
             name="cartonWidth"
             type="number"
-            step="0.01"
-            {...form.register('cartonWidth', { valueAsNumber: true })}
+            value={form.watch('cartonWidth') ?? ''}
+            onChange={(e) => {
+              const value = e.target.value;
+              form.setValue('cartonWidth', value === '' ? null : Number(value), { shouldDirty: true });
+            }}
           />
         </div>
 
@@ -194,8 +210,11 @@ export const ShippingForm: React.FC<ShippingFormProps> = ({
             label="Carton Height (in.)"
             name="cartonHeight"
             type="number"
-            step="0.01"
-            {...form.register('cartonHeight', { valueAsNumber: true })}
+            value={form.watch('cartonHeight') ?? ''}
+            onChange={(e) => {
+              const value = e.target.value;
+              form.setValue('cartonHeight', value === '' ? null : Number(value), { shouldDirty: true });
+            }}
           />
         </div>
 
@@ -205,7 +224,11 @@ export const ShippingForm: React.FC<ShippingFormProps> = ({
             label="Pieces Per Unit"
             name="piecesPerUnit"
             type="number"
-            {...form.register('piecesPerUnit', { valueAsNumber: true })}
+            value={form.watch('piecesPerUnit') ?? ''}
+            onChange={(e) => {
+              const value = e.target.value;
+              form.setValue('piecesPerUnit', value === '' ? null : Number(value), { shouldDirty: true });
+            }}
           />
         </div>
 
@@ -214,7 +237,8 @@ export const ShippingForm: React.FC<ShippingFormProps> = ({
           <FormInput
             label="Packaging"
             name="packaging"
-            {...form.register('packaging')}
+            value={form.watch('packaging') ?? ''}
+            onChange={(e) => form.setValue('packaging', e.target.value || '', { shouldDirty: true })}
           />
         </div>
 

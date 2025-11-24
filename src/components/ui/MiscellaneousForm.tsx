@@ -62,19 +62,25 @@ export const MiscellaneousForm: React.FC<MiscellaneousFormProps> = ({
           label="Capacity"
           name="capacity"
           type="number"
-          {...form.register('capacity', { valueAsNumber: true })}
+          value={form.watch('capacity') ?? ''}
+          onChange={(e) => {
+            const value = e.target.value;
+            form.setValue('capacity', value === '' ? null : Number(value), { shouldDirty: true });
+          }}
         />
 
         <FormInput
           label="Ink Color"
           name="inkColor"
-          {...form.register('inkColor')}
+          value={form.watch('inkColor') ?? ''}
+          onChange={(e) => form.setValue('inkColor', e.target.value || null, { shouldDirty: true })}
         />
 
         <FormInput
           label="Pen Opening Type"
           name="penOpeningType"
-          {...form.register('penOpeningType')}
+          value={form.watch('penOpeningType') ?? ''}
+          onChange={(e) => form.setValue('penOpeningType', e.target.value || null, { shouldDirty: true })}
         />
 
         <AsyncFormSavingStatus className="text-end mt-1" />
