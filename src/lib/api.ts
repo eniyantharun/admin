@@ -5,11 +5,48 @@ import { showToast } from '../components/ui/toast';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL!;
 
 const requestCache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_DURATION = 2 * 60 * 1000; 
+const CACHE_DURATION = 2 * 60 * 1000;
 
 const generateCacheKey = (url: string, params?: any): string => {
   const paramString = params ? JSON.stringify(params) : '';
   return `${url}_${paramString}`;
+};
+
+// Background sync debounce timers
+const backgroundSyncTimers = new Map<number, NodeJS.Timeout>();
+const BACKGROUND_SYNC_DEBOUNCE = 300; // 300ms debounce
+
+/**
+ * Triggers background reindexing and Merchant Center sync for a product
+ * Debounced to avoid excessive API calls during rapid updates
+ */
+const triggerBackgroundSync = (productId: number): void => {
+  // Clear existing timer for this product
+  const existingTimer = backgroundSyncTimers.get(productId);
+  if (existingTimer) {
+    clearTimeout(existingTimer);
+  }
+
+  // Set new debounced timer
+  const timer = setTimeout(async () => {
+    try {
+      // Run reindex and MC sync in parallel (fire-and-forget)
+      await Promise.allSettled([
+        apiClient.post('/Admin/ProductEditor/ReindexProduct', { productId }),
+        apiClient.post('/Admin/ProductEditor/SetMerchantCenterEnabled', {
+          productId,
+          enabled: true
+        }),
+      ]);
+
+      backgroundSyncTimers.delete(productId);
+    } catch (error) {
+      console.error('Background sync failed for product:', productId, error);
+      backgroundSyncTimers.delete(productId);
+    }
+  }, BACKGROUND_SYNC_DEBOUNCE);
+
+  backgroundSyncTimers.set(productId, timer);
 };
 
 const apiClient = axios.create({
@@ -36,7 +73,25 @@ apiClient.interceptors.request.use(
 
 apiClient.interceptors.response.use(
   (response) => {
-    
+    // Trigger background sync after product updates
+    if (response.config.url?.includes('/Admin/ProductEditor/SetProductDetail')) {
+      try {
+        // Extract productId from request data
+        const requestData = typeof response.config.data === 'string'
+          ? JSON.parse(response.config.data)
+          : response.config.data;
+
+        const productId = requestData?.id || requestData?.productId;
+
+        if (productId) {
+          // Trigger debounced background sync (reindex + MC sync)
+          triggerBackgroundSync(productId);
+        }
+      } catch (error) {
+        console.error('Failed to trigger background sync:', error);
+      }
+    }
+
     return response;
   },
   (error: AxiosError) => {
@@ -48,11 +103,11 @@ apiClient.interceptors.response.use(
         window.location.href = '/login';
       }
     }
-    
+
     if (error.response?.status === 403) {
       showToast.error('403 Forbidden - check user permissions and token validity');
     }
-    
+
     return Promise.reject(error);
   }
 );

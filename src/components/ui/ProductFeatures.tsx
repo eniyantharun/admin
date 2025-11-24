@@ -18,12 +18,16 @@ interface ProductFeaturesProps {
   initialFeatures?: FeatureGroup[];
   apiFeatures?: ApiFeature[];
   onChange?: (features: FeatureGroup[]) => void;
+  onAdd?: (feature: { typeId: number; value: string }) => Promise<void>;
+  onRemove?: (featureId: number) => Promise<void>;
 }
 
 export const ProductFeatures: React.FC<ProductFeaturesProps> = ({
   initialFeatures = [],
   apiFeatures = [],
   onChange,
+  onAdd,
+  onRemove,
 }) => {
   const [features, setFeatures] = useState<FeatureGroup[]>(() => {
     // If API features are provided, use them
@@ -43,16 +47,29 @@ export const ProductFeatures: React.FC<ProductFeaturesProps> = ({
   });
   const [inputValue, setInputValue] = useState('');
 
-  const handleAddTag = () => {
+  const handleAddTag = async () => {
     if (!inputValue.trim()) return;
 
-    const updatedFeatures = [...features];
-    if (updatedFeatures.length > 0) {
-      updatedFeatures[0].tags.push(inputValue.trim());
-      setFeatures(updatedFeatures);
-      onChange?.(updatedFeatures);
+    // If onAdd callback is provided, use API
+    if (onAdd) {
+      try {
+        // Default to first feature type
+        await onAdd({ typeId: 1, value: inputValue.trim() });
+        setInputValue('');
+        // API will refresh the list
+      } catch (error) {
+        console.error('Failed to add feature:', error);
+      }
+    } else {
+      // Fallback to local state
+      const updatedFeatures = [...features];
+      if (updatedFeatures.length > 0) {
+        updatedFeatures[0].tags.push(inputValue.trim());
+        setFeatures(updatedFeatures);
+        onChange?.(updatedFeatures);
+      }
+      setInputValue('');
     }
-    setInputValue('');
   };
 
   const handleKeyPress = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -61,11 +78,30 @@ export const ProductFeatures: React.FC<ProductFeaturesProps> = ({
     }
   };
 
-  const handleRemoveTag = (groupIndex: number, tagIndex: number) => {
-    const updatedFeatures = [...features];
-    updatedFeatures[groupIndex].tags.splice(tagIndex, 1);
-    setFeatures(updatedFeatures);
-    onChange?.(updatedFeatures);
+  const handleRemoveTag = async (groupIndex: number, tagIndex: number) => {
+    const group = features[groupIndex];
+    const tag = group.tags[tagIndex];
+
+    // If onRemove callback is provided, use API
+    if (onRemove) {
+      try {
+        // Find feature ID from apiFeatures
+        const apiGroup = apiFeatures?.find(g => g.name === group.title);
+        const feature = apiGroup?.features.find(f => f.name === tag);
+        if (feature) {
+          await onRemove(feature.id);
+          // API will refresh the list
+        }
+      } catch (error) {
+        console.error('Failed to remove feature:', error);
+      }
+    } else {
+      // Fallback to local state
+      const updatedFeatures = [...features];
+      updatedFeatures[groupIndex].tags.splice(tagIndex, 1);
+      setFeatures(updatedFeatures);
+      onChange?.(updatedFeatures);
+    }
   };
 
   const toggleGroup = (index: number) => {

@@ -12,6 +12,8 @@ import { useProductsHeaderContext } from "@/hooks/useHeaderContext";
 import { Header } from "@/components/layout/Header";
 import { showToast } from "@/components/ui/toast";
 import { Product, ProductService } from "@/types/productService";
+import { useBulkOperations } from "@/hooks/api";
+import { BulkActionsToolbar } from "@/components/product/BulkActionsToolbar";
 
 export default function ProductsPage() {
   const router = useRouter();
@@ -31,6 +33,26 @@ export default function ProductsPage() {
     onStatusFilterChange: setStatusFilter,
     featuredFilter,
     onFeaturedFilterChange: setFeaturedFilter,
+  });
+
+  // Bulk operations hook
+  const {
+    selectedIds,
+    toggleSelection,
+    selectAll,
+    clearSelection,
+    bulkDelete,
+    bulkUpdateVisibility,
+    loading: bulkLoading,
+  } = useBulkOperations({
+    onSuccess: () => {
+      fetchProducts(); // Refresh list after bulk operation
+      showToast.success('Bulk operation completed successfully');
+    },
+    onError: (error) => {
+      showToast.error(`Bulk operation failed: ${typeof error === 'string' ? error : (error as any)?.message || 'Unknown error'}`);
+    },
+    showToast: false, // Handle toasts manually
   });
 
   const fetchProducts = useCallback(async () => {
@@ -114,6 +136,20 @@ export default function ProductsPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.length === products.length && products.length > 0}
+                      onChange={() => {
+                        if (selectedIds.length === products.length) {
+                          clearSelection();
+                        } else {
+                          selectAll(products.map(p => p.id));
+                        }
+                      }}
+                      className="w-4 h-4 text-blue-600 focus:ring-2 focus:ring-blue-500 rounded"
+                    />
+                  </th>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Product
                   </th>
@@ -137,13 +173,13 @@ export default function ProductsPage() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {loading && isInitialLoad ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-6">
+                    <td colSpan={7} className="px-4 py-6">
                       <LoadingState message="Loading products..." />
                     </td>
                   </tr>
                 ) : products.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-6">
+                    <td colSpan={7} className="px-4 py-6">
                       <EmptyState
                         icon={Package}
                         title="No products found"
@@ -163,6 +199,14 @@ export default function ProductsPage() {
                         className="hover:bg-gray-50 transition-colors duration-150 cursor-pointer"
                         onClick={() => openProductDetail(product)}
                       >
+                        <td className="px-4 py-2" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.includes(product.id)}
+                            onChange={() => toggleSelection(product.id)}
+                            className="w-4 h-4 text-blue-600 focus:ring-2 focus:ring-blue-500 rounded"
+                          />
+                        </td>
                         <td className="px-2 py-2">
                           <div className="flex items-center">
                             <div className="flex-shrink-0">
@@ -321,6 +365,16 @@ export default function ProductsPage() {
           </Card>
         )}
       </div>
+
+      {/* Bulk Actions Toolbar - Fixed at bottom when items are selected */}
+      <BulkActionsToolbar
+        selectedCount={selectedIds.length}
+        onClearSelection={clearSelection}
+        onBulkDelete={() => bulkDelete(selectedIds)}
+        onBulkEnable={() => bulkUpdateVisibility(selectedIds, 'Enabled')}
+        onBulkDisable={() => bulkUpdateVisibility(selectedIds, 'Disabled')}
+        loading={bulkLoading}
+      />
     </div>
   );
 }

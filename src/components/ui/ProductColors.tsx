@@ -19,6 +19,9 @@ interface ProductColorsProps {
   initialColors?: Color[];
   apiColors?: ApiColor[];
   onChange?: (colors: Color[]) => void;
+  onCreate?: (color: { name: string; hexCode: string }) => Promise<void>;
+  onUpdate?: (colorId: number, updates: { name?: string; hexCode?: string }) => Promise<void>;
+  onDelete?: (colorId: number) => Promise<void>;
 }
 
 const PREDEFINED_COLORS = [
@@ -43,6 +46,9 @@ export const ProductColors: React.FC<ProductColorsProps> = ({
   initialColors = [],
   apiColors = [],
   onChange,
+  onCreate,
+  onUpdate,
+  onDelete,
 }) => {
   const [colors, setColors] = useState<Color[]>(() => {
     // If API colors are provided, use them
@@ -74,32 +80,71 @@ export const ProductColors: React.FC<ProductColorsProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const addColor = (name: string = '', hex: string = '#808080') => {
+  const addColor = async (name: string = '', hex: string = '#808080') => {
     const newColor: Color = {
       id: Date.now().toString(),
       name,
       hex,
     };
-    const updatedColors = [...colors, newColor];
-    setColors(updatedColors);
-    setEditingId(newColor.id);
-    onChange?.(updatedColors);
+
+    // If onCreate callback is provided, use API
+    if (onCreate) {
+      try {
+        await onCreate({ name, hexCode: hex });
+        // API will refresh the list
+      } catch (error) {
+        console.error('Failed to create color:', error);
+      }
+    } else {
+      // Fallback to local state
+      const updatedColors = [...colors, newColor];
+      setColors(updatedColors);
+      setEditingId(newColor.id);
+      onChange?.(updatedColors);
+    }
   };
 
-  const updateColor = (id: string, field: 'name' | 'hex', value: string) => {
-    const updatedColors = colors.map((color) =>
-      color.id === id ? { ...color, [field]: value } : color
-    );
-    setColors(updatedColors);
-    onChange?.(updatedColors);
-    showSavedIndicator(id);
-  };
+  const updateColorLocal = async (id: string, field: 'name' | 'hex', value: string) => {
+    const color = colors.find(c => c.id === id);
+    if (!color) return;
 
-  const deleteColor = (id: string) => {
-    if (confirm('Are you sure you want to delete this color?')) {
-      const updatedColors = colors.filter((color) => color.id !== id);
+    // If onUpdate callback is provided, use API
+    if (onUpdate) {
+      try {
+        await onUpdate(Number(id), {
+          [field === 'hex' ? 'hexCode' : field]: value,
+        });
+        showSavedIndicator(id);
+      } catch (error) {
+        console.error('Failed to update color:', error);
+      }
+    } else {
+      // Fallback to local state
+      const updatedColors = colors.map((c) =>
+        c.id === id ? { ...c, [field]: value } : c
+      );
       setColors(updatedColors);
       onChange?.(updatedColors);
+      showSavedIndicator(id);
+    }
+  };
+
+  const deleteColorLocal = async (id: string) => {
+    if (confirm('Are you sure you want to delete this color?')) {
+      // If onDelete callback is provided, use API
+      if (onDelete) {
+        try {
+          await onDelete(Number(id));
+          // API will refresh the list
+        } catch (error) {
+          console.error('Failed to delete color:', error);
+        }
+      } else {
+        // Fallback to local state
+        const updatedColors = colors.filter((color) => color.id !== id);
+        setColors(updatedColors);
+        onChange?.(updatedColors);
+      }
     }
   };
 
@@ -135,7 +180,7 @@ export const ProductColors: React.FC<ProductColorsProps> = ({
             <input
               type="text"
               value={color.name}
-              onChange={(e) => updateColor(color.id, 'name', e.target.value)}
+              onChange={(e) => updateColorLocal(color.id, 'name', e.target.value)}
               onFocus={() => setEditingId(color.id)}
               onBlur={() => setEditingId(null)}
               placeholder="Enter color name..."
@@ -156,7 +201,7 @@ export const ProductColors: React.FC<ProductColorsProps> = ({
                 id={`color-picker-${color.id}`}
                 type="color"
                 value={color.hex}
-                onChange={(e) => updateColor(color.id, 'hex', e.target.value)}
+                onChange={(e) => updateColorLocal(color.id, 'hex', e.target.value)}
                 className="w-10 h-10 border-2 border-gray-300 rounded-md cursor-pointer hover:border-blue-500 transition-all duration-200"
               />
             </div>
@@ -171,7 +216,7 @@ export const ProductColors: React.FC<ProductColorsProps> = ({
             </div>
 
             <button
-              onClick={() => deleteColor(color.id)}
+              onClick={() => deleteColorLocal(color.id)}
               className="flex items-center justify-center w-8 h-8 bg-white border border-gray-300 rounded-md text-red-400 hover:bg-red-500 hover:text-white hover:border-red-500 transition-all duration-200"
             >
               <Trash2 className="w-4 h-4" />
