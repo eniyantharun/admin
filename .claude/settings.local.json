@@ -4,7 +4,10 @@
       "Read(//c/Users/user/Pictures/Screenshots/**)",
       "Read(//c/Users/user/Desktop/**)",
       "Bash(npm run type-check:*)",
-      "Bash(npm run dev:*)"
+      "Bash(npm run dev:*)",
+      "Bash(ls:*)",
+      "Bash(npm install:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

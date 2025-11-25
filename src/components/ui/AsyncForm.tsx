@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState, FormEvent } from 'react';
-import { UseFormReturn } from 'react-hook-form';
+import { UseFormReturn, FormProvider } from 'react-hook-form';
 
 export type AsyncFormStatus = 'clean' | 'saving' | 'saved' | 'failed' | 'invalid';
 
@@ -113,15 +113,17 @@ export function AsyncForm<T extends Record<string, any>>({
   };
 
   return (
-    <AsyncFormContext.Provider value={{ status, setStatus }}>
-      <form
-        ref={formRef}
-        onSubmit={handleSubmit}
-        className={className}
-      >
-        {children}
-      </form>
-    </AsyncFormContext.Provider>
+    <FormProvider {...form}>
+      <AsyncFormContext.Provider value={{ status, setStatus }}>
+        <form
+          ref={formRef}
+          onSubmit={handleSubmit}
+          className={className}
+        >
+          {children}
+        </form>
+      </AsyncFormContext.Provider>
+    </FormProvider>
   );
 }
 
@@ -137,4 +139,30 @@ export function useAsyncFormStatus() {
     throw new Error('useAsyncFormStatus must be used within AsyncForm');
   }
   return context;
+}
+
+// Component to display saving status
+export function AsyncFormSavingStatus() {
+  const { status } = useAsyncFormStatus();
+
+  if (status === 'clean') {
+    return null;
+  }
+
+  return (
+    <span className="text-sm mr-2">
+      {status === 'saving' && (
+        <span className="text-blue-600">Saving...</span>
+      )}
+      {status === 'saved' && (
+        <span className="text-green-600">Saved</span>
+      )}
+      {status === 'failed' && (
+        <span className="text-red-600">Failed to save</span>
+      )}
+      {status === 'invalid' && (
+        <span className="text-orange-600">Please fix validation errors</span>
+      )}
+    </span>
+  );
 }

@@ -12,7 +12,7 @@ import { ProductImageSelector, ProductPicture } from '@/components/ui/ProductIma
 import { ProductFeatures } from '@/components/ui/ProductFeatures';
 import { ProductColors } from '@/components/ui/ProductColors';
 import { ProductPicturesManager } from '@/components/ui/ProductPicturesManager';
-import { PricesAndVariants, Variant } from '@/components/ui/PricesAndVariants';
+import { VariantsSection } from '@/components/product/VariantsSection';
 import { RichTextEditor } from '@/components/ui/RichTextEditor';
 import { ProductDescriptionEditor } from '@/components/ui/ProductDescriptionEditor';
 import { ShippingForm } from '@/components/ui/ShippingForm';
@@ -210,8 +210,8 @@ export default function ProductEditPage() {
   const [miscData, setMiscData] = useState<MiscellaneousFormData | null>(null);
   const [showImageSelector, setShowImageSelector] = useState(false);
   const [selectedPicture, setSelectedPicture] = useState<ProductPicture | null>(null);
-  const [variants, setVariants] = useState<Variant[]>([]);
-  const [variantsLoading, setVariantsLoading] = useState(true);
+  const [variants, setVariants] = useState<Array<{ id: number; name: string }>>([]);
+  const [primaryPriceTableId, setPrimaryPriceTableId] = useState<string | null>(null);
 
   const { get, put, loading } = useApi({
     cancelOnUnmount: true,
@@ -333,8 +333,19 @@ export default function ProductEditPage() {
       if (response) {
         const productDetail = response as ProductDetail;
         setProduct(productDetail);
-        // Fetch additional data for variants and pricing - pass the product data directly
-        await fetchVariantsAndPricing(productDetail);
+
+        // Set variants data (simplified)
+        if (productDetail.product.variants) {
+          setVariants(productDetail.product.variants.map(v => ({
+            id: v.id,
+            name: v.name,
+          })));
+        }
+
+        // Set primary price table ID
+        if (productDetail.product.primaryPriceTable) {
+          setPrimaryPriceTableId(productDetail.product.primaryPriceTable.id);
+        }
       }
     } catch (error) {
       console.error('Error fetching product:', error);
@@ -342,170 +353,10 @@ export default function ProductEditPage() {
     }
   };
 
-  const fetchVariantsAndPricing = async (productData?: ProductDetail) => {
-    try {
-      setVariantsLoading(true);
-
-      // Use the passed product data or fall back to state
-      const productToUse = productData || product;
-
-      // DEBUG: Log product data availability
-      console.log('[DEBUG] fetchVariantsAndPricing called with:', {
-        hasProductData: !!productData,
-        hasProductState: !!product,
-        productToUse: !!productToUse,
-        variantsCount: productToUse?.product?.variants?.length || 0
-      });
-
-      // Use variants data directly from the product response (already loaded)
-      if (!productToUse || !productToUse.product.variants || productToUse.product.variants.length === 0) {
-        console.warn('[DEBUG] No variants found in product data:', {
-          hasProductToUse: !!productToUse,
-          hasProductProperty: !!productToUse?.product,
-          hasVariants: !!productToUse?.product?.variants,
-          variantsLength: productToUse?.product?.variants?.length
-        });
-        setVariants([]);
-        setVariantsLoading(false);
-        return;
-      }
-
-      console.log('[DEBUG] Found variants:', productToUse.product.variants.map((v: any) => ({ id: v.id, name: v.name, sku: v.supplierItemNumber })));
-
-      // Get the primary price table for reference
-      const primaryPriceTable = productToUse.product.primaryPriceTable;
-
-      // For each variant, fetch detailed information to get decoration methods and pricing
-      const variantDetailsPromises = productToUse.product.variants.map((variant: any) =>
-        get(`/Admin/ProductEditor/GetProductVariantDetails?variantId=${variant.id}`)
-      );
-
-      // Use Promise.allSettled to handle partial failures gracefully
-      console.log('[DEBUG] Fetching detailed variant data for', variantDetailsPromises.length, 'variants');
-      const variantDetailsResults = await Promise.allSettled(variantDetailsPromises);
-
-      // Process results and log failures
-      const variantDetailsResponses = variantDetailsResults.map((result, idx) => {
-        if (result.status === 'fulfilled') {
-          console.log(`[DEBUG] Variant ${productToUse.product.variants[idx].id} loaded successfully`);
-          return result.value;
-        } else {
-          // console.error(`[DEBUG] Failed to load variant ${productToUse.product.variants[idx].id}:`, result.reason);
-          // showToast.error(`Failed to load details for variant ${productToUse.product.variants[idx].name || productToUse.product.variants[idx].id}`);
-          return null;
-        }
-      });
-
-      // Transform to match our Variant interface
-      const transformedVariants: Variant[] = productToUse.product.variants.map((productVariant: any, index: number) => {
-        // Get the detailed response for this variant (if available)
-        const variantDetail = variantDetailsResponses[index];
-        const general = variantDetail?.general || {};
-        const decorationMethods = variantDetail?.decorationMethods || [];
-
-        // Build imprint methods from API or use primary price table as fallback
-        let imprintMethods = [];
-
-        if (decorationMethods.length > 0) {
-          // Use decoration methods from GetProductVariantDetails
-          imprintMethods = decorationMethods.map((method: any, mIndex: number) => {
-            const tierPrices = method.tierPrices || [];
-
-            return {
-              id: `method-${method.id}`,
-              name: method.methodName || method.name || 'Method',
-              priceIncludes: method.priceIncludes || '',
-              areaAndLocation: method.areaAndLocation || '',
-              setupCharge: method.setupCharge?.toString() || '',
-              productionTime: method.productionTime || 5,
-              importStatus: method.importStatus || 'Unchecked',
-              isPrimary: mIndex === 0,
-              hasFreeSetup: method.isFreeSetup || false,
-              pricingTiers: tierPrices.map((tier: any) => ({
-                quantity: tier.quantity || 0,
-                basePrice: tier.originalPrice || tier.basePrice || 0,
-                regularPrice: tier.regularPrice || 0,
-                discountedPrice: tier.discountPrice || tier.discountedPrice || 0,
-              })),
-            };
-          });
-        } else if (primaryPriceTable && primaryPriceTable.variantId === productVariant.id) {
-          // Use primary price table data as fallback
-          imprintMethods = [{
-            id: `method-primary-${productVariant.id}`,
-            name: primaryPriceTable.methodName || 'Screen Print',
-            priceIncludes: '',
-            areaAndLocation: '',
-            setupCharge: primaryPriceTable.setupCharge?.toString() || '',
-            productionTime: 5,
-            importStatus: 'Unchecked' as const,
-            isPrimary: true,
-            hasFreeSetup: primaryPriceTable.tierPrice?.isFreeSetup || false,
-            pricingTiers: [{
-              quantity: primaryPriceTable.tierPrice?.quantity || 0,
-              basePrice: primaryPriceTable.tierPrice?.originalPrice || 0,
-              regularPrice: primaryPriceTable.tierPrice?.regularPrice || 0,
-              discountedPrice: primaryPriceTable.tierPrice?.discountPrice || 0,
-            }],
-          }];
-        } else {
-          // Create default imprint method when no data available
-          imprintMethods = [{
-            id: `method-default-${productVariant.id}`,
-            name: 'Screen Print',
-            priceIncludes: '',
-            areaAndLocation: '',
-            setupCharge: '',
-            productionTime: 5,
-            importStatus: 'Unchecked' as const,
-            isPrimary: true,
-            hasFreeSetup: true,
-            pricingTiers: [
-              { quantity: 250, basePrice: 0, regularPrice: 0, discountedPrice: 0 },
-              { quantity: 1000, basePrice: 0, regularPrice: 0, discountedPrice: 0 },
-              { quantity: 2500, basePrice: 0, regularPrice: 0, discountedPrice: 0 },
-              { quantity: 5000, basePrice: 0, regularPrice: 0, discountedPrice: 0 },
-            ],
-          }];
-        }
-
-        return {
-          id: `variant-${productVariant.id}`,
-          name: productVariant.name || general.name || '',
-          supplierUrls: productVariant.entry?.url ? [productVariant.entry.url] : (general.supplierUrl ? [general.supplierUrl] : ['']),
-          sku: productVariant.supplierItemNumber || general.sku || general.supplierItemNumber || '',
-          isPrimary: productVariant.id === productToUse.product.primaryVariantId,
-          imprintMethods,
-        };
-      });
-
-      console.log('[DEBUG] Transformation complete:', {
-        transformedCount: transformedVariants.length,
-        variants: transformedVariants.map(v => ({
-          id: v.id,
-          name: v.name,
-          sku: v.sku,
-          methodsCount: v.imprintMethods.length
-        }))
-      });
-
-      if (transformedVariants.length === 0) {
-        console.warn('[DEBUG] No variants after transformation - this should not happen if variants existed in product data');
-        showToast.error('Unable to load variant pricing data');
-      }
-
-      setVariants(transformedVariants);
-      setVariantsLoading(false);
-    } catch (error) {
-      console.error('[DEBUG] CRITICAL ERROR in fetchVariantsAndPricing:', error);
-      console.error('[DEBUG] Error details:', {
-        message: (error as Error).message,
-        stack: (error as Error).stack
-      });
-      // showToast.error('Failed to load variants: ' + (error as Error).message);
-      setVariants([]);
-      setVariantsLoading(false);
-    }
+  const handlePrimaryChange = (tableId: string) => {
+    setPrimaryPriceTableId(tableId);
+    // Product page will refresh from API after the change
+    fetchProductDetails();
   };
 
   const handleInputChange = (field: keyof ProductFormData, value: any) => {
@@ -523,76 +374,6 @@ export default function ProductEditPage() {
     }
   };
 
-  // Debounced save handlers for variants and pricing
-  const variantSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const pricingSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  const handleVariantSave = useCallback(async (variantId: string, variantData: any) => {
-    // Clear previous timeout
-    if (variantSaveTimeoutRef.current) {
-      clearTimeout(variantSaveTimeoutRef.current);
-    }
-
-    // Debounce for 700ms (matching old project)
-    variantSaveTimeoutRef.current = setTimeout(async () => {
-      try {
-        // Extract numeric ID from variant-{id} format
-        const numericId = variantId.replace('variant-', '');
-
-        // Use correct field names matching old project
-        await put('/Admin/ProductEditor/SetProductVariantDetails', {
-          variantId: Number(numericId), // Changed from 'id' to 'variantId'
-          name: variantData.name,
-          sku: variantData.sku,
-          supplierProductId: Array.isArray(variantData.supplierUrls)
-            ? variantData.supplierUrls[0]
-            : variantData.supplierUrls, // Changed from 'supplierUrl' to 'supplierProductId'
-        });
-
-        // Refresh variant data to get updated values
-        await fetchVariantsAndPricing();
-      } catch (error) {
-        console.error('Error saving variant:', error);
-        showToast.error('Failed to save variant details');
-      }
-    }, 700); // Changed from 300ms to 700ms
-  }, [put, fetchVariantsAndPricing]);
-
-  const handlePricingSave = useCallback(async (methodId: string, pricingData: any) => {
-    // Clear previous timeout
-    if (pricingSaveTimeoutRef.current) {
-      clearTimeout(pricingSaveTimeoutRef.current);
-    }
-
-    // Debounce for 700ms (matching old project)
-    pricingSaveTimeoutRef.current = setTimeout(async () => {
-      try {
-        // Extract table ID (methodId is actually the price table ID)
-        const tableId = methodId.replace('method-', '');
-
-        // Convert tierPrices array to object format { quantity: price }
-        // matching old project structure
-        const tierPricesObject: { [key: number]: number } = {};
-        pricingData.pricingTiers.forEach((tier: any) => {
-          if (tier.quantity !== null && tier.quantity !== undefined) {
-            // Only send basePrice (originalPrice) - regularPrice and discountPrice are calculated
-            tierPricesObject[tier.quantity] = tier.basePrice || 0;
-          }
-        });
-
-        await put('/Admin/ProductEditor/SetPriceTableDetail', {
-          tableId, // Changed from 'id' to 'tableId'
-          tierPrices: tierPricesObject, // Changed from array to object format
-        });
-
-        // Refresh variant data to get updated calculated prices
-        await fetchVariantsAndPricing();
-      } catch (error) {
-        console.error('Error saving pricing:', error);
-        showToast.error('Failed to save pricing details');
-      }
-    }, 700); // Changed from 300ms to 700ms
-  }, [put, fetchVariantsAndPricing]);
 
   const handleBack = () => {
     if (saveStatus === 'saving') {
@@ -753,23 +534,13 @@ export default function ProductEditPage() {
               </div>
             </Card>
 
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <DollarSign className="w-5 h-5 text-purple-600" />
-                Prices & Variants
-              </h3>
-
-              {variantsLoading ? (
-                <LoadingState message="Loading variants and pricing..." />
-              ) : (
-                <PricesAndVariants
-                  variants={variants}
-                  onChange={setVariants}
-                  onVariantSave={handleVariantSave}
-                  onPricingSave={handlePricingSave}
-                />
-              )}
-            </Card>
+            <VariantsSection
+              variants={variants}
+              productId={Number(productId)}
+              primaryPriceTableId={primaryPriceTableId}
+              onVariantsChange={setVariants}
+              onPrimaryChange={handlePrimaryChange}
+            />
 
             <Card className="p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Short Description</h3>
