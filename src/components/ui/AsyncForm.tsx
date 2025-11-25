@@ -27,6 +27,7 @@ export function AsyncForm<T extends Record<string, any>>({
   const isFirstRender = useRef(true);
   const formRef = useRef<HTMLFormElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout>();
+  const lastSubmittedDataRef = useRef<string>('');
 
   // Track form changes for auto-save
   useEffect(() => {
@@ -94,7 +95,35 @@ export function AsyncForm<T extends Record<string, any>>({
     try {
       setStatus('saving');
       const data = form.getValues();
+
+      // PROTECTION: Compare with last submitted data to avoid duplicate saves
+      const dataString = JSON.stringify(data);
+      if (dataString === lastSubmittedDataRef.current) {
+        console.log('[AsyncForm] Data unchanged, skipping save');
+        setStatus('clean');
+        return;
+      }
+
+      // PROTECTION: Check if all values are empty/null/undefined
+      const hasNonEmptyValue = Object.values(data).some(value => {
+        if (value === null || value === undefined || value === '') return false;
+        if (typeof value === 'string' && value.trim() === '') return false;
+        if (Array.isArray(value) && value.length === 0) return false;
+        if (typeof value === 'object' && Object.keys(value).length === 0) return false;
+        return true;
+      });
+
+      if (!hasNonEmptyValue) {
+        console.warn('[AsyncForm] All form values are empty, skipping save to prevent data loss');
+        setStatus('clean');
+        return;
+      }
+
       await onSubmit(data);
+
+      // Update last submitted data
+      lastSubmittedDataRef.current = dataString;
+
       setStatus('saved');
 
       // Reset to clean after 2 seconds

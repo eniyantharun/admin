@@ -241,6 +241,8 @@ export default function ProductEditPage() {
     saveFunction: async (data) => {
       if (!data) return;
       // Send nested structure matching old project
+      // Note: We exclude shortDescription from auto-save to prevent overwriting with empty data
+      // shortDescription should be saved separately when explicitly changed
       await ProductCRUDService.updateProduct(Number(productId), {
         id: Number(productId),
         general: {
@@ -257,9 +259,7 @@ export default function ProductEditPage() {
           merchantCenterTitle: data.merchantCenterTitle || null,
           merchantCenterDescription: data.merchantCenterDescription || null,
         },
-        shortDescription: {
-          shortDescription: data.shortDescription || null,
-        },
+        // Do NOT send shortDescription in auto-save to avoid overwriting
         isMerchantCenterEnabled: data.isMerchantCenterEnabled,
         hasFreeSetup: data.hasFreeSetup,
         visibility: data.visibility as 'Enabled' | 'Disabled' | null,

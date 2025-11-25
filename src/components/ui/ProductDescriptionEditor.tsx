@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { Loader2, Check, AlertCircle } from 'lucide-react';
 import { api } from '@/lib/api';
+import { htmlToDocumentFormat, documentFormatToHtml, type DocumentContent } from '@/lib/documentConverter';
 import 'react-quill/dist/quill.snow.css';
 
 // Dynamically import ReactQuill to avoid SSR issues
@@ -34,13 +35,19 @@ export const ProductDescriptionEditor: React.FC<ProductDescriptionEditorProps> =
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isFirstLoadRef = useRef(true);
+  const lastSavedContentRef = useRef<string>('');
+  const isMountedRef = useRef(false);
 
   // Load document content when documentId changes
   useEffect(() => {
     const loadDocument = async () => {
+      // Reset first load flag when document changes to prevent auto-save on load
+      isFirstLoadRef.current = true;
+
       if (!currentDocumentId) {
         // No document yet, show blank editor
         setContent('');
+        lastSavedContentRef.current = '';
         setLoading(false);
         return;
       }
@@ -51,13 +58,24 @@ export const ProductDescriptionEditor: React.FC<ProductDescriptionEditorProps> =
           params: { documentId: currentDocumentId },
         });
 
-        // Convert document blocks to HTML (simplified - adjust based on actual API response)
-        const htmlContent = convertBlocksToHtml(response.content?.children || []);
-        setContent(htmlContent);
+        console.log('[ProductDescriptionEditor] API Response:', response);
+
+        // Use the proper document converter
+        let htmlContent = '';
+        if (response.content) {
+          htmlContent = documentFormatToHtml(response.content as DocumentContent);
+          console.log('[ProductDescriptionEditor] Converted HTML:', htmlContent?.substring(0, 100));
+        } else {
+          console.warn('[ProductDescriptionEditor] No content in API response');
+        }
+
+        setContent(htmlContent || '');
+        lastSavedContentRef.current = htmlContent || '';
         setLoading(false);
       } catch (error) {
         console.error('Failed to load document:', error);
         setContent('');
+        lastSavedContentRef.current = '';
         setLoading(false);
       }
     };
@@ -65,38 +83,117 @@ export const ProductDescriptionEditor: React.FC<ProductDescriptionEditorProps> =
     loadDocument();
   }, [currentDocumentId]);
 
-  // Convert document blocks to HTML (simplified conversion)
-  const convertBlocksToHtml = (blocks: any[]): string => {
-    if (!blocks || blocks.length === 0) return '';
-
-    // If API returns HTML directly, use it
-    if (typeof blocks === 'string') return blocks;
-
-    // Otherwise, try to extract text content
-    try {
-      return blocks.map(block => {
-        if (block.text) return block.text;
-        if (block.children) return convertBlocksToHtml(block.children);
-        return '';
-      }).join('\n');
-    } catch (error) {
+  // Convert document blocks to HTML (improved to handle multiple formats)
+  const convertBlocksToHtml = (blocks: any): string => {
+    // Handle null/undefined
+    if (blocks === null || blocks === undefined) {
+      console.warn('[convertBlocksToHtml] Received null/undefined blocks');
       return '';
     }
+
+    // If API returns HTML string directly, use it
+    if (typeof blocks === 'string') {
+      console.log('[convertBlocksToHtml] Received string:', blocks.substring(0, 100));
+      return blocks;
+    }
+
+    // If empty array
+    if (Array.isArray(blocks) && blocks.length === 0) {
+      console.warn('[convertBlocksToHtml] Received empty array');
+      return '';
+    }
+
+    // If it's an array of blocks, process each block
+    if (Array.isArray(blocks)) {
+      try {
+        const html = blocks.map(block => {
+          if (!block) return '';
+
+          // If block has HTML property
+          if (block.html) return block.html;
+
+          // If block has text property
+          if (block.text) return block.text;
+
+          // If block has children, recurse
+          if (block.children) return convertBlocksToHtml(block.children);
+
+          // If block has content property
+          if (block.content) return convertBlocksToHtml(block.content);
+
+          return '';
+        }).filter(Boolean).join('\n');
+
+        console.log('[convertBlocksToHtml] Converted array:', html.substring(0, 100));
+        return html;
+      } catch (error) {
+        console.error('[convertBlocksToHtml] Error processing array:', error);
+        return '';
+      }
+    }
+
+    // If it's an object with children
+    if (typeof blocks === 'object' && blocks.children) {
+      return convertBlocksToHtml(blocks.children);
+    }
+
+    // If it's an object with content
+    if (typeof blocks === 'object' && blocks.content) {
+      return convertBlocksToHtml(blocks.content);
+    }
+
+    // If it's an object with html
+    if (typeof blocks === 'object' && blocks.html) {
+      return blocks.html;
+    }
+
+    console.warn('[convertBlocksToHtml] Unknown format:', typeof blocks, blocks);
+    return '';
   };
 
   // Save document content
   const saveDocument = useCallback(async (htmlContent: string) => {
-    if (!currentDocumentId) return;
+    if (!currentDocumentId) {
+      console.warn('[saveDocument] No documentId, skipping save');
+      return;
+    }
+
+    // CRITICAL: Don't save if content is empty or unchanged
+    const trimmedContent = htmlContent?.trim() || '';
+    const lastSavedTrimmed = lastSavedContentRef.current?.trim() || '';
+
+    if (!trimmedContent) {
+      console.warn('[saveDocument] Content is empty, skipping save to prevent data loss');
+      return;
+    }
+
+    if (trimmedContent === lastSavedTrimmed) {
+      console.log('[saveDocument] Content unchanged, skipping save');
+      return;
+    }
+
+    // Don't save if content is just empty HTML tags
+    const strippedContent = trimmedContent.replace(/<[^>]*>/g, '').trim();
+    if (!strippedContent) {
+      console.warn('[saveDocument] Content contains only HTML tags (empty), skipping save');
+      return;
+    }
 
     try {
+      console.log('[saveDocument] Saving content:', trimmedContent.substring(0, 100));
       setSaveStatus('saving');
+
+      // Convert HTML to proper document format
+      const documentContent = htmlToDocumentFormat(htmlContent);
+      console.log('[saveDocument] Converted to document format:', JSON.stringify(documentContent).substring(0, 200));
 
       await api.post('/Admin/Document/AddDocumentRevision', {
         documentId: currentDocumentId,
-        content: {
-          children: [{ text: htmlContent }], // Simplified structure
-        },
+        content: documentContent,
       });
+
+      // Update last saved content ref
+      lastSavedContentRef.current = htmlContent;
 
       setSaveStatus('saved');
       setLastSaved(new Date());
@@ -116,9 +213,22 @@ export const ProductDescriptionEditor: React.FC<ProductDescriptionEditorProps> =
   const handleContentChange = (value: string) => {
     setContent(value);
 
-    // Skip auto-save on first load
+    // Skip auto-save if still loading
+    if (loading) {
+      console.log('[handleContentChange] Still loading, skipping auto-save');
+      return;
+    }
+
+    // Skip auto-save on first load (ReactQuill triggers onChange on mount)
     if (isFirstLoadRef.current) {
+      console.log('[handleContentChange] First load, skipping auto-save');
       isFirstLoadRef.current = false;
+      return;
+    }
+
+    // Skip auto-save if component hasn't fully mounted yet
+    if (!isMountedRef.current) {
+      console.log('[handleContentChange] Not fully mounted, skipping auto-save');
       return;
     }
 
@@ -127,10 +237,11 @@ export const ProductDescriptionEditor: React.FC<ProductDescriptionEditorProps> =
       clearTimeout(saveTimeoutRef.current);
     }
 
-    // Set new timeout for auto-save (600ms like old project)
+    // Set new timeout for auto-save (increased to 1000ms for better stability)
     saveTimeoutRef.current = setTimeout(() => {
+      console.log('[handleContentChange] Auto-save triggered');
       saveDocument(value);
-    }, 600);
+    }, 1000);
   };
 
   // Handle focus - create document if it doesn't exist
@@ -161,6 +272,17 @@ export const ProductDescriptionEditor: React.FC<ProductDescriptionEditorProps> =
       setTimeout(() => setSaveStatus('idle'), 3000);
     }
   };
+
+  // Mark component as mounted after initial render
+  useEffect(() => {
+    // Delay marking as mounted to ensure ReactQuill is fully initialized
+    const timer = setTimeout(() => {
+      isMountedRef.current = true;
+      console.log('[ProductDescriptionEditor] Component fully mounted');
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   // Cleanup timeout on unmount
   useEffect(() => {
