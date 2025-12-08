@@ -56,11 +56,14 @@ export function VariantForm({
   }, [currentSku, allVariantSkus]);
 
   const handleSubmit = async (data: VariantFormValue) => {
+    // Use nested 'general' structure to match old DTO
     await post('/Admin/ProductEditor/SetProductVariantDetails', {
       variantId,
-      name: data.name,
-      supplierUrl: data.supplierUrl,
-      supplierItemNumber: data.supplierItemNumber,
+      general: {
+        name: data.name,
+        supplierUrl: data.supplierUrl || null,
+        supplierItemNumber: data.supplierItemNumber || null,
+      },
     });
     onSave(data);
   };

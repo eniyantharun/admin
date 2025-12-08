@@ -29,14 +29,12 @@ export interface PaginationParams {
 
 export interface CreateProductRequest {
   name: string;
-  supplierId?: number;
-  brandId?: number;
-  visibility?: 'Enabled' | 'Disabled';
+  supplierId: number;        // REQUIRED - matches old project DTO
+  isExclusive?: boolean;     // Added to match old project
 }
 
 export interface CreateProductResponse {
-  productId: number;
-  success: boolean;
+  id: number;                // Changed from productId to match API response
 }
 
 export interface UpdateProductRequest {
@@ -172,17 +170,16 @@ export interface ProductVariant {
 
 export interface CreateVariantRequest {
   productId: number;
-  name: string;
-  sku?: string;
-  supplierProductId?: string;
+  sourceVariantId?: number | null;  // For copying from existing variant - matches old DTO
 }
 
 export interface UpdateVariantRequest {
   variantId: number;
-  name?: string;
-  sku?: string;
-  supplierProductId?: string;
-  enabled?: boolean;
+  general?: {                        // Nested structure to match old DTO
+    name: string;
+    supplierItemNumber?: string | null;   // Changed from 'sku'
+    supplierUrl?: string | null;          // Changed from 'supplierProductId'
+  } | null;
 }
 
 export interface DeleteVariantRequest {
@@ -268,7 +265,7 @@ export interface CartonCalculation {
 export interface ProductPicture {
   id: number;
   productId: number;
-  assetId: number;
+  assetId: string;           // Changed from number to string to match old DTO
   pictureIndex: number;
   url: string;
   thumbnailUrl: string;
@@ -283,14 +280,14 @@ export interface UploadImageRequest {
 }
 
 export interface UploadImageResponse {
-  assetId: number;
+  assetId: string;           // Changed from number to string to match old DTO
   url: string;
 }
 
 export interface AddPictureByAssetRequest {
   productId: number;
-  assetId: number;
-  isPrimary?: boolean;
+  assetId: string;           // Changed from number to string to match old DTO
+  // isPrimary removed - set via SetProductDetail.primaryPicture instead
 }
 
 export interface RemovePicturesRequest {
@@ -347,13 +344,13 @@ export interface ColorOption {
 export interface CreateColorOptionRequest {
   productId: number;
   name: string;
-  hexCode: string;
+  // hexCode removed - only exists in UPDATE, not CREATE
 }
 
 export interface UpdateColorOptionRequest {
-  colorId: number;
-  name?: string;
-  hexCode?: string;
+  colorOptionId: string;     // Changed from colorId: number to match old DTO
+  name?: string | null;
+  hex?: string[] | null;     // Changed from hexCode: string to match old DTO (array of hex codes)
 }
 
 export interface DeleteColorOptionsRequest {
@@ -392,8 +389,8 @@ export interface CreateFeatureTypeRequest {
 
 export interface AddProductFeatureRequest {
   productId: number;
-  featureTypeId: number;
-  value: string;
+  featureId: number;         // Changed from featureTypeId to match old DTO
+  // value removed - doesn't exist in simple add operation
 }
 
 export interface AddProductFeaturesRequest {

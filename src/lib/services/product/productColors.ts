@@ -54,11 +54,11 @@ export class ProductColorsService {
    * POST /Admin/ProductEditor/SetColorOptionDetail
    */
   static async updateColorOption(
-    colorId: number,
+    colorOptionId: string,
     data: Partial<UpdateColorOptionRequest>
   ): Promise<any> {
     const response = await api.post('/Admin/ProductEditor/SetColorOptionDetail', {
-      colorId,
+      colorOptionId,
       ...data,
     });
 

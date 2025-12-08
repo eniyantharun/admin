@@ -47,8 +47,8 @@ export class ThemeCRUDService {
     });
 
     // Invalidate caches
-    api.clearCacheByPattern('/Admin/CategoryEditor/GetCategoryDetail');
-    api.clearCacheByPattern('/Admin/Category/Tree');
+    api.clearCacheByPattern('https://api.promowe.com/Admin/CategoryEditor/GetCategoryDetail');
+    api.clearCacheByPattern('https://api.promowe.com/Admin/Category/Tree');
 
     return response;
   }
@@ -73,7 +73,7 @@ export class ThemeCRUDService {
       enabled,
     });
 
-    api.clearCacheByPattern('/Admin/Category/Tree');
+    api.clearCacheByPattern('https://api.promowe.com/Admin/Category/Tree');
     return response;
   }
 
@@ -102,7 +102,7 @@ export class ThemeCRUDService {
     });
 
     // Triggers full product reindex
-    api.clearCacheByPattern('/Admin/Category/Tree');
+    api.clearCacheByPattern('https://api.promowe.com/Admin/Category/Tree');
     return response;
   }
 

@@ -54,7 +54,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
         <div className="dashboard-layout-main flex-1 flex flex-col overflow-auto relative min-w-0">
           {children}
         </div>
-        <FloatingElements />
+        {/* <FloatingElements /> */}
       </div>
     </AuthGuard>
   );

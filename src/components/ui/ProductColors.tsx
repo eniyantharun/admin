@@ -19,8 +19,8 @@ interface ProductColorsProps {
   initialColors?: Color[];
   apiColors?: ApiColor[];
   onChange?: (colors: Color[]) => void;
-  onCreate?: (color: { name: string; hexCode: string }) => Promise<void>;
-  onUpdate?: (colorId: number, updates: { name?: string; hexCode?: string }) => Promise<void>;
+  onCreate?: (color: { name: string }) => Promise<void>;  // Removed hexCode - not in create API
+  onUpdate?: (colorId: string, updates: { name?: string; hex?: string[] }) => Promise<void>;  // Changed to string, hex array
   onDelete?: (colorId: number) => Promise<void>;
 }
 
@@ -90,7 +90,7 @@ export const ProductColors: React.FC<ProductColorsProps> = ({
     // If onCreate callback is provided, use API
     if (onCreate) {
       try {
-        await onCreate({ name, hexCode: hex });
+        await onCreate({ name });  // Only name - hexCode not in create API
         // API will refresh the list
       } catch (error) {
         console.error('Failed to create color:', error);
@@ -111,8 +111,9 @@ export const ProductColors: React.FC<ProductColorsProps> = ({
     // If onUpdate callback is provided, use API
     if (onUpdate) {
       try {
-        await onUpdate(Number(id), {
-          [field === 'hex' ? 'hexCode' : field]: value,
+        // API expects colorOptionId as string, and hex as array of strings
+        await onUpdate(id, {
+          ...(field === 'name' ? { name: value } : { hex: [value] }),
         });
         showSavedIndicator(id);
       } catch (error) {

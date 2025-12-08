@@ -671,7 +671,7 @@ export default function ProductEditPage() {
                 onCreate={async (color) => {
                   await createColor(Number(productId), {
                     name: color.name,
-                    hexCode: color.hexCode,
+                    // hexCode removed - not in create API, set via update instead
                   });
                 }}
                 onUpdate={async (colorId, updates) => {

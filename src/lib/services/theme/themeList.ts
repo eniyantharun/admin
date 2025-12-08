@@ -12,7 +12,7 @@ export class ThemeListService {
     parentId?: number | null;
     enabled?: boolean | null;
   }): Promise<{ categories: ThemeTreeNode[] }> {
-    const response = await api.get('/Admin/Category/Tree', {
+    const response = await api.get('https://api.promowe.com/Admin/Category/Tree', {
       params: {
         type: 'Theme',
         ...params,

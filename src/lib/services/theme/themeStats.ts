@@ -9,7 +9,7 @@ export class ThemeStatsService {
   static async getThemesStats(
     themeIds: number[]
   ): Promise<Record<number, ThemeStats>> {
-    const response = await api.get('/Admin/Categories/GetCategoriesStats', {
+    const response = await api.get('https://api.promowe.com/Admin/Categories/GetCategoriesStats', {
       params: { ids: themeIds },
     });
 

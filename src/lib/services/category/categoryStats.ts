@@ -9,7 +9,7 @@ export class CategoryStatsService {
   static async getCategoriesStats(
     categoryIds: number[]
   ): Promise<Record<number, CategoryStats>> {
-    const response = await api.get('/Admin/Categories/GetCategoriesStats', {
+    const response = await api.get('https://api.promowe.com/Admin/Categories/GetCategoriesStats', {
       params: { ids: categoryIds },
     });
 
@@ -47,7 +47,7 @@ export class CategoryStatsService {
    * GET /Admin/CategoryEditor/GetCategoryStats
    */
   static async getCategoryStats(categoryId: number): Promise<CategoryStats> {
-    const response = await api.get('/Admin/CategoryEditor/GetCategoryStats', {
+    const response = await api.get('https://api.promowe.com/Admin/CategoryEditor/GetCategoryStats', {
       params: { categoryId },
     });
 
@@ -68,7 +68,7 @@ export class CategoryStatsService {
    * GET /Admin/CategoryEditor/GetCategoryStats
    */
   static async getCategoryDetailedStats(categoryId: number): Promise<CategoryDetailedStats> {
-    const response = await api.get('/Admin/CategoryEditor/GetCategoryStats', {
+    const response = await api.get('https://api.promowe.com/Admin/CategoryEditor/GetCategoryStats', {
       params: { categoryId },
     });
 

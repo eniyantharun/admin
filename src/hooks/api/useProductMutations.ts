@@ -40,7 +40,7 @@ export interface UseProductMutationsReturn {
 
   // Color operations
   createColor: (productId: number, data: any) => Promise<any>;
-  updateColor: (colorId: number, data: any) => Promise<any>;
+  updateColor: (colorId: string, data: any) => Promise<any>;  // Changed to string
   deleteColor: (colorIds: number[]) => Promise<any>;
 
   // Feature operations
@@ -204,7 +204,7 @@ export function useProductMutations({
     [handleMutation]
   );
 
-  const updateColor = useCallback((colorId: number, data: any) =>
+  const updateColor = useCallback((colorId: string, data: any) =>
     handleMutation(
       'Update color',
       () => ProductColorsService.updateColorOption(colorId, data),

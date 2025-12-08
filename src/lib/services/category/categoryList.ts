@@ -12,7 +12,7 @@ export class CategoryListService {
     parentId?: number | null;
     enabled?: boolean | null;
   }): Promise<{ categories: CategoryTreeNode[] }> {
-    const response = await api.get('/Admin/Category/Tree', {
+    const response = await api.get('https://api.promowe.com/Admin/Category/Tree', {
       params: {
         type: 'Category',
         ...params,
